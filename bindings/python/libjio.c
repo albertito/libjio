@@ -616,7 +616,6 @@ PyMODINIT_FUNC initlibjio(void)
 	PyModule_AddIntConstant(m, "O_NDELAY", O_NDELAY);
 	PyModule_AddIntConstant(m, "O_SYNC", O_SYNC);
 	PyModule_AddIntConstant(m, "O_ASYNC", O_ASYNC);
-	PyModule_AddIntConstant(m, "O_LARGEFILE", O_LARGEFILE);
 
 	/* lseek constants */
 	PyModule_AddIntConstant(m, "SEEK_SET", SEEK_SET);

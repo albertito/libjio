@@ -126,7 +126,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	res->apply_error = 0;
 	res->reapplied = 0;
 
-	fs.fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
+	fs.fd = open(name, O_RDWR | O_SYNC);
 	if (fs.fd < 0) {
 		ret = J_ENOENT;
 		goto exit;
@@ -214,7 +214,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 			ret = J_ENOMEM;
 			goto exit;
 		}
-		tfd = open(tname, O_RDWR | O_SYNC | O_LARGEFILE, 0600);
+		tfd = open(tname, O_RDWR | O_SYNC, 0600);
 		if (tfd < 0) {
 			res->invalid++;
 			goto loop;
