@@ -614,6 +614,7 @@ PyMODINIT_FUNC initlibjio(void)
 	PyModule_AddIntConstant(m, "J_COMMITTED", J_COMMITTED);
 	PyModule_AddIntConstant(m, "J_ROLLBACKED", J_ROLLBACKED);
 	PyModule_AddIntConstant(m, "J_ROLLBACKING", J_ROLLBACKING);
+	PyModule_AddIntConstant(m, "J_RDONLY", J_RDONLY);
 	PyModule_AddIntConstant(m, "J_ESUCCESS", J_ESUCCESS);
 	PyModule_AddIntConstant(m, "J_ENOENT", J_ENOENT);
 	PyModule_AddIntConstant(m, "J_ENOJOURNAL", J_ENOJOURNAL);
