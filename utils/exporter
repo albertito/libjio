@@ -23,7 +23,14 @@ class Patch:
 		return s
 
 	def export(self, order, path):
-		file = "%s/%.2d-%s.patch" % (path, order, self.name)
+		# '/'s are not allowed in filenames
+		name = self.name.replace('/', '-')
+
+		# avoid 'name..patch'
+		if name[-1] == '.':
+			name = name[:-1]
+			
+		file = "%s/%.2d - %s.patch" % (path, order, name)
 		cmd = 'darcs diff -u --match "hash %s" > "%s"' % \
 				(self.hash, file)
 		if os.system(cmd):
