@@ -625,7 +625,6 @@ int jclose(struct jfs *fs)
 	int ret;
 
 	ret = 0;
-	pthread_mutex_lock(&(fs->lock));
 
 	if (jsync(fs))
 		ret = -1;
@@ -641,7 +640,6 @@ int jclose(struct jfs *fs)
 	if (fs->jmap != MAP_FAILED)
 		munmap(fs->jmap, sizeof(unsigned int));
 
-	pthread_mutex_unlock(&(fs->lock));
 	pthread_mutex_destroy(&(fs->lock));
 
 	return ret;
