@@ -12,6 +12,10 @@
 #include <sys/uio.h>
 #include <pthread.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /* logical structures */
 struct jfs {
@@ -100,6 +104,11 @@ int jfsck(char *name, struct jfsck_result *res);
 #define J_ENOENT	1	/* no such file */
 #define J_ENOJOURNAL	2	/* no journal associated */
 #define J_ENOMEM	3	/* no enough free memory */
+
+
+#ifdef __cplusplus
+} /* from extern "C" avobe */
+#endif
 
 #endif
 
