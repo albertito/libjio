@@ -140,7 +140,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 /* jtrans constants */
 #define J_COMMITED	1	/* mark a transaction as commited */
 #define J_ROLLBACKED	2	/* mark a transaction as rollbacked */
-#define J_ROLLBACKING	3	/* mark a transaction as rollbacking */
+#define J_ROLLBACKING	4	/* mark a transaction as rollbacking */
 
 /* disk constants */
 #define J_DISKHEADSIZE	 12	/* length of disk_header */
