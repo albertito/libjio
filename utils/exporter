@@ -1,0 +1,120 @@
+#!/usr/bin/python
+
+import sys
+import os
+from xml.sax import saxutils
+from xml.sax import make_parser
+from xml.sax.handler import feature_namespaces
+
+
+class Patch:
+	"Represents a single patch/record"
+	def __init__(self):
+		self.hash = ''
+		self.author = ''
+		self.date = ''
+		self.local_date = ''
+		self.name = ''
+		self.comment = ''
+
+	def tostr(self):
+		s = "%s\n\tAuthor: %s\n\tDate: %s\n\tHash: %s\n" % \
+			(self.name, self.author, self.date, self.hash)
+		return s
+
+	def export(self, order, path):
+		file = "%s/%.2d-%s.patch" % (path, order, self.name)
+		cmd = 'darcs diff -u --match "hash %s" > "%s"' % \
+				(self.hash, file)
+		if os.system(cmd):
+			print "Command failed: '%s'" % cmd
+
+
+class BuildPatchList(saxutils.DefaultHandler):
+	def __init__(self):
+		self.db = {}
+		self.list = []
+		self.cur_hash = ''
+		self.cur_elem = None
+		self.cur_val = ''
+
+	def startElement(self, name, attrs):
+		if name == 'patch':
+			p = Patch()
+			p.author = attrs.get('author', None)
+			p.date = attrs.get('date', None)
+			p.local_date = attrs.get('local_date', None)
+			p.hash = attrs.get('hash')
+			self.db[p.hash] = p
+			self.current = p.hash
+			self.list.append(p.hash)
+		elif name == 'name':
+			self.db[self.current].name = ''
+			self.cur_elem = 'name'
+		elif name == 'comment':
+			self.db[self.current].comment = ''
+			self.cur_elem = 'name'
+		else:
+			self.cur_elem = None
+
+	def characters(self, s):
+		if not self.cur_elem:
+			return
+		self.cur_val += s
+
+	def endElement(self, name):
+		if name == 'name':
+			self.db[self.current].name = self.cur_val
+		elif name == 'comment':
+			self.db[self.current].current = self.cur_val
+
+		self.cur_elem = None
+		self.cur_val = ''
+
+
+# main
+
+if len(sys.argv) < 3:
+	print "Use: exporter [xmlfile|-] [list|export destdir]"
+	print
+	print "Examples:"
+	print " # darcs changes --xml-output | exporter - export /tmp"
+	print " # darcs changes --xml-output | exporter - list"
+	sys.exit(1)
+
+if sys.argv[1] == '-':
+	file = sys.stdin
+else:
+	file = sys.argv[1]
+
+parser = make_parser()
+parser.setFeature(feature_namespaces, 0)
+
+handler = BuildPatchList()
+parser.setContentHandler(handler)
+parser.parse(file)
+
+# reverse the list so the oldest is the first, and the newest is the last
+handler.list.reverse()
+
+# we now have two main structures: handler.db is the hash table of Patches,
+# indexed by their hash, and handler.list is the ordered list of hashes.
+
+if sys.argv[2] == 'list':
+	c = 1
+	for h in handler.list:
+		print "%.2d:" % c, handler.db[h].tostr()
+		c += 1
+elif sys.argv[2] == 'export':
+	if len(sys.argv) < 4:
+		print "Destination directory missing"
+		sys.exit(1)
+	c = 1
+	for h in handler.list:
+		p = handler.db[h]
+		print "%.2d: %s" % (c, p.name)
+		p.export(c, sys.argv[3])
+		c += 1
+else:
+	print "Unknown parameter"
+
