@@ -31,7 +31,7 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 	rv = spread(fs->fd, buf, count, pos);
 	plockf(fs->fd, F_UNLOCK, pos, count);
 
-	if (rv == count) {
+	if (rv >= 0) {
 		/* if success, advance the file pointer */
 		lseek(fs->fd, count, SEEK_CUR);
 	}
