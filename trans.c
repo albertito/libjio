@@ -598,6 +598,9 @@ int jsync(struct jfs *fs)
 	int rv;
 	struct jlinger *linger, *ltmp;
 
+	if (fs->fd < 0)
+		return -1;
+
 	rv = fsync(fs->fd);
 	if (rv != 0)
 		return rv;
@@ -628,11 +631,11 @@ int jclose(struct jfs *fs)
 
 	if (jsync(fs))
 		ret = -1;
-	if (close(fs->fd))
+	if (fs->fd < 0 || close(fs->fd))
 		ret = -1;
-	if (close(fs->jfd))
+	if (fs->jfd < 0 || close(fs->jfd))
 		ret = -1;
-	if (close(fs->jdirfd))
+	if (fs->jdirfd < 0 || close(fs->jdirfd))
 		ret = -1;
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
