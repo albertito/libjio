@@ -355,10 +355,6 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	written = 0;
 	for (op = ts->op; op != NULL; op = op->next) {
 		rv = spwrite(ts->fs->fd, op->buf, op->len, op->offset);
-
-		plockf(ts->fs->fd, F_UNLOCK, op->offset, op->len);
-		op->locked = 0;
-
 		if (rv != op->len)
 			goto rollback_exit;
 
@@ -417,9 +413,17 @@ unlink_exit:
 	}
 
 	close(fd);
-	for (op = ts->op; op != NULL; op = op->next) {
-		if (op->locked)
-			plockf(ts->fs->fd, F_UNLOCK, op->offset, op->len);
+
+	/* always unlock everything at the end; otherwise we could have
+	 * half-overlapping transactions applying simultaneously, and if
+	 * anything goes wrong it's possible to break consistency */
+	if (!(ts->flags & J_NOLOCK)) {
+		for (op = ts->op; op != NULL; op = op->next) {
+			if (op->locked) {
+				plockf(ts->fs->fd, F_UNLOCK,
+						op->offset, op->len);
+			}
+		}
 	}
 
 exit:
