@@ -777,6 +777,7 @@ int jfsck(char *name, struct jfsck_result *res)
 		rv = read(tfd, buf, J_DISKTFIXSIZE);
 		if (rv != J_DISKTFIXSIZE) {
 			res->broken_head++;
+			free(buf);
 			goto loop;
 		}
 		
@@ -784,6 +785,8 @@ int jfsck(char *name, struct jfsck_result *res)
 		curts->len = (size_t) *(buf + 8);
 		curts->ulen = (size_t) *(buf + 16);
 		curts->offset = (off_t) *(buf + 20);
+
+		free(buf);
 
 		/* if we got here, the transaction was not applied, so we
 		 * check if the transaction file is complete (we only need to
@@ -872,8 +875,7 @@ int jfsck(char *name, struct jfsck_result *res)
 loop:
 		if (tfd > 0)
 			close(tfd);
-		if (buf)
-			free(buf);
+
 		free(curts);
 
 		res->total++;
