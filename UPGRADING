@@ -11,6 +11,10 @@ take much. If it's mandatory, it will be noted.
 
 If you want to see what motivated the changes, see the changelog or just ask.
 
+0.19 -> 0.20
+* Applications need to be recompiled due to a change in the jfs structure.
+* When you link your applications with libjio, you need to make sure you
+	compile using large file support.
 
 0.18 -> 0.19
 * Applications need to be recompiled due to a change in the flag numbering.
