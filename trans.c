@@ -167,13 +167,21 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		tmpop->next->prev = tmpop;
 		jop = tmpop->next;
 	}
-	pthread_mutex_unlock(&(ts->lock));
 
 	jop->buf = malloc(count);
 	if (jop->buf == NULL) {
+		/* remove from the list and fail */
+		if (jop->prev == NULL) {
+			ts->op = NULL;
+		} else {
+			jop->prev->next = jop->next;
+		}
 		free(jop);
+		pthread_mutex_unlock(&(ts->lock));
 		return 0;
 	}
+
+	pthread_mutex_unlock(&(ts->lock));
 
 	/* we copy the buffer because then the caller can reuse it */
 	memcpy(jop->buf, buf, count);
