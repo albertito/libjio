@@ -24,6 +24,7 @@ extern "C" {
 struct jfs {
 	int fd;			/* main file descriptor */
 	char *name;		/* and its name */
+	int jdirfd;		/* journal directory file descriptor */
 	int jfd;		/* journal's lock file descriptor */
 	int flags;		/* journal flags */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */

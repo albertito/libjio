@@ -324,8 +324,21 @@ int jtrans_commit(struct jtrans *ts)
 	 * everything O_SYNC, we sync at this point only, this way we avoid
 	 * doing a lot of very small writes; in case of a crash the
 	 * transaction file is only useful if it's complete (ie. after this
-	 * point) so we only flush here */
-	fsync(fd);
+	 * point) so we only flush here (both data and metadata) */
+	if (fsync(fd) != 0)
+		goto exit;
+	if (fsync(ts->fs->jdirfd) != 0) {
+		/* it seems to be legal that fsync() on directories is not
+		 * implemented, so if this fails with EINVAL or EBADF, just
+		 * call a global sync(); which is awful (and might still
+		 * return before metadata is done) but it seems to be the
+		 * saner choice; otherwise we just fail */
+		if (errno == EINVAL || errno == EBADF) {
+			sync();
+		} else {
+			goto exit;
+		}
+	}
 
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
@@ -471,6 +484,12 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	rv = mkdir(jdir, 0750);
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
+		return -1;
+
+	/* open the directory, we will use it to flush transaction files'
+	 * metadata in jtrans_commit() */
+	fs->jdirfd = open(jdir, O_RDONLY);
+	if (fs->jdirfd < 0)
 		return -1;
 
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
