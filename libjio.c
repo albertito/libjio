@@ -554,6 +554,11 @@ ssize_t jwrite(struct jfs *fs, void *buf, size_t count)
 	ts.len = count;
 	
 	rv = jtrans_commit(&ts);
+
+	if (rv >= 0) {
+		/* if success, advance the file pointer */
+		lseek(fs->fd, count, SEEK_CUR);
+	}
 	
 	pthread_mutex_unlock(&(fs->lock));
 	return rv;
@@ -616,6 +621,11 @@ ssize_t jwritev(struct jfs *fs, struct iovec *vector, int count)
 	ts.len = sum;
 	
 	rv = jtrans_commit(&ts);
+
+	if (rv >= 0) {
+		/* if success, advance the file pointer */
+		lseek(fs->fd, count, SEEK_CUR);
+	}
 	
 	pthread_mutex_unlock(&(fs->lock));
 	return rv;
