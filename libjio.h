@@ -27,6 +27,7 @@ struct jfs {
 	int jdirfd;		/* journal directory file descriptor */
 	int jfd;		/* journal's lock file descriptor */
 	int flags;		/* journal flags */
+	struct jlinger *ltrans;	/* lingered transactions */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
 };
 
@@ -51,6 +52,13 @@ struct jtrans {
 	unsigned int numops;	/* quantity of operations in the list */
 	pthread_mutex_t lock;	/* used to modify the operation list */
 	struct joper *op;	/* list of operations */
+};
+
+/* lingered transaction */
+struct jlinger {
+	int id;			/* transaction id */
+	char *name;		/* name of the transaction file */
+	struct jlinger *next;
 };
 
 struct jfsck_result {
@@ -88,6 +96,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset);
 int jtrans_commit(struct jtrans *ts);
 int jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
+void jsync(struct jfs *fs);
 int jclose(struct jfs *fs);
 
 
@@ -123,6 +132,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 /* jfs constants */
 #define J_NOLOCK	1	/* don't lock the file before operating on it */
 #define J_NOROLLBACK	2	/* no need to read rollback information */
+#define J_LINGER	3	/* use lingering transactions */
 
 /* jtrans constants */
 #define J_COMMITED	1	/* mark a transaction as commited */

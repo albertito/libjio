@@ -45,7 +45,7 @@ static unsigned int get_tid(struct jfs *fs)
 	/* increment it and handle overflows */
 	rv = curid + 1;
 	if (rv == 0)
-		rv = 1;
+		goto exit;
 
 	/* write to the file descriptor */
 	r = spwrite(fs->jfd, &rv, sizeof(rv), 0);
@@ -197,6 +197,7 @@ int jtrans_commit(struct jtrans *ts)
 	char *name;
 	unsigned char *buf_init, *bufp;
 	struct joper *op;
+	struct jlinger *linger;
 	off_t curpos = 0;
 	size_t written = 0;
 
@@ -355,10 +356,22 @@ int jtrans_commit(struct jtrans *ts)
 		written += rv;
 	}
 
-	/* the transaction has been applied, so we cleanup and remove it from
-	 * the disk */
-	free_tid(ts->fs, ts->id);
-	unlink(name);
+	if (ts->flags & J_LINGER) {
+		linger = malloc(sizeof(struct jlinger));
+		if (linger == NULL)
+			goto exit;
+
+		linger->id = id;
+		linger->name = strdup(name);
+		linger->next = ts->fs->ltrans;
+
+		ts->fs->ltrans = linger;
+	} else {
+		/* the transaction has been applied, so we cleanup and remove
+		 * it from the disk */
+		free_tid(ts->fs, ts->id);
+		unlink(name);
+	}
 
 	/* mark the transaction as commited, _after_ it was removed */
 	ts->flags = ts->flags | J_COMMITED;
@@ -466,6 +479,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->fd = fd;
 	fs->name = strdup(name);
 	fs->flags = jflags;
+	fs->ltrans = NULL;
 
 	/* Note on fs->lock usage: this lock is used only inside the wrappers,
 	 * and exclusively to protect the file pointer. This means that it
@@ -519,9 +533,31 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	return fd;
 }
 
+/* sync a file (makes sense only if using lingering transactions) */
+void jsync(struct jfs *fs)
+{
+	struct jlinger *linger, *ltmp;
+
+	fsync(fs->fd);
+
+	linger = fs->ltrans;
+	while (linger != NULL) {
+		free_tid(fs, linger->id);
+		unlink(linger->name);
+		free(linger->name);
+
+		ltmp = linger->next;
+		free(linger);
+
+		linger = ltmp;
+	}
+}
+
 /* close a file */
 int jclose(struct jfs *fs)
 {
+	jsync(fs);
+
 	if (close(fs->fd))
 		return -1;
 	if (close(fs->jfd))
