@@ -506,6 +506,11 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	char jdir[PATH_MAX], jlockfile[PATH_MAX];
 	struct stat sinfo;
 
+	fs->fd = -1;
+	fs->jfd = -1;
+	fs->jdirfd = -1;
+	fs->jmap = MAP_FAILED;
+
 	/* we always need read and write access, because when we commit a
 	 * transaction we read the current contents before applying, and write
 	 * access is needed for locking with fcntl */
@@ -627,7 +632,8 @@ int jclose(struct jfs *fs)
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
-	munmap(fs->jmap, sizeof(unsigned int));
+	if (fs->jmap != MAP_FAILED)
+		munmap(fs->jmap, sizeof(unsigned int));
 
 	pthread_mutex_unlock(&(fs->lock));
 	pthread_mutex_destroy(&(fs->lock));

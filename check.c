@@ -95,7 +95,7 @@ error:
 /* check the journal and rollback incomplete transactions */
 int jfsck(const char *name, struct jfsck_result *res)
 {
-	int fd, tfd, rv, i, ret;
+	int tfd, rv, i, ret;
 	unsigned int maxtid;
 	uint32_t csum1, csum2;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
@@ -108,20 +108,22 @@ int jfsck(const char *name, struct jfsck_result *res)
 	unsigned char *map;
 	off_t filelen;
 
-	fd = tfd = -1;
+	tfd = -1;
 	filelen = 0;
 	dir = NULL;
-	fs.jmap = NULL;
+	fs.fd = -1;
+	fs.jfd = -1;
+	fs.jdirfd = -1;
+	fs.jmap = MAP_FAILED;
 	map = NULL;
 	ret = 0;
 
-	fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
-	if (fd < 0) {
+	fs.fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
+	if (fs.fd < 0) {
 		ret = J_ENOENT;
 		goto exit;
 	}
 
-	fs.fd = fd;
 	fs.name = (char *) name;
 
 	if (!get_jdir(name, jdir)) {
@@ -154,7 +156,6 @@ int jfsck(const char *name, struct jfsck_result *res)
 			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
 	if (fs.jmap == MAP_FAILED) {
 		ret = J_ENOJOURNAL;
-		fs.jmap = NULL;
 		goto exit;
 	}
 
@@ -283,7 +284,7 @@ exit:
 		close(fs.jdirfd);
 	if (dir != NULL)
 		closedir(dir);
-	if (fs.jmap != NULL)
+	if (fs.jmap != MAP_FAILED)
 		munmap(fs.jmap, sizeof(unsigned int));
 
 	return ret;
