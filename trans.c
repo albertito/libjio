@@ -194,6 +194,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 	pthread_mutex_lock(&(ts->lock));
 
+	/* clear the flags */
+	ts->flags = ts->flags & ~J_COMMITED;
+	ts->flags = ts->flags & ~J_ROLLBACKED;
+
 	name = (char *) malloc(PATH_MAX);
 	if (name == NULL)
 		goto exit;
