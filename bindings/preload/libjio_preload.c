@@ -108,26 +108,30 @@ static struct fd_entry fd_table[MAXFD];
  * catch out of bounds accesses */
 static inline int fd_lock(int fd)
 {
+	int r;
+
 	if (fd < 0 || fd >= MAXFD) {
 		printd("locking out of bounds fd %d\n", fd);
 		return 0;
 	}
 	//printd("L %d\n", fd);
-	pthread_mutex_lock(&(fd_table[fd].lock));
+	r = pthread_mutex_lock(&(fd_table[fd].lock));
 	//printd("OK %d\n", fd);
-	return 1;
+	return !r;
 }
 
 static inline int fd_unlock(int fd)
 {
+	int r;
+
 	if (fd < 0 || fd >= MAXFD) {
 		printd("unlocking out of bounds fd %d\n", fd);
 		return 0;
 	}
 	//printd("U %d\n", fd);
-	pthread_mutex_unlock(&(fd_table[fd].lock));
+	r = pthread_mutex_unlock(&(fd_table[fd].lock));
 	//printd("OK %d\n", fd);
-	return 1;
+	return !r;
 }
 
 
