@@ -102,6 +102,7 @@ void jtrans_init(struct jfs *fs, struct jtrans *ts)
 	ts->flags = fs->flags;
 	ts->op = NULL;
 	ts->numops = 0;
+	ts->len = 0;
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
 	pthread_mutex_init( &(ts->lock), &attr);
@@ -146,7 +147,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		return 0;
 	}
 
-	if (ts->len + count > MAX_TSIZE) {
+	if ((long long) ts->len + count > MAX_TSIZE) {
 		pthread_mutex_unlock(&(ts->lock));
 		return 0;
 	}
