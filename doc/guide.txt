@@ -12,12 +12,14 @@ Table of Contents
     5.1 Interaction with reads
     5.2 Rollback
     5.3 Integrity checking and recovery
-    5.4 Lingering transactions
+    5.4 Threads and locking
+    5.5 Lingering transactions
 6 Disk layout
 7 Other APIs
     7.1 UNIX API
     7.2 ANSI C API
-8 Where to go from here
+8 Compiling and linking
+9 Where to go from here
 
 
 
@@ -234,7 +236,30 @@ You can also do this manually with an utility named
 jiofsck, which can be used from the shell to perform 
 the checking and cleanup.
 
-5.4 Lingering transactions
+5.4 Threads and locking
+
+The library is completely safe to use in multithreaded 
+applications; however, there are some very basic and 
+intuitive locking rules you have to bear in mind.
+
+Most is fully threadsafe so you don't need to worry 
+about concurrency; in fact, a lot of effort has been 
+put in making paralell operation safe and fast.
+
+You need to care only when opening, closing and 
+checking for integrity. In practise, that means that 
+you shouldn't call jopen(), jclose() in paralell with 
+the same jfs structure, or in the middle of an I/O 
+operation, just like you do when using the normal UNIX 
+calls. In the case of jfsck(), you shouldn't invoke it 
+for the same file more than once at the time; while it 
+will cope with that situation, it's not recommended.
+
+All other operations (commiting a transaction, 
+rollbacking it, adding operations, etc.) and all the 
+wrappers are safe and don't require any special considerations.
+
+5.5 Lingering transactions
 
 If you need to increase performance, you can use 
 lingering transactions. In this mode, transactions take 
@@ -305,7 +330,43 @@ They're still in development and has not been tested
 carefully, so I won't spend time documenting them. Let 
 me know if you need them.
 
-8 Where to go from here
+8 Compiling and linking
+
+When you want to use your library, besides including 
+the "libjio.h" header, you have to make sure your 
+application uses the Large File Support ("LFS" from now 
+on), to be able to handle large files properly. This 
+means that you will have to pass some special standard 
+flags to the compiler, so your C library uses the same 
+data types as the library. For instance, on 32-bit 
+platforms (like x86), when using LFS, offsets are 
+usually 64 bits, as opposed to the usual 32.
+
+The library is always built with LFS; however, link it 
+against an application without LFS support could lead 
+to serious problems because this kind of size 
+differences and ABI compatibility.
+
+The Single Unix Specification standard proposes a 
+simple and practical way to get the flags you need to 
+pass your C compiler to tell you want to compile your 
+application with LFS: use a program called "getconf" 
+which should be called like "getconf LFS_CFLAGS", and it 
+outputs the appropiate parameters. Sadly, not all 
+platforms implement it, so it's also wise to pass "
+-D_FILE_OFFSET_BITS=64" just in case.
+
+In the end, the command line would be something like:
+
+gcc `getconf LFS_CFLAGS` -D_FILE_OFFSET_BITS=64 \
+
+        app.c -ljio -lpthread -o app
+
+If you want more detailed information or examples, you 
+can check out how the library and sample applications 
+get built.
+
+9 Where to go from here
 
 If you're still interested in learning more, you can 
 find some small and clean samples are in the "samples" 

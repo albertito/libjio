@@ -482,6 +482,43 @@ jiofsck
 , which can be used from the shell to perform the checking and cleanup.
 \layout Subsection
 
+Threads and locking
+\layout Standard
+
+The library is completely safe to use in multithreaded applications; however,
+ there are some very basic and intuitive locking rules you have to bear
+ in mind.
+\layout Standard
+
+Most is fully threadsafe so you don't need to worry about concurrency; in
+ fact, a lot of effort has been put in making paralell operation safe and
+ fast.
+\layout Standard
+
+You need to care only when opening, closing and checking for integrity.
+ In practise, that means that you shouldn't call 
+\family typewriter 
+jopen()
+\family default 
+, 
+\family typewriter 
+jclose()
+\family default 
+ in paralell with the same jfs structure, or in the middle of an I/O operation,
+ just like you do when using the normal UNIX calls.
+ In the case of 
+\family typewriter 
+jfsck()
+\family default 
+, you shouldn't invoke it for the same file more than once at the time;
+ while it will cope with that situation, it's not recommended.
+\layout Standard
+
+All other operations (commiting a transaction, rollbacking it, adding operations
+, etc.) and all the wrappers are safe and don't require any special consideration
+s.
+\layout Subsection
+
 Lingering transactions
 \layout Standard
 
@@ -618,6 +655,99 @@ fwrite()
  They're still in development and has not been tested carefully, so I won't
  spend time documenting them.
  Let me know if you need them.
+\layout Section
+
+Compiling and linking
+\layout Standard
+
+When you want to use your library, besides including the 
+\emph on 
+
+\begin_inset Quotes eld
+\end_inset 
+
+libjio.h
+\begin_inset Quotes erd
+\end_inset 
+
+
+\emph default 
+ header, you have to make sure your application uses the Large File Support
+ (
+\begin_inset Quotes eld
+\end_inset 
+
+LFS
+\begin_inset Quotes erd
+\end_inset 
+
+ from now on), to be able to handle large files properly.
+ This means that you will have to pass some special standard flags to the
+ compiler, so your C library uses the same data types as the library.
+ For instance, on 32-bit platforms (like x86), when using LFS, offsets are
+ usually 64 bits, as opposed to the usual 32.
+\layout Standard
+
+The library is always built with LFS; however, link it against an application
+ without LFS support could lead to serious problems because this kind of
+ size differences and ABI compatibility.
+\layout Standard
+
+The Single Unix Specification standard proposes a simple and practical way
+ to get the flags you need to pass your C compiler to tell you want to compile
+ your application with LFS: use a program called 
+\emph on 
+
+\begin_inset Quotes eld
+\end_inset 
+
+getconf
+\begin_inset Quotes erd
+\end_inset 
+
+
+\emph default 
+ which should be called like 
+\emph on 
+
+\begin_inset Quotes eld
+\end_inset 
+
+getconf LFS_CFLAGS
+\begin_inset Quotes erd
+\end_inset 
+
+
+\emph default 
+, and it outputs the appropiate parameters.
+ Sadly, not all platforms implement it, so it's also wise to pass 
+\emph on 
+
+\begin_inset Quotes eld
+\end_inset 
+
+-D_FILE_OFFSET_BITS=64
+\begin_inset Quotes erd
+\end_inset 
+
+
+\emph default 
+ just in case.
+\layout Standard
+
+In the end, the command line would be something like:
+\layout LyX-Code
+
+gcc `getconf LFS_CFLAGS` -D_FILE_OFFSET_BITS=64 
+\backslash 
+
+\layout LyX-Code
+
+        app.c -ljio -lpthread -o app
+\layout Standard
+
+If you want more detailed information or examples, you can check out how
+ the library and sample applications get built.
 \layout Section
 
 Where to go from here
