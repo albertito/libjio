@@ -95,8 +95,8 @@ struct disk_operation {
 int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags);
 void jtrans_init(struct jfs *fs, struct jtrans *ts);
 int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset);
-int jtrans_commit(struct jtrans *ts);
-int jtrans_rollback(struct jtrans *ts);
+ssize_t jtrans_commit(struct jtrans *ts);
+ssize_t jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
 int jsync(struct jfs *fs);
 int jclose(struct jfs *fs);

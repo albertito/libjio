@@ -180,9 +180,10 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 }
 
 /* commit a transaction */
-int jtrans_commit(struct jtrans *ts)
+ssize_t jtrans_commit(struct jtrans *ts)
 {
-	int id, rv, fd = -1;
+	int id, fd = -1;
+	ssize_t rv;
 	uint32_t csum;
 	char *name;
 	unsigned char *buf_init, *bufp;
@@ -422,9 +423,9 @@ exit:
 }
 
 /* rollback a transaction */
-int jtrans_rollback(struct jtrans *ts)
+ssize_t jtrans_rollback(struct jtrans *ts)
 {
-	int rv;
+	ssize_t rv;
 	struct jtrans newts;
 	struct joper *op, *curop, *lop;
 
