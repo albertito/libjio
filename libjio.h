@@ -86,7 +86,7 @@ int jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
 
 /* journal checker */
-int jfsck(char *name, struct jfsck_result *res);
+int jfsck(const char *name, struct jfsck_result *res);
 
 
 /* jfs constants */

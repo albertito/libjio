@@ -682,7 +682,7 @@ int jclose(struct jfs *fs)
  */
 
 /* check the journal and replay the incomplete transactions */
-int jfsck(char *name, struct jfsck_result *res)
+int jfsck(const char *name, struct jfsck_result *res)
 {
 	int fd, tfd, rv, i, maxtid;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
@@ -699,7 +699,7 @@ int jfsck(char *name, struct jfsck_result *res)
 		return J_ENOENT;
 
 	fs.fd = fd;
-	fs.name = name;
+	fs.name = (char *) name;
 
 	if (!get_jdir(name, jdir))
 		return J_ENOMEM;
