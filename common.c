@@ -9,6 +9,11 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "common.h"
 
@@ -89,4 +94,53 @@ ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 
 	return count;
 }
+
+/* build the journal directory name out of the filename */
+int get_jdir(const char *filename, char *jdir)
+{
+	char *base, *baset;
+	char *dir, *dirt;
+
+	baset = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	base = basename(baset);
+
+	dirt = strdup(filename);
+	if (dirt == NULL)
+		return 0;
+	dir = dirname(dirt);
+
+	snprintf(jdir, PATH_MAX, "%s/.%s.jio", dir, base);
+
+	free(baset);
+	free(dirt);
+
+	return 1;
+}
+
+/* build the filename of a given transaction */
+int get_jtfile(const char *filename, int tid, char *jtfile)
+{
+	char *base, *baset;
+	char *dir, *dirt;
+
+	baset = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	base = basename(baset);
+
+	dirt = strdup(filename);
+	if (dirt == NULL)
+		return 0;
+	dir = dirname(dirt);
+
+	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%d", dir, base, tid);
+
+	free(baset);
+	free(dirt);
+
+	return 1;
+}
+
 

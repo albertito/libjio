@@ -3,7 +3,7 @@ include Make.conf
 
 
 # objects to build
-OBJS = common.o trans.o unix.o ansi.o
+OBJS = common.o trans.o check.o unix.o ansi.o
 
 # rules
 default: all

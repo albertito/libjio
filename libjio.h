@@ -19,63 +19,76 @@ extern "C" {
 
 
 /* logical structures */
+
+/* the main file structure */
 struct jfs {
 	int fd;			/* main file descriptor */
 	char *name;		/* and its name */
 	int jfd;		/* journal's lock file descriptor */
-	int flags;		/* journal mode options used in jopen() */
+	int flags;		/* journal flags */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
 };
 
+/* a single operation */
+struct joper {
+	int locked;		/* is the region is locked? */
+	off_t offset;		/* operation's offset */
+	size_t len;		/* data length */
+	void *buf;		/* data */
+	size_t plen;		/* previous data length */
+	void *pdata;		/* previous data */
+	struct joper *prev;
+	struct joper *next;
+};
+
+/* a transaction */
 struct jtrans {
 	struct jfs *fs;		/* journal file structure to operate on */
 	char *name;		/* name of the transaction file */
 	int id;			/* transaction id */
 	int flags;		/* misc flags */
-	const void *buf;	/* buffer */
-	size_t len;		/* buffer lenght */
-	off_t offset;		/* file offset to operate on */
-	void *udata;		/* user-supplied data */
-	size_t ulen;		/* udata lenght */
-	void *pdata;		/* previous data, for rollback */
-	size_t plen;		/* pdata lenght */
+	unsigned int numops;	/* quantity of operations in the list */
+	pthread_mutex_t lock;	/* used to modify the operation list */
+	struct joper *op;	/* list of operations */
 };
 
 struct jfsck_result {
 	int total;		/* total transactions files we looked at */
 	int invalid;		/* invalid files in the journal directory */
 	int in_progress;	/* transactions in progress */
-	int broken_head;	/* transactions broken (header missing) */
-	int broken_body;	/* transactions broken (body missing) */
-	int load_error;		/* errors loading the transaction */
+	int broken;		/* transactions broken */
 	int apply_error;	/* errors applying the transaction */
 	int rollbacked;		/* transactions that were rollbacked */
 };
 
-/* on-disk structure */
-struct disk_trans {
-	
-	/* header (fixed lenght, defined below) */
+
+/* on-disk structures */
+
+/* header (fixed length, defined below) */
+struct disk_header {
 	uint32_t id;		/* id */
 	uint32_t flags;		/* flags about this transaction */
-	uint32_t len;		/* data lenght */
-	uint32_t plen;		/* previous data lenght */
-	uint32_t ulen;		/* user-supplied information lenght */
+	uint32_t numops;	/* number of operations */
+};
+
+/* operation */
+struct disk_operation {
+	uint32_t len;		/* data length */
+	uint32_t plen;		/* previous data length */
 	uint64_t offset;	/* offset relative to the BOF */
-	
-	/* payload (variable lenght) */
-	char *udata;		/* user-supplied data */
 	char *prevdata;		/* previous data for rollback */
 };
 
 
-/* core operations */
+/* core functions */
 int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags);
 void jtrans_init(struct jfs *fs, struct jtrans *ts);
+int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset);
 int jtrans_commit(struct jtrans *ts);
 int jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
 int jclose(struct jfs *fs);
+
 
 /* journal checker */
 int jfsck(const char *name, struct jfsck_result *res);
@@ -88,7 +101,7 @@ ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count);
 ssize_t jwrite(struct jfs *fs, const void *buf, size_t count);
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset);
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count);
-int jtruncate(struct jfs *fs, off_t lenght);
+int jtruncate(struct jfs *fs, off_t length);
 
 /* ANSI C stdio wrappers */
 struct jfs *jfopen(const char *path, const char *mode);
@@ -113,8 +126,9 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 #define J_COMMITED	1	/* mark a transaction as commited */
 #define J_ROLLBACKED	2	/* mark a transaction as rollbacked */
 
-/* disk_trans constants */
-#define J_DISKTFIXSIZE	 28	/* lenght of disk_trans' header */ 
+/* disk constants */
+#define J_DISKHEADSIZE	 12	/* length of disk_header */
+#define J_DISKOPHEADSIZE 16	/* length of disk_operation header */
 
 /* jfsck constants (return values) */
 #define J_ESUCCESS	0	/* success - shouldn't be used */
