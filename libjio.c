@@ -507,10 +507,18 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 	off_t pos;
 
 	pthread_mutex_lock(&(fs->lock));
+
 	pos = lseek(fs->fd, 0, SEEK_CUR);
+
 	plockf(fs->fd, F_LOCK, pos, count);
-	rv = read(fs->fd, buf, count);
+	rv = spread(fs->fd, buf, count, pos);
 	plockf(fs->fd, F_ULOCK, pos, count);
+
+	if (rv == count) {
+		/* if success, advance the file pointer */
+		lseek(fs->fd, count, SEEK_CUR);
+	}
+
 	pthread_mutex_unlock(&(fs->lock));
 
 	return rv;
@@ -522,7 +530,7 @@ ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 	int rv;
 
 	plockf(fs->fd, F_LOCK, offset, count);
-	rv = pread(fs->fd, buf, count, offset);
+	rv = spread(fs->fd, buf, count, offset);
 	plockf(fs->fd, F_ULOCK, offset, count);
 	
 	return rv;
