@@ -1,12 +1,12 @@
 
-libjio - A library for Journalled I/O
+libjio - A library for Journaled I/O
 Alberto Bertogli (albertogli@telpin.com.ar)
 -------------------------------------------
 
-As the name says, this is a simple library to do journalled,
+As the name says, this is a simple userspace library to do journaled,
 transaction-oriented I/O.
 
-It provides a very simple transaction api to commit and rollback transactions,
+It provides a very simple transaction API to commit and rollback transactions,
 and on top of that a unix-alike set of functions to perform most regular
 operations (ie. open, read, write).
 
@@ -16,9 +16,10 @@ special directory is created to store in-flight transactions.
 This allows both simple file manipulation, recovery and debugging because
 everything is isolated.
 
-There's a more detailed document about the library itself in doc/libjio.ps
-(or, alternatively, the ascii version doc/libjio.txt), and a manpage where you
-will find the programming reference.
+There's a more detailed document about the library itself in doc/libjio.lyx
+(to the 'LyX' editor; there are HTML, Postscript, PDF and TXT versions in the
+website, which are not included here for space reasons), and a manpage where
+you will find the programming reference.
 
 
 It is licensed under the Open Software License version 2.0.
