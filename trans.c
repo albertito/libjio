@@ -139,21 +139,20 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	pthread_mutex_lock(&(ts->lock));
 	if (ts->op == NULL) {
 		ts->op = malloc(sizeof(struct joper));
+		if (ts->op == NULL)
+			return 0;
 		jop = ts->op;
 		jop->prev = NULL;
 	} else {
 		for (tmpop = ts->op; tmpop->next != NULL; tmpop = tmpop->next)
 			;
 		tmpop->next = malloc(sizeof(struct joper));
+		if (tmpop->next == NULL)
+			return 0;
 		tmpop->next->prev = tmpop;
 		jop = tmpop->next;
 	}
 	pthread_mutex_unlock(&(ts->lock));
-
-	if (jop == NULL) {
-		/* malloc() failed */
-		return 0;
-	}
 
 	jop->buf = malloc(count);
 	if (jop->buf == NULL) {
