@@ -93,7 +93,8 @@ error:
 /* check the journal and rollback incomplete transactions */
 int jfsck(const char *name, struct jfsck_result *res)
 {
-	int fd, tfd, rv, i, maxtid;
+	int fd, tfd, rv, i;
+	unsigned int maxtid;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
 	struct stat sinfo;
 	struct jfs fs;
@@ -128,6 +129,11 @@ int jfsck(const char *name, struct jfsck_result *res)
 	if (rv < 0)
 		return J_ENOJOURNAL;
 	fs.jfd = rv;
+
+	fs.jmap = (int *) mmap(NULL, sizeof(unsigned int),
+			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
+	if (fs.jmap == MAP_FAILED)
+		return J_ENOJOURNAL;
 
 	dir = opendir(jdir);
 	if (dir == NULL)

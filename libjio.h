@@ -26,6 +26,7 @@ struct jfs {
 	char *name;		/* and its name */
 	int jdirfd;		/* journal directory file descriptor */
 	int jfd;		/* journal's lock file descriptor */
+	int *jmap;		/* journal's lock file mmap area */
 	int flags;		/* journal flags */
 	struct jlinger *ltrans;	/* lingered transactions */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */

@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <errno.h>
+#include <sys/mman.h>
 
 #include "libjio.h"
 #include "common.h"
@@ -29,18 +30,13 @@
 /* gets a new transaction id */
 static unsigned int get_tid(struct jfs *fs)
 {
-	unsigned int curid;
-	int r, rv;
+	unsigned int curid, rv;
 
 	/* lock the whole file */
 	plockf(fs->jfd, F_LOCKW, 0, 0);
 
 	/* read the current max. curid */
-	r = spread(fs->jfd, &curid, sizeof(curid), 0);
-	if (r != sizeof(curid)) {
-		rv = 0;
-		goto exit;
-	}
+	curid = *(fs->jmap);
 
 	/* increment it and handle overflows */
 	rv = curid + 1;
@@ -48,11 +44,7 @@ static unsigned int get_tid(struct jfs *fs)
 		goto exit;
 
 	/* write to the file descriptor */
-	r = spwrite(fs->jfd, &rv, sizeof(rv), 0);
-	if (r != sizeof(curid)) {
-		rv = 0;
-		goto exit;
-	}
+	*(fs->jmap) = rv;
 
 exit:
 	plockf(fs->jfd, F_UNLOCK, 0, 0);
@@ -63,17 +55,13 @@ exit:
 static void free_tid(struct jfs *fs, unsigned int tid)
 {
 	unsigned int curid, i;
-	int r;
 	char name[PATH_MAX];
 
 	/* lock the whole file */
 	plockf(fs->jfd, F_LOCKW, 0, 0);
 
 	/* read the current max. curid */
-	r = spread(fs->jfd, &curid, sizeof(curid), 0);
-	if (r != sizeof(curid)) {
-		goto exit;
-	}
+	curid = *(fs->jmap);
 
 	if (tid < curid) {
 		/* we're not freeing the max. curid, so we just return */
@@ -92,10 +80,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 		}
 
 		/* and save it */
-		r = spwrite(fs->jfd, &i, sizeof(i), 0);
-		if (r != sizeof(curid)) {
-			goto exit;
-		}
+		*(fs->jmap) = i;
 	}
 
 exit:
@@ -518,9 +503,9 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	 * jopen() simultaneously and both initialize the file */
 	plockf(jfd, F_LOCKW, 0, 0);
 	lstat(jlockfile, &sinfo);
-	if (sinfo.st_size == 0) {
+	if (sinfo.st_size != sizeof(unsigned int)) {
 		t = 1;
-		rv = write(jfd, &t, sizeof(t));
+		rv = spwrite(jfd, &t, sizeof(t), 0);
 		if (rv != sizeof(t)) {
 			plockf(jfd, F_UNLOCK, 0, 0);
 			return -1;
@@ -529,6 +514,11 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	plockf(jfd, F_UNLOCK, 0, 0);
 
 	fs->jfd = jfd;
+
+	fs->jmap = (int *) mmap(NULL, sizeof(unsigned int),
+			PROT_READ | PROT_WRITE, MAP_SHARED, jfd, 0);
+	if (fs->jmap == MAP_FAILED)
+		return -1;
 
 	return fd;
 }
@@ -565,6 +555,8 @@ int jclose(struct jfs *fs)
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
+	munmap(fs->jmap, sizeof(unsigned int));
+
 	return 0;
 }
 
