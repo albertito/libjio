@@ -181,7 +181,11 @@ int jfseek(struct jfs *stream, long offset, int whence)
 	pos = lseek(stream->fd, offset, whence);
 	pthread_mutex_unlock(&(stream->lock));
 
-	return pos;
+	/* fseek returns 0 on success, -1 on error */
+	if (pos == -1)
+		return 1;
+
+	return 0;
 }
 
 /* ftell wrapper */
