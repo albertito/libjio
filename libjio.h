@@ -8,6 +8,7 @@
 #define _LIBJIO_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <pthread.h>
@@ -68,8 +69,19 @@ struct disk_trans {
 };
 
 
-/* basic operations */
+/* core operations */
 int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags);
+void jtrans_init(struct jfs *fs, struct jtrans *ts);
+int jtrans_commit(struct jtrans *ts);
+int jtrans_rollback(struct jtrans *ts);
+void jtrans_free(struct jtrans *ts);
+int jclose(struct jfs *fs);
+
+/* journal checker */
+int jfsck(const char *name, struct jfsck_result *res);
+int jfsck_cleanup(const char *name);
+
+/* UNIX API wrappers */
 ssize_t jread(struct jfs *fs, void *buf, size_t count);
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset);
 ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count);
@@ -77,17 +89,21 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count);
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset);
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count);
 int jtruncate(struct jfs *fs, off_t lenght);
-int jclose(struct jfs *fs);
 
-/* transaction operations */
-void jtrans_init(struct jfs *fs, struct jtrans *ts);
-int jtrans_commit(struct jtrans *ts);
-int jtrans_rollback(struct jtrans *ts);
-void jtrans_free(struct jtrans *ts);
-
-/* journal checker */
-int jfsck(const char *name, struct jfsck_result *res);
-int jfsck_cleanup(const char *name);
+/* ANSI C stdio wrappers */
+struct jfs *jfopen(const char *path, const char *mode);
+int jfclose(struct jfs *stream);
+struct jfs *jfreopen(const char *path, const char *mode, struct jfs *stream);
+size_t jfread(void *ptr, size_t size, size_t nmemb, struct jfs *stream);
+size_t jfwrite(const void *ptr, size_t size, size_t nmemb, struct jfs *stream);
+int jfileno(struct jfs *stream);
+int jfeof(struct jfs *stream);
+void jclearerr(struct jfs *stream);
+int jferror(struct jfs *stream);
+int jfseek(struct jfs *stream, long offset, int whence);
+int jftell(struct jfs *stream);
+void frewind(struct jfs *stream);
+FILE *jfsopen(struct jfs *stream, const char *mode);
 
 
 /* jfs constants */
