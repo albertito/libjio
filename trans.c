@@ -364,8 +364,8 @@ int jtrans_commit(struct jtrans *ts)
 	} else {
 		/* the transaction has been applied, so we cleanup and remove
 		 * it from the disk */
-		free_tid(ts->fs, ts->id);
 		unlink(name);
+		free_tid(ts->fs, ts->id);
 	}
 
 	/* mark the transaction as commited, _after_ it was removed */
@@ -373,6 +373,30 @@ int jtrans_commit(struct jtrans *ts)
 
 
 exit:
+	/* If the transaction failed we try to recover by rollbacking it
+	 * NOTE: on extreme conditions (ENOSPC/disk failure) this can fail
+	 * too! There's nothing much we can do in that case, the caller should
+	 * take care of it by itself.
+	 * The transaction file might be OK at this point, so the data could
+	 * be recovered by a posterior jfsck(); however, that's not what the
+	 * user expects (after all, if we return failure, new data should
+	 * never appear), so we remove the transaction file.
+	 * Transactions that were successfuly recovered by rollbacking them
+	 * will have J_ROLLBACKED in their flags, so the caller can verify if
+	 * the failure was recovered or not. */
+	if (!(ts->flags & J_COMMITED)) {
+		unlink(name);
+		free_tid(ts->fs, ts->id);
+
+		rv = ts->flags;
+		ts->flags = ts->flags | J_NOLOCK;
+		if (jtrans_rollback(ts) >= 0) {
+			ts->flags = rv | J_ROLLBACKED;
+		} else {
+			ts->flags = rv;
+		}
+	}
+
 	close(fd);
 	for (op = ts->op; op != NULL; op = op->next) {
 		if (op->locked)
