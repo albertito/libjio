@@ -8,15 +8,15 @@ OBJS = checksum.o common.o trans.o check.o unix.o ansi.o
 # rules
 default: all
 
-all: shared static jiofsck
+all: libjio.so libjio.a jiofsck
 
-shared: $(OBJS)
+libjio.so: $(OBJS)
 	$(CC) -shared $(OBJS) -o libjio.so
 
-static: $(OBJS)
+libjio.a: $(OBJS)
 	$(AR) cr libjio.a $(OBJS)
 
-jiofsck: jiofsck.o static
+jiofsck: jiofsck.o libjio.a
 	$(CC) jiofsck.o libjio.a -lpthread -o jiofsck
 
 install: all
@@ -33,21 +33,36 @@ install: all
 	@echo "Please run ldconfig to update your library cache"
 	@echo
 
+.c.o:
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+
 python: all
 	cd bindings/python && python setup.py build
 
 python_install: python
 	cd bindings/python && python setup.py install
 
-.c.o:
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+preload: all
+	install -d bindings/preload/build/
+	$(CC) $(INCLUDES) -Wall -O6 -shared -fPIC \
+		-D_XOPEN_SOURCE=500 \
+		-ldl -lpthread -L. -ljio -I. \
+		bindings/preload/libjio_preload.c \
+		-o bindings/preload/build/libjio_preload.so
+
+preload_install: preload
+	install -d $(PREFIX)/lib
+	install -m 0755 bindings/preload/build/libjio_preload.so $(PREFIX)/lib
 
 
 clean:
 	rm -f $(OBJS) libjio.a libjio.so jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov gmon.out
 	rm -rf bindings/python/build/
+	rm -rf bindings/preload/build/
 
 
-.PHONY: default all shared static install clean
+.PHONY: default all install python python_install preload preload_install clean
 
