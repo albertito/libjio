@@ -114,6 +114,7 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count);
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset);
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count);
 int jtruncate(struct jfs *fs, off_t length);
+off_t jlseek(struct jfs *fs, off_t offset, int whence);
 
 /* ANSI C stdio wrappers */
 struct jfs *jfopen(const char *path, const char *mode);

@@ -169,3 +169,15 @@ int jtruncate(struct jfs *fs, off_t length)
 	return rv;
 }
 
+/* lseek wrapper */
+off_t jlseek(struct jfs *fs, off_t offset, int whence)
+{
+	int rv;
+
+	pthread_mutex_lock(&(fs->lock));
+	rv = lseek(fs->fd, offset, whence);
+	pthread_mutex_unlock(&(fs->lock));
+
+	return rv;
+}
+
