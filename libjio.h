@@ -120,7 +120,7 @@ int jfsck_cleanup(const char *name);
 /* UNIX API wrappers */
 ssize_t jread(struct jfs *fs, void *buf, size_t count);
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset);
-ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count);
+ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count);
 ssize_t jwrite(struct jfs *fs, const void *buf, size_t count);
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset);
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count);

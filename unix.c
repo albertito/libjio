@@ -54,7 +54,7 @@ ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 }
 
 /* readv wrapper */
-ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count)
+ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count)
 {
 	int rv, i;
 	size_t sum;
