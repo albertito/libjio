@@ -71,7 +71,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 			/* this can fail if we're low on mem, but we don't
 			 * care checking here because the problem will come
 			 * out later and we can fail more properly */
-			get_jtfile(fs->name, i, name);
+			get_jtfile(fs, i, name);
 			if (access(name, R_OK | W_OK) == 0) {
 				curid = i;
 				break;
@@ -221,7 +221,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		goto exit;
 
 	/* open the transaction file */
-	if (!get_jtfile(ts->fs->name, id, name))
+	if (!get_jtfile(ts->fs, id, name))
 		goto exit;
 	fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (fd < 0)
@@ -533,6 +533,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 
 	fs->fd = -1;
 	fs->jfd = -1;
+	fs->jdir = NULL;
 	fs->jdirfd = -1;
 	fs->jmap = MAP_FAILED;
 
@@ -587,6 +588,11 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		goto error_exit;
+
+	fs->jdir = (char *) malloc(strlen(jdir) + 1);
+	if (fs->jdir == NULL)
+		goto error_exit;
+	strcpy(fs->jdir, jdir);
 
 	/* open the directory, we will use it to flush transaction files'
 	 * metadata in jtrans_commit() */
@@ -660,6 +666,68 @@ int jsync(struct jfs *fs)
 	return 0;
 }
 
+/* change the location of the journal directory */
+int jmove_journal(struct jfs *fs, const char *newpath)
+{
+	int ret;
+	char *oldpath, jlockfile[PATH_MAX];
+
+	/* we try to be sure that all lingering transactions have been
+	 * applied, so when we try to remove the journal directory, only the
+	 * lockfile is there; however, we do this just to be nice, but the
+	 * caller must be sure there are no in-flight transactions or any
+	 * other kind of operation around when he calls this function */
+	jsync(fs);
+
+	oldpath = fs->jdir;
+
+	fs->jdir = (char *) malloc(strlen(newpath + 1));
+	if (fs->jdir == NULL)
+		return -1;
+	strcpy(fs->jdir, newpath);
+
+	ret = rename(oldpath, newpath);
+	if (ret == -1 && (errno == ENOTEMPTY || errno == EEXIST) ) {
+		/* rename() failed, the dest. directory is not empty, so we
+		 * have to reload everything */
+
+		close(fs->jdirfd);
+		fs->jdirfd = open(newpath, O_RDONLY);
+		if (fs->jdirfd < 0) {
+			ret = -1;
+			goto exit;
+		}
+
+		close(fs->jfd);
+		snprintf(jlockfile, PATH_MAX, "%s/%s", newpath, "lock");
+		fs->jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
+		if (fs->jfd < 0)
+			goto exit;
+
+		munmap(fs->jmap, sizeof(unsigned int));
+		fs->jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
+			PROT_READ | PROT_WRITE, MAP_SHARED, fs->jfd, 0);
+		if (fs->jmap == MAP_FAILED)
+			goto exit;
+
+		/* remove the journal directory, if possible */
+		snprintf(jlockfile, PATH_MAX, "%s/%s", oldpath, "lock");
+		unlink(jlockfile);
+		ret = rmdir(oldpath);
+		if (ret == -1) {
+			/* we couldn't remove it, something went wrong
+			 * (possible it had some files left) */
+			goto exit;
+		}
+
+		ret = 0;
+	}
+
+exit:
+	free(oldpath);
+	return ret;
+}
+
 /* close a file */
 int jclose(struct jfs *fs)
 {
@@ -683,6 +751,8 @@ int jclose(struct jfs *fs)
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
+	if (fs->jdir)
+		free(fs->jdir);
 	pthread_mutex_destroy(&(fs->lock));
 
 	return ret;

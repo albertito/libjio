@@ -1,5 +1,5 @@
 
-/* 
+/*
  * jiofsck - A journal checker and recovery tool for libjio
  * Alberto Bertogli (albertogli@telpin.com.ar)
  */
@@ -11,42 +11,52 @@
 
 void usage()
 {
-	printf("Use: jiofsck [clean] FILE\n\n");
-	printf("Where \"FILE\" is the name of the file "
-			"which you want to check the journal from,\n"
-			"and the optional parameter \"clean\" makes "
-			"jiofsck to clean up the journal after\n"
-			"recovery.\n");
+	printf("\
+Use: jiofsck [clean=1] [dir=DIR] FILE\n\
+\n\
+Where \"FILE\" is the name of the file you want to check the journal from,\n\
+and the optional parameter \"clean\" makes jiofsck to clean up the journal\n\
+after recovery.\n\
+The parameter \"dir=DIR\", also optional, is used to indicate the position\n\
+of the journal directory.\n\
+\n\
+Examples:\n\
+# jiofsck file\n\
+# jiofsck clean=1 file\n\
+# jiofsck dir=/tmp/journal file\n\
+# jiofsck clean=1 dir=/tmp/journal file\n\
+\n");
 }
 
 int main(int argc, char **argv)
 {
-	int rv, do_cleanup;
-	char *file;
+	int i, rv, do_cleanup;
+	char *file, *jdir;
 	struct jfsck_result res;
-	
-	if (argc != 2 && argc != 3) {
+
+	file = jdir = NULL;
+	do_cleanup = 0;
+
+	if (argc < 2) {
 		usage();
 		return 1;
 	}
 
-	if (argc == 3) {
-		if (strcmp("clean", argv[1]) != 0 ) {
-			usage();
-			return 1;
+	for (i = 1; i < argc; i++) {
+		if (strcmp("clean=1", argv[i]) == 0) {
+			do_cleanup = 1;
+		} else if (strncmp("dir=", argv[i], 4) == 0) {
+			jdir = argv[i] + 4;
+		} else {
+			file = argv[i];
 		}
-		file = argv[2];
-		do_cleanup = 1;
-	} else {
-		file = argv[1];
-		do_cleanup = 0;
 	}
 
 	memset(&res, 0, sizeof(res));
-	
+
 	printf("Checking journal: ");
 	fflush(stdout);
-	rv = jfsck(file, &res);
+	rv = jfsck(file, jdir, &res);
 
 	if (rv == J_ENOENT) {
 		printf("No such file or directory\n");
@@ -62,7 +72,7 @@ int main(int argc, char **argv)
 	if (do_cleanup) {
 		printf("Cleaning journal: ");
 		fflush(stdout);
-		if (!jfsck_cleanup(file)) {
+		if (!jfsck_cleanup(file, jdir)) {
 			printf("Error cleaning journal\n");
 			return 1;
 		}
@@ -76,14 +86,12 @@ int main(int argc, char **argv)
 	printf("Total:\t\t %d\n", res.total);
 	printf("Invalid:\t %d\n", res.invalid);
 	printf("In progress:\t %d\n", res.in_progress);
-	printf("Broken head:\t %d\n", res.broken_head);
-	printf("Broken body:\t %d\n", res.broken_body);
-	printf("Load error:\t %d\n", res.load_error);
+	printf("Broken:\t\t %d\n", res.broken);
 	printf("Corrupt:\t %d\n", res.corrupt);
 	printf("Apply error:\t %d\n", res.apply_error);
 	printf("Reapplied:\t %d\n", res.reapplied);
 	printf("\n");
-	
+
 	if (!do_cleanup) {
 		printf("You can now safely remove the journal directory "
 				"completely\nto start a new journal.\n");

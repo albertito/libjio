@@ -380,7 +380,7 @@ int unlink(const char *pathname)
 	printd("libjio\n");
 
 	rec_inc();
-	jfsck_cleanup(pathname);
+	jfsck_cleanup(pathname, NULL);
 	rec_dec();
 
 	r = (*c_unlink)(pathname);

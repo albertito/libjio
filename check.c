@@ -93,12 +93,12 @@ error:
 }
 
 /* check the journal and rollback incomplete transactions */
-int jfsck(const char *name, struct jfsck_result *res)
+int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 {
 	int tfd, rv, i, ret;
 	unsigned int maxtid;
 	uint32_t csum1, csum2;
-	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
+	char jlockfile[PATH_MAX], tname[PATH_MAX];
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
@@ -113,6 +113,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	dir = NULL;
 	fs.fd = -1;
 	fs.jfd = -1;
+	fs.jdir = NULL;
 	fs.jdirfd = -1;
 	fs.jmap = MAP_FAILED;
 	map = NULL;
@@ -134,17 +135,33 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 	fs.name = (char *) name;
 
-	if (!get_jdir(name, jdir)) {
-		ret = J_ENOMEM;
-		goto exit;
+	if (jdir == NULL) {
+		fs.jdir = (char *) malloc(PATH_MAX);
+		if (fs.jdir == NULL) {
+			ret = J_ENOMEM;
+			goto exit;
+		}
+
+		if (!get_jdir(name, fs.jdir)) {
+			ret = J_ENOMEM;
+			goto exit;
+		}
+	} else {
+		fs.jdir = (char *) malloc(strlen(jdir) + 1);
+		if (fs.jdir == NULL) {
+			ret = J_ENOMEM;
+			goto exit;
+		}
+		strcpy(fs.jdir, jdir);
 	}
-	rv = lstat(jdir, &sinfo);
+
+	rv = lstat(fs.jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode)) {
 		ret = J_ENOJOURNAL;
 		goto exit;
 	}
 
-	fs.jdirfd = open(jdir, O_RDONLY);
+	fs.jdirfd = open(fs.jdir, O_RDONLY);
 	if (fs.jdirfd < 0) {
 		ret = J_ENOJOURNAL;
 		goto exit;
@@ -152,7 +169,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 	/* open the lock file, which is only used to complete the jfs
 	 * structure */
-	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
+	snprintf(jlockfile, PATH_MAX, "%s/%s", fs.jdir, "lock");
 	rv = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (rv < 0) {
 		ret = J_ENOJOURNAL;
@@ -167,7 +184,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 		goto exit;
 	}
 
-	dir = opendir(jdir);
+	dir = opendir(fs.jdir);
 	if (dir == NULL) {
 		ret = J_ENOJOURNAL;
 		goto exit;
@@ -210,7 +227,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 		 * really looping in order (recovering transaction in a
 		 * different order as they were applied means instant
 		 * corruption) */
-		if (!get_jtfile(name, i, tname)) {
+		if (!get_jtfile(&fs, i, tname)) {
 			ret = J_ENOMEM;
 			goto exit;
 		}
@@ -290,6 +307,8 @@ exit:
 		close(fs.jfd);
 	if (fs.jdirfd >= 0)
 		close(fs.jdirfd);
+	if (fs.jdir)
+		free(fs.jdir);
 	if (dir != NULL)
 		closedir(dir);
 	if (fs.jmap != MAP_FAILED)
@@ -300,16 +319,20 @@ exit:
 }
 
 /* remove all the files in the journal directory (if any) */
-int jfsck_cleanup(const char *name)
+int jfsck_cleanup(const char *name, const char *jdir)
 {
-	char jdir[PATH_MAX], tfile[PATH_MAX*3];
+	char path[PATH_MAX], tfile[PATH_MAX*3];
 	DIR *dir;
 	struct dirent *dent;
 
-	if (!get_jdir(name, jdir))
-		return 0;
+	if (jdir == NULL) {
+		if (!get_jdir(name, path))
+			return 0;
+	} else {
+		strcpy(path, jdir);
+	}
 
-	dir = opendir(jdir);
+	dir = opendir(path);
 	if (dir == NULL && errno == ENOENT)
 		/* it doesn't exist, so it's clean */
 		return 1;
@@ -324,7 +347,7 @@ int jfsck_cleanup(const char *name)
 
 		/* build the full path to the transaction file */
 		memset(tfile, 0, PATH_MAX * 3);
-		strcat(tfile, jdir);
+		strcat(tfile, path);
 		strcat(tfile, "/");
 		strcat(tfile, dent->d_name);
 
@@ -339,7 +362,7 @@ int jfsck_cleanup(const char *name)
 	}
 	closedir(dir);
 
-	rmdir(jdir);
+	rmdir(path);
 
 	return 1;
 }

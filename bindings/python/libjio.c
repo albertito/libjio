@@ -283,6 +283,32 @@ static PyObject *jf_jsync(jfileobject *fp, PyObject *args)
 	return PyLong_FromLong(rv);
 }
 
+/* jmove_journal */
+PyDoc_STRVAR(jf_jmove_journal__doc,
+"jmove_journal(newpath)\n\
+\n\
+Moves the journal directory to the new path; note that there MUST NOT BE\n\
+anything else operating on the file.\n\
+It's a wrapper to jmove_journal().\n");
+
+static PyObject *jf_jmove_journal(jfileobject *fp, PyObject *args)
+{
+	long rv;
+	char *newpath;
+
+	if (!PyArg_ParseTuple(args, "s:jmove_journal", &newpath))
+		return NULL;
+
+	Py_BEGIN_ALLOW_THREADS
+	rv = jmove_journal(fp->fs, newpath);
+	Py_END_ALLOW_THREADS
+
+	if (rv != 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
+	return PyLong_FromLong(rv);
+}
+
 /* new_trans */
 PyDoc_STRVAR(jf_new_trans__doc,
 "new_trans()\n\
@@ -326,6 +352,7 @@ static PyMethodDef jfile_methods[] = {
 	{ "truncate", (PyCFunction)jf_truncate, METH_VARARGS, jf_truncate__doc },
 	{ "lseek", (PyCFunction)jf_lseek, METH_VARARGS, jf_lseek__doc },
 	{ "jsync", (PyCFunction)jf_jsync, METH_VARARGS, jf_jsync__doc },
+	{ "jmove_journal", (PyCFunction)jf_jmove_journal, METH_VARARGS, jf_jmove_journal__doc },
 	{ "new_trans", (PyCFunction)jf_new_trans, METH_VARARGS, jf_new_trans__doc },
 	{ NULL }
 };
@@ -514,21 +541,22 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 
 /* jfsck */
 PyDoc_STRVAR(jf_jfsck__doc,
-"jfsck(name)\n\
+"jfsck(name[, jdir])\n\
 \n\
-Checks the integrity of the file with the given name; returns a dictionary\n\
-with all the different values of the check (equivalent to the 'struct\n\
-jfsck_result'), or None if there was nothing to check.\n\
+Checks the integrity of the file with the given name, using (optionally) jdir\n\
+as the journal directory; returns a dictionary with all the different values\n\
+of the check (equivalent to the 'struct jfsck_result'), or None if there was\n\
+nothing to check.\n\
 It's a wrapper to jfsck().\n");
 
 static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 {
 	int rv;
-	char *name;
+	char *name, *jdir;
 	struct jfsck_result res;
 	PyObject *dict;
 
-	if (!PyArg_ParseTuple(args, "s:jfsck", &name))
+	if (!PyArg_ParseTuple(args, "s|s:jfsck", &name, &jdir))
 		return NULL;
 
 	dict = PyDict_New();
@@ -536,7 +564,7 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 		return PyErr_NoMemory();
 
 	Py_BEGIN_ALLOW_THREADS
-	rv = jfsck(name, &res);
+	rv = jfsck(name, jdir, &res);
 	Py_END_ALLOW_THREADS
 
 	if (rv == J_ENOMEM) {
@@ -558,21 +586,22 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 
 /* jfsck_cleanup */
 PyDoc_STRVAR(jf_jfsck_cleanup__doc,
-"jfsck_cleanup()\n\
+"jfsck_cleanup(name[, jdir])\n\
 \n\
-Clean the journal directory and leave it ready to use.\n\
+Clean the journal directory for the given file using (optionally) jdir as the\n\
+journal directory, and leave it ready to use.\n\
 It's a wrapper to jfsck_cleanup().\n");
 
 static PyObject *jf_jfsck_cleanup(PyObject *self, PyObject *args)
 {
 	long rv;
-	char *name;
+	char *name, *jdir;
 
-	if (!PyArg_ParseTuple(args, "s:jfsck_cleanup", &name))
+	if (!PyArg_ParseTuple(args, "s|s:jfsck_cleanup", &name, &jdir))
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
-	rv = jfsck_cleanup(name);
+	rv = jfsck_cleanup(name, jdir);
 	Py_END_ALLOW_THREADS
 
 	return PyInt_FromLong(rv);

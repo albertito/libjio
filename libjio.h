@@ -34,6 +34,7 @@ extern "C" {
 struct jfs {
 	int fd;			/* main file descriptor */
 	char *name;		/* and its name */
+	char *jdir;		/* journal directory */
 	int jdirfd;		/* journal directory file descriptor */
 	int jfd;		/* journal's lock file descriptor */
 	unsigned int *jmap;	/* journal's lock file mmap area */
@@ -110,12 +111,13 @@ ssize_t jtrans_commit(struct jtrans *ts);
 ssize_t jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
 int jsync(struct jfs *fs);
+int jmove_journal(struct jfs *fs, const char *newpath);
 int jclose(struct jfs *fs);
 
 
 /* journal checker */
-int jfsck(const char *name, struct jfsck_result *res);
-int jfsck_cleanup(const char *name);
+int jfsck(const char *name, const char *jdir, struct jfsck_result *res);
+int jfsck_cleanup(const char *name, const char *jdir);
 
 /* UNIX API wrappers */
 ssize_t jread(struct jfs *fs, void *buf, size_t count);

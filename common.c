@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libjio.h"
 #include "common.h"
 
 
@@ -126,26 +127,9 @@ int get_jdir(const char *filename, char *jdir)
 }
 
 /* build the filename of a given transaction */
-int get_jtfile(const char *filename, unsigned int tid, char *jtfile)
+int get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile)
 {
-	char *base, *baset;
-	char *dir, *dirt;
-
-	baset = strdup(filename);
-	if (baset == NULL)
-		return 0;
-	base = basename(baset);
-
-	dirt = strdup(filename);
-	if (dirt == NULL)
-		return 0;
-	dir = dirname(dirt);
-
-	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%u", dir, base, tid);
-
-	free(baset);
-	free(dirt);
-
+	snprintf(jtfile, PATH_MAX, "%s/%u", fs->jdir, tid);
 	return 1;
 }
 
