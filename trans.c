@@ -127,6 +127,7 @@ void jtrans_free(struct jtrans *ts)
 
 		ts->op = tmpop;
 	}
+	pthread_mutex_destroy(&(ts->lock));
 }
 
 
@@ -617,6 +618,7 @@ int jclose(struct jfs *fs)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
 	munmap(fs->jmap, sizeof(unsigned int));
+	pthread_mutex_destroy(&(fs->lock));
 
 	return 0;
 }
