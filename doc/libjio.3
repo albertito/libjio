@@ -22,13 +22,13 @@ libjio - A library for Journaled I/O
 
 .BI "int jtruncate(struct jfs *" fs ", off_t " lenght " );
 
-.BI "int jsync(struct jfs *" fs " );
-
 .BI "int jclose(struct jfs *" fs " );
 
-.BI "void jtrans_init(struct jfs *" fs " , struct jtrans *" ts " );
+.BI "void jtrans_init(struct jfs *" fs " ,struct jtrans *" ts " );
 
 .BI "int jtrans_commit(struct jtrans *" ts " );
+
+.BI "int jtrans_add(struct jtrans *" ts ", const void * " buf ", size_t " count ", off_t " offset " );
 
 .BI "int jtrans_rollback(struct jtrans *" ts " );
 
@@ -42,56 +42,47 @@ libjio - A library for Journaled I/O
 .PP
 .br
 .nf
-.in 10
+.in +2n
 struct jfs {
-.in 14
-int fd;                 /* main file descriptor */
-char *name;             /* and its name */
-int jfd;                /* journal's lock file descriptor */
-int flags;              /* journal mode options used in jopen() */
-pthread_mutex_t lock;   /* a soft lock used in some operations */
-.in 10
+    int fd;                /* main file descriptor */
+    char *name;            /* and its name */
+    int jfd;               /* journal's lock file descriptor */
+    int flags;             /* journal mode options used in jopen() */
+    pthread_mutex_t lock;  /* a soft lock used in some operations */
+    ...
 };
 .FI
+.in -2n
 
 .PP
 .br
 .nf
-.in 10
+.in +2n
 struct jtrans {
-.in 14
-struct jfs *fs;         /* journal file structure to operate on */
-char *name;             /* name of the transaction file */
-int id;                 /* transaction id */
-int flags;              /* misc flags */
-void *buf;              /* buffer */
-size_t len;             /* buffer lenght */
-off_t offset;           /* file offset to operate on */
-void *udata;            /* user-supplied data */
-size_t ulen;            /* udata lenght */
-void *pdata;            /* previous data, for rollback */
-size_t plen;            /* pdata lenght */
-.in 10
+    struct jfs *fs;       /* journal file structure to operate on */
+    char *name;           /* name of the transaction file */
+    int id;               /* transaction id */
+    int flags;            /* misc flags */
+    ...
 };
 .FI
+.in -2n
 
 .PP
 .br
 .nf
-.in 10
+.in +2n
 struct jfsck_result {
-.in 14
-int total;              /* total transactions files we looked at */
-int invalid;            /* invalid files in the journal directory */
-int in_progress;        /* transactions in progress */
-int broken_head;        /* transactions broken (header missing) */
-int broken_body;        /* transactions broken (body missing) */
-int load_error;         /* errors loading the transaction */
-int apply_error;        /* errors applying the transaction */
-int rollbacked;         /* transactions that were rollbacked */
-.in 10
+    int total;            /* total transactions files we looked at */
+    int invalid;          /* invalid files in the journal directory */
+    int in_progress;      /* transactions in progress */
+    int broken;           /* transactions broken */
+    int apply_error;      /* errors applying the transaction */
+    int rollbacked;       /* transactions that were rollbacked */
+    ...
 };
 .FI
+.in -2n
 
 .SH DESCRIPTION
 
@@ -100,15 +91,21 @@ describes it's C API very briefly, further information can be found in the
 documentation that comes along with the library itself, or on the web at
 http://auriga.wearlab.de/~alb/libjio.
 
-We can group the functions into three groups: a common one, with functions
-common to the other two; low-level one, which consists of jtrans_commit and
-jtrans_rollback. They provide a method for manipulating transactions, which
-are defined in the jtrans structure (described above).
+We can group the functions into three groups: the common functions, the basic
+functions and the UNIX API.
+
+The common functions provide functionality common to the other two: jopen to
+open files to use them with the library, and jfsck and jfsck_cleanup to
+provide integrity checking.
+
+The basic functions consists of jtrans_commit, jtrans_add and jtrans_rollback.
+They provide a method for manipulating transactions, which are defined in the
+jtrans structure (described above).
 
 The second group mimics somehow the traditional UNIX API by providing similar
 interfaces to read(), write(), and their friends.
 
-.SH COMMON API
+.SH Common functions
 
 Most functions reference somehow the structures described avobe, specially
 struct jfs and struct jtrans. They represent a file to operate on and a single
@@ -135,9 +132,9 @@ longer be needed, so by cleaning up the directory you make sure you're
 starting over with a clean journal. It returns 0 if there was an error, or 1
 if it succeeded.
 
-.SH HIGH LEVEL API
+.SH UNIX API
 
-The high level API, as explained before, consists of the functions jread(),
+The UNIX API, as explained before, consists of the functions jread(),
 jpread(), jreadv(), jwrite(), jpwrite(), jwritev(), jtruncate(). In most cases
 you will only need to use this, because they're simple and familiar.
 
@@ -148,10 +145,10 @@ like jopen() and jclose()). Again, I will not duplicate the manpage for all
 these functions, just refer to the regular UNIX versions to see how to use
 them, they all have the same semantics and behave the same way.
 
-.SH LOW LEVEL API
+.SH Basic functions
 
-The low level functions are the ones which manipulate transactions directly;
-they are four: jtrans_init(), jtrans_commit(), jtrans_rollback() and
+The basic functions are the ones which manipulate transactions directly; they
+are five: jtrans_init(), jtrans_add(), jtrans_commit(), jtrans_rollback() and
 jtrans_free(). These are intended to be use in special situations where your
 application needs direct control over the transactions.
 
@@ -162,10 +159,16 @@ only frees the pointers that were previously allocated by the library; all
 disk operations are performed by the other two functions. They have no return
 value.
 
-jtrans_commit() is in charge of commiting the given transaction (which data
-was completed by you, and is described in the STRUCTURES section), and after
-its return the data has been saved to the disk atomically. It returns the
-number of bytes written or -1 if there was an error.
+jtrans_add() is used to add operations to a transaction, and it takes the same
+parameters as the pwrite() call. It gets a buffer, it's lenght and the offset
+where it should be applied, and adds it to the transaction. You can add
+multiple operations to a transaction, and they will be applied in order.
+Operation within the same transaction must not overlap; if they do, commiting
+the transaction will fail.
+
+jtrans_commit() is in charge of commiting the given transaction, and after its
+return the data has been saved to the disk atomically. It returns the number
+of bytes written or -1 if there was an error.
 
 jtrans_rollback() reverses a transaction that was applied with
 jtrans_commit(), and leaves the file as it was before applying it. Be very
@@ -187,5 +190,4 @@ albertogli@telpin.com.ar.
 .BR pread (2),
 .BR pwrite (2),
 .BR ftruncate (2),
-.BR fsync (2),
 .BR close (2)
