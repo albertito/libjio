@@ -26,6 +26,8 @@
 #define F_TLOCKW	(_F_TLOCK | _F_WRITE)
 #define F_UNLOCK	(_F_ULOCK)
 
+#define MAX_TSIZE	(SSIZE_MAX)
+
 
 off_t plockf(int fd, int cmd, off_t offset, off_t len);
 ssize_t spread(int fd, void *buf, size_t count, off_t offset);

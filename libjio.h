@@ -63,6 +63,7 @@ struct jtrans {
 	int id;			/* transaction id */
 	uint32_t flags;		/* transaction flags */
 	unsigned int numops;	/* quantity of operations in the list */
+	ssize_t len;		/* transaction's length */
 	pthread_mutex_t lock;	/* used to modify the operation list */
 	struct joper *op;	/* list of operations */
 };

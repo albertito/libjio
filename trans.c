@@ -146,6 +146,11 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		return 0;
 	}
 
+	if (ts->len + count > MAX_TSIZE) {
+		pthread_mutex_unlock(&(ts->lock));
+		return 0;
+	}
+
 	/* find the last operation in the transaction and create a new one at
 	 * the end */
 	if (ts->op == NULL) {
@@ -181,6 +186,8 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		return 0;
 	}
 
+	ts->numops++;
+	ts->len += count;
 	pthread_mutex_unlock(&(ts->lock));
 
 	/* we copy the buffer because then the caller can reuse it */
@@ -191,8 +198,6 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	jop->plen = 0;
 	jop->pdata = NULL;
 	jop->locked = 0;
-
-	ts->numops++;
 
 	return 1;
 }
