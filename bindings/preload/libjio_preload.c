@@ -44,6 +44,7 @@ static void *libc;
 static int (*c_open)(const char *pathname, int flags, mode_t mode);
 static int (*c_open64)(const char *pathname, int flags, mode_t mode);
 static int (*c_close)(int fd);
+static int (*c_unlink)(const char *pathname);
 static ssize_t (*c_read)(int fd, void *buf, size_t count);
 static ssize_t (*c_pread)(int fd, void *buf, size_t count, off_t offset);
 static ssize_t (*c_pread64)(int fd, void *buf, size_t count, off64_t offset);
@@ -163,6 +164,7 @@ static int __attribute__((constructor)) init(void)
 	libc_load(open);
 	libc_load(open64);
 	libc_load(close);
+	libc_load(unlink);
 	libc_load(read);
 	libc_load(pread);
 	libc_load(pread64);
@@ -366,6 +368,28 @@ int close(int fd)
 }
 
 
+int unlink(const char *pathname)
+{
+	int r;
+
+	if (called) {
+		printd("orig\n");
+		return (*c_unlink)(pathname);
+	}
+
+	printd("libjio\n");
+
+	rec_inc();
+	jfsck_cleanup(pathname);
+	rec_dec();
+
+	r = (*c_unlink)(pathname);
+	printd("return %d\n", r);
+
+	return r;
+}
+
+
 /* the rest of the functions are automagically generated from the following
  * macro. The ugliest. I'm so proud. */
 
@@ -376,7 +400,7 @@ int close(int fd)
 		struct jfs *fs;					\
 								\
 		if (called) {					\
-			printd("orig \n");			\
+			printd("orig\n");			\
 			return (*c_##name) INVR;		\
 		}						\
 								\
