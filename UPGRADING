@@ -1,0 +1,19 @@
+
+Here are the notes for upgrading libjio from one version to another.
+
+While normally nothing should be done, sometimes things change and some
+actions need to be done. Here's the listing for the releases, you should
+always check it before upgrading.
+
+You should always clean all your files before upgrading. While I don't expect
+the transaction on-disk format to change, it's a good practise and it doesn't
+take much. If it's mandatory, it will be noted.
+
+If you want to see what motivated the changes, see the changelog or just ask.
+
+
+0.18 -> 0.19
+* Applications need to be recompiled due to a change in the flag numbering.
+* A flag number has changed, from J_COMMITED to J_COMMITTED. If you used that
+	flag, you need to rename it.
+
