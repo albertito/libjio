@@ -558,11 +558,16 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 }
 
 /* sync a file (makes sense only if using lingering transactions) */
-void jsync(struct jfs *fs)
+int jsync(struct jfs *fs)
 {
+	int rv;
 	struct jlinger *linger, *ltmp;
 
-	fsync(fs->fd);
+	pthread_mutex_lock(&(fs->lock));
+
+	rv = fsync(fs->fd);
+	if (rv != 0)
+		goto exit;
 
 	linger = fs->ltrans;
 	while (linger != NULL) {
@@ -575,13 +580,17 @@ void jsync(struct jfs *fs)
 
 		linger = ltmp;
 	}
+
+exit:
+	pthread_mutex_unlock(&(fs->lock));
+	return rv;
 }
 
 /* close a file */
 int jclose(struct jfs *fs)
 {
-	jsync(fs);
-
+	if (jsync(fs))
+		return -1;
 	if (close(fs->fd))
 		return -1;
 	if (close(fs->jfd))

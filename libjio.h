@@ -98,7 +98,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset);
 int jtrans_commit(struct jtrans *ts);
 int jtrans_rollback(struct jtrans *ts);
 void jtrans_free(struct jtrans *ts);
-void jsync(struct jfs *fs);
+int jsync(struct jfs *fs);
 int jclose(struct jfs *fs);
 
 
