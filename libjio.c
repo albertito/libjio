@@ -112,7 +112,7 @@ static int get_jdir(const char *filename, char *jdir)
 	base = basename(baset);
 
 	dirt = strdup(filename);
-	if (baset == NULL)
+	if (dirt == NULL)
 		return 0;
 	dir = dirname(dirt);
 
@@ -136,7 +136,7 @@ static int get_jtfile(const char *filename, int tid, char *jtfile)
 	base = basename(baset);
 
 	dirt = strdup(filename);
-	if (baset == NULL)
+	if (dirt == NULL)
 		return 0;
 	dir = dirname(dirt);
 
