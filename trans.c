@@ -388,12 +388,17 @@ exit:
 		unlink(name);
 		free_tid(ts->fs, ts->id);
 
-		rv = ts->flags;
-		ts->flags = ts->flags | J_NOLOCK;
-		if (jtrans_rollback(ts) >= 0) {
-			ts->flags = rv | J_ROLLBACKED;
-		} else {
-			ts->flags = rv;
+		/* We want to avoid an endless loop of
+		 * commit (failed) -> rollback -> commit (failed)
+		 * so we use J_ROLLBACKING. */
+		if (!(ts->flags & J_ROLLBACKING)) {
+			rv = ts->flags;
+			ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
+			if (jtrans_rollback(ts) >= 0) {
+				ts->flags = rv | J_ROLLBACKED;
+			} else {
+				ts->flags = rv;
+			}
 		}
 	}
 
@@ -416,19 +421,17 @@ exit:
 /* rollback a transaction */
 int jtrans_rollback(struct jtrans *ts)
 {
+	int rv;
 	struct jtrans newts;
 	struct joper *op, *curop, *lop;
 
-	/* FIXME: this looks like a mess! */
-
-	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
-		/* we're either trying to rollback an empty or transaction, or
-		 * a one marked without rollbacking support */
-		return 0;
-	}
-
 	jtrans_init(ts->fs, &newts);
 	newts.flags = ts->flags;
+
+	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
+		rv = -1;
+		goto exit;
+	}
 
 	/* find the last operation */
 	for (op = ts->op; op->next != NULL; op = op->next)
@@ -448,6 +451,11 @@ int jtrans_rollback(struct jtrans *ts)
 
 		/* manually add the operation to the new transaction */
 		curop = malloc(sizeof(struct joper));
+		if (curop == NULL) {
+			rv = -1;
+			goto exit;
+		}
+
 		curop->offset = op->offset;
 		curop->len = op->plen;
 		curop->buf = op->pdata;
@@ -469,7 +477,17 @@ int jtrans_rollback(struct jtrans *ts)
 		}
 	}
 
-	return jtrans_commit(&newts);
+	rv = jtrans_commit(&newts);
+
+exit:
+	/* free the transaction */
+	for (curop = newts.op; curop != NULL; curop = curop->next) {
+		curop->buf = NULL;
+		curop->pdata = NULL;
+	}
+	jtrans_free(&newts);
+
+	return rv;
 }
 
 /*
