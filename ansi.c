@@ -191,7 +191,7 @@ int jftell(struct jfs *stream)
 }
 
 /* rewind wrapper */
-void frewind(struct jfs *stream)
+void jrewind(struct jfs *stream)
 {
 	lseek(stream->fd, 0, SEEK_SET);
 }
