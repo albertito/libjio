@@ -112,9 +112,6 @@ This impose some restrictions to the kind of operations you can perform
  over a file while it's currently being used: you can't move it (because
  the journal directory name depends on the filename) and you can't unlink
  it (for similar reasons).
- Some other operations, like truncating, are also done outside the library
- and the user is expected to do them atomically when no transactions are
- currently being done.
  
 \layout Standard
 
@@ -212,9 +209,6 @@ Read the previous data from the file
 \layout Itemize
 
 Write the previous data in the transaction
-\layout Itemize
-
-Write the data to commit to the transaction file
 \layout Itemize
 
 Write the data to the file
@@ -316,11 +310,11 @@ jiofsck
  which is just a simple invocation to that function), which opens the file
  and goes through all transactions in the journal (remember that transactions
  are removed from the journal directory after they're applied), loading
- and recommiting them if possible.
+ and rollbacking them if necessary.
  There are several steps where it can fail: there could be no journal, a
  given transaction file might be corrupted, incomplete, and so on; but in
  the end, there are two cases regarding each transaction: either it's complete
- and can be reapplied, or not.
+ and can be rollbacked, or not.
 \layout Standard
 
 In the case the transaction is not complete, there is no possibility that
@@ -330,11 +324,7 @@ In the case the transaction is not complete, there is no possibility that
 after
 \emph default 
  saving it in the journal, so there is really nothing left to be done.
-\layout Standard
-
-If the transaction is complete, we only need to recommit: if the transaction
- was either not applied at all, partially applied or completely applied,
- it makes no difference as we are now capable of completing it, and do so.
+ So if the transaction is complete, we only need to rollback.
 \layout Standard
 
 In any case, after making the recovery you can simply remove the journal

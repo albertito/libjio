@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	printf("Broken body:\t %d\n", res.broken_body);
 	printf("Load error:\t %d\n", res.load_error);
 	printf("Apply error:\t %d\n", res.apply_error);
-	printf("Reapplied:\t %d\n", res.reapplied);
+	printf("Rollbacked:\t %d\n", res.rollbacked);
 	printf("\n");
 	
 	printf("You can now safely remove the journal directory completely\n"

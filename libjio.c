@@ -294,7 +294,23 @@ int jtrans_commit(struct jtrans *ts)
 	if (!(ts->fs->flags & J_NOLOCK))
 		plockf(ts->fs->fd, F_LOCK, ts->offset, ts->len);
 	
-	/* first the static data */
+	/* read the current content and fill in the transaction structure */
+	ts->pdata = malloc(ts->len);
+	if (ts->pdata == NULL)
+		goto exit;
+	
+	ts->plen = ts->len;
+
+	rv = spread(ts->fs->fd, ts->pdata, ts->len, ts->offset);
+	if (rv < 0)
+		goto exit;
+	if (rv < ts->len) {
+		/* we are extending the file! use ftruncate() to do it */
+		ftruncate(ts->fs->fd, ts->offset + ts->len);
+		ts->plen = rv;
+	}
+
+	/* now save the transaction to the file, static data first */
 	
 	buf_init = malloc(J_DISKTFIXSIZE);
 	if (buf_init == NULL)
@@ -311,6 +327,9 @@ int jtrans_commit(struct jtrans *ts)
 	memcpy(bufp, (void *) &(ts->len), sizeof(ts->len));
 	bufp += 4;
 	
+	memcpy(bufp, (void *) &(ts->plen), sizeof(ts->plen));
+	bufp += 4;
+	
 	memcpy(bufp, (void *) &(ts->ulen), sizeof(ts->ulen));
 	bufp += 4;
 	
@@ -324,7 +343,7 @@ int jtrans_commit(struct jtrans *ts)
 	free(buf_init);
 	
 	
-	/* and now the variable part */
+	/* and now the variable data */
 
 	if (ts->udata) {
 		rv = spwrite(fd, ts->udata, ts->ulen, J_DISKTFIXSIZE);
@@ -332,33 +351,9 @@ int jtrans_commit(struct jtrans *ts)
 			goto exit;
 	}
 	
-	ts->pdata = malloc(ts->len);
-	if (ts->pdata == NULL)
-		goto exit;
-	
-	ts->plen = ts->len;
-
-	/* copy the current content into the transaction file */
-	rv = spread(ts->fs->fd, ts->pdata, ts->len, ts->offset);
-	if (rv < 0)
-		goto exit;
-	if (rv < ts->len) {
-		/* we are extending the file! use ftruncate() to do it */
-		ftruncate(ts->fs->fd, ts->offset + ts->len);
-
-		ts->plen = rv;
-
-	}
-	
 	t = J_DISKTFIXSIZE + ts->ulen;
-	rv = spwrite(fd, ts->pdata, ts->len, t);
-	if (rv != ts->len)
-		goto exit;
-	
-	/* save the new data in the transaction file */
-	t = J_DISKTFIXSIZE + ts->ulen + ts->plen;
-	rv = spwrite(fd, ts->buf, ts->len, t);
-	if (rv != ts->len)
+	rv = spwrite(fd, ts->pdata, ts->plen, t);
+	if (rv != ts->plen)
 		goto exit;
 	
 	/* this is a simple but efficient optimization: instead of doing
@@ -373,13 +368,14 @@ int jtrans_commit(struct jtrans *ts)
 	if (rv != ts->len)
 		goto exit;
 	
-	/* mark the transaction as commited */
-	ts->flags = ts->flags | J_COMMITED;
-
 	/* the transaction has been applied, so we cleanup and remove it from
 	 * the disk */
 	free_tid(ts->fs, ts->id);
 	unlink(name);
+
+	/* mark the transaction as commited, _after_ it was removed */
+	ts->flags = ts->flags | J_COMMITED;
+
 	
 exit:
 	close(fd);
@@ -404,11 +400,6 @@ int jtrans_rollback(struct jtrans *ts)
 	/* copy the old transaction to the new one */
 	jtrans_init(ts->fs, &newts);
 
-	newts.name = malloc(strlen(ts->name));
-	if (newts.name == NULL)
-		return -1;
-	
-	strcpy(newts.name, ts->name);
 	newts.flags = ts->flags;
 	newts.offset = ts->offset;
 
@@ -427,8 +418,8 @@ int jtrans_rollback(struct jtrans *ts)
 		
 	}
 	
-	newts.pdata = ts->buf;
-	newts.plen = ts->len;
+	newts.pdata = ts->pdata;
+	newts.plen = ts->plen;
 
 	newts.udata = ts->udata;
 	newts.ulen = ts->ulen;
@@ -691,7 +682,7 @@ int jfsck(char *name, struct jfsck_result *res)
 {
 	int fd, tfd, rv, i, maxtid;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
-	char *buf = NULL;
+	unsigned char *buf = NULL;
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
@@ -780,20 +771,22 @@ int jfsck(char *name, struct jfsck_result *res)
 			free(buf);
 			goto loop;
 		}
-		
-		curts->flags = (int) *(buf + 4);
-		curts->len = (size_t) *(buf + 8);
-		curts->ulen = (size_t) *(buf + 16);
-		curts->offset = (off_t) *(buf + 20);
+
+		curts->flags = *( (uint32_t *) (buf + 4));
+		curts->len = *( (uint32_t *) (buf + 8));
+		curts->plen = *( (uint32_t *) (buf + 12));
+		curts->ulen = *( (uint32_t *) (buf + 16));
+		curts->offset = *( (uint64_t *) (buf + 20));
 
 		free(buf);
 
 		/* if we got here, the transaction was not applied, so we
 		 * check if the transaction file is complete (we only need to
-		 * apply it) or not (so we can't do anything but ignore it) */
+		 * rollback it) or not (so we can't do anything but ignore it)
+		 */
 
 		lstat(tname, &sinfo);
-		rv = J_DISKTFIXSIZE + curts->len + curts->ulen + curts->plen;
+		rv = J_DISKTFIXSIZE + curts->ulen + curts->plen;
 		if (sinfo.st_size != rv) {
 			/* the transaction file is incomplete, some of the
 			 * body is missing */
@@ -803,13 +796,7 @@ int jfsck(char *name, struct jfsck_result *res)
 
 		/* we have a complete transaction file which commit was not
 		 * successful, so we read it to complete the transaction
-		 * structure and apply it again */
-		curts->buf = malloc(curts->len);
-		if (curts->buf == NULL) {
-			res->load_error++;
-			goto loop;
-		}
-		
+		 * structure and rollback it */
 		curts->pdata = malloc(curts->plen);
 		if (curts->pdata == NULL) {
 			res->load_error++;
@@ -838,27 +825,15 @@ int jfsck(char *name, struct jfsck_result *res)
 			goto loop;
 		}
 
-		/* real data */
-		offset = J_DISKTFIXSIZE + curts->ulen + curts->plen;
-		rv = spread(tfd, curts->buf, curts->len, offset);
-		if (rv != curts->len) {
-			res->load_error++;
-			goto loop;
-		}
-
-		/* apply */
-		rv = jtrans_commit(curts);
+		/* rollback */
+		rv = jtrans_rollback(curts);
 		if (rv < 0) {
 			res->apply_error++;
 			goto loop;
 		}
-		res->reapplied++;
+		res->rollbacked++;
 
 		/* free the data we just allocated */
-		if (curts->len) {
-			free(curts->buf);
-			curts->buf = NULL;
-		}
 		if (curts->plen) {
 			free(curts->pdata);
 			curts->pdata = NULL;

@@ -44,7 +44,7 @@ struct jfsck_result {
 	int broken_body;	/* transactions broken (body missing) */
 	int load_error;		/* errors loading the transaction */
 	int apply_error;	/* errors applying the transaction */
-	int reapplied;		/* transactions that were re-applied */
+	int rollbacked;		/* transactions that were rollbacked */
 };
 
 /* on-disk structure */
@@ -54,13 +54,13 @@ struct disk_trans {
 	uint32_t id;		/* id */
 	uint32_t flags;		/* flags about this transaction */
 	uint32_t len;		/* data lenght */
+	uint32_t plen;		/* previous data lenght */
 	uint32_t ulen;		/* user-supplied information lenght */
 	uint64_t offset;	/* offset relative to the BOF */
 	
 	/* payload (variable lenght) */
 	char *udata;		/* user-supplied data */
-	char *prevdata;		/* previous data, optional, for rollback */
-	char *data;		/* data */
+	char *prevdata;		/* previous data for rollback */
 };
 
 
@@ -93,7 +93,7 @@ int jfsck(char *name, struct jfsck_result *res);
 #define J_ROLLBACKED	2	/* mark a transaction as rollbacked */
 
 /* disk_trans constants */
-#define J_DISKTFIXSIZE	 24	/* lenght of disk_trans' header */ 
+#define J_DISKTFIXSIZE	 28	/* lenght of disk_trans' header */ 
 
 /* jfsck constants (return values) */
 #define J_ESUCCESS	0	/* success - shouldn't be used */
