@@ -33,6 +33,12 @@ install: all
 	@echo "Please run ldconfig to update your library cache"
 	@echo
 
+python: all
+	cd bindings/python && python setup.py build
+
+python_install: python
+	cd bindings/python && python setup.py install
+
 .c.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
@@ -40,6 +46,7 @@ install: all
 clean:
 	rm -f $(OBJS) libjio.a libjio.so jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov gmon.out
+	rm -rf bindings/python/build/
 
 
 .PHONY: default all shared static install clean
