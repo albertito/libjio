@@ -65,7 +65,7 @@ struct disk_trans {
 
 
 /* basic operations */
-int jopen(struct jfs *fs, char *name, int flags, int mode, int jflags);
+int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags);
 ssize_t jread(struct jfs *fs, void *buf, size_t count);
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset);
 ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count);

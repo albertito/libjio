@@ -101,7 +101,7 @@ static ssize_t spwrite(int fd, void *buf, size_t count, off_t offset)
 }
 
 /* build the journal directory name out of the filename */
-static int get_jdir(char *filename, char *jdir)
+static int get_jdir(const char *filename, char *jdir)
 {
 	char *base, *baset;
 	char *dir, *dirt;
@@ -125,7 +125,7 @@ static int get_jdir(char *filename, char *jdir)
 }
 
 /* build the filename of a given transaction */
-static int get_jtfile(char *filename, int tid, char *jtfile)
+static int get_jtfile(const char *filename, int tid, char *jtfile)
 {
 	char *base, *baset;
 	char *dir, *dirt;
@@ -440,7 +440,7 @@ int jtrans_rollback(struct jtrans *ts)
  */
 
 /* open a file */
-int jopen(struct jfs *fs, char *name, int flags, int mode, int jflags)
+int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 {
 	int fd, jfd, rv;
 	unsigned int t;
@@ -452,7 +452,7 @@ int jopen(struct jfs *fs, char *name, int flags, int mode, int jflags)
 		return -1;
 
 	fs->fd = fd;
-	fs->name = name;
+	fs->name = strdup(name);
 	fs->flags = jflags;
 	
 	pthread_mutex_init( &(fs->lock), NULL);
@@ -652,6 +652,9 @@ int jclose(struct jfs *fs)
 		return -1;
 	if (close(fs->jfd))
 		return -1;
+	if (fs->name)
+		/* allocated by strdup() in jopen() */
+		free(fs->name);
 	return 0;
 }
 

@@ -6,7 +6,7 @@ libjio - A library for Journaled I/O
 
 .B #include <libjio.h>
 
-.BI "int jopen(struct jfs *" fs ", char *" name ", int " flags ", int " mode ", int " jflags " );
+.BI "int jopen(struct jfs *" fs ", const char *" name ", int " flags ", int " mode ", int " jflags " );
 
 .BI "ssize_t jread(struct jfs *" fs ", void *" buf ", size_t " count " );
 
