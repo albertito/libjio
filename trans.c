@@ -606,20 +606,27 @@ exit:
 /* close a file */
 int jclose(struct jfs *fs)
 {
+	int ret;
+
+	ret = 0;
+	pthread_mutex_lock(&(fs->lock));
+
 	if (jsync(fs))
-		return -1;
+		ret = -1;
 	if (close(fs->fd))
-		return -1;
+		ret = -1;
 	if (close(fs->jfd))
-		return -1;
+		ret = -1;
 	if (close(fs->jdirfd))
-		return -1;
+		ret = -1;
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
 	munmap(fs->jmap, sizeof(unsigned int));
+
+	pthread_mutex_unlock(&(fs->lock));
 	pthread_mutex_destroy(&(fs->lock));
 
-	return 0;
+	return ret;
 }
 
