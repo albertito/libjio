@@ -100,8 +100,8 @@ http://auriga.wearlab.de/~alb/libjio.
 
 We can group the functions into three groups: a common one, with functions
 common to the other two; low-level one, which consists of jtrans_commit and
-jtrans_receive. They provide a method for manipulating transactions, which are
-defined in a structure named struct jtrans (described above).
+jtrans_rollback. They provide a method for manipulating transactions, which
+are defined in the jtrans structure (described above).
 
 The second group mimics somehow the traditional UNIX API by providing similar
 interfaces to read(), write(), and their friends.
