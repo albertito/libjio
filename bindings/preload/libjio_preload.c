@@ -58,14 +58,11 @@ static int (*c_ftruncate64)(int fd, off64_t length);
 static off_t (*c_lseek)(int fd, off_t offset, int whence);
 static off64_t (*c_lseek64)(int fd, off64_t offset, int whence);
 static int (*c_fsync)(int fd);
-static int (*c_dup)(int oldfd);
-static int (*c_dup2)(int oldfd, int newfd);
 
 
 /* file descriptor table, to translate fds to jfs */
 struct fd_entry {
 	int fd;
-	unsigned int *refcount;
 	struct jfs *fs;
 	pthread_mutex_t lock;
 };
@@ -99,7 +96,6 @@ static struct fd_entry fd_table[MAXFD];
 			if (called)			\
 				fprintf(stderr, "\t");	\
 			called++;			\
-			fprintf(stderr, "%5.5d ", getpid()); \
 			fprintf(stderr, "%s(): ", __FUNCTION__ ); \
 			fprintf(stderr, __VA_ARGS__);	\
 			fflush(stderr);			\
@@ -112,44 +108,26 @@ static struct fd_entry fd_table[MAXFD];
  * catch out of bounds accesses */
 static inline int fd_lock(int fd)
 {
-	int r;
-
 	if (fd < 0 || fd >= MAXFD) {
 		printd("locking out of bounds fd %d\n", fd);
 		return 0;
 	}
 	//printd("L %d\n", fd);
-	r = pthread_mutex_lock(&(fd_table[fd].lock));
+	pthread_mutex_lock(&(fd_table[fd].lock));
 	//printd("OK %d\n", fd);
-	return !r;
-}
-
-static inline int fd_trylock(int fd)
-{
-	int r;
-
-	if (fd < 0 || fd >= MAXFD) {
-		printd("locking out of bounds fd %d\n", fd);
-		return 0;
-	}
-	//printd("L %d\n", fd);
-	r = pthread_mutex_trylock(&(fd_table[fd].lock));
-	//printd("OK %d\n", fd);
-	return !r;
+	return 1;
 }
 
 static inline int fd_unlock(int fd)
 {
-	int r;
-
 	if (fd < 0 || fd >= MAXFD) {
 		printd("unlocking out of bounds fd %d\n", fd);
 		return 0;
 	}
 	//printd("U %d\n", fd);
-	r = pthread_mutex_unlock(&(fd_table[fd].lock));
+	pthread_mutex_unlock(&(fd_table[fd].lock));
 	//printd("OK %d\n", fd);
-	return !r;
+	return 1;
 }
 
 
@@ -200,8 +178,6 @@ static int __attribute__((constructor)) init(void)
 	libc_load(lseek);
 	libc_load(lseek64);
 	libc_load(fsync);
-	libc_load(dup);
-	libc_load(dup2);
 
 	printd("done\n");
 	return 1;
@@ -275,8 +251,6 @@ int open(const char *pathname, int flags, ...)
 
 	fd_lock(fd);
 	fd_table[fd].fd = fd;
-	fd_table[fd].refcount = malloc(sizeof(unsigned int));
-	*fd_table[fd].refcount = 1;
 	fd_table[fd].fs = fs;
 	fd_unlock(fd);
 
@@ -349,8 +323,6 @@ int open64(const char *pathname, int flags, ...)
 
 	fd_lock(fd);
 	fd_table[fd].fd = fd;
-	fd_table[fd].refcount = malloc(sizeof(unsigned int));
-	*fd_table[fd].refcount = 1;
 	fd_table[fd].fs = fs;
 	fd_unlock(fd);
 
@@ -358,37 +330,6 @@ int open64(const char *pathname, int flags, ...)
 	return fd;
 }
 
-/* close() is split in two functions: unlocked_close() that performs the real
- * actual close and cleanup, and close() which takes care of the locking and
- * calls unlocked_close(); this is because in dup*() we need to close with
- * locks already held to avoid races. */
-int unlocked_close(int fd)
-{
-	int r;
-
-	if (*fd_table[fd].refcount >= 1) {
-		/* we still have references, don't really close */
-		printd("not closing, refcount: %d\n", *fd_table[fd].refcount);
-		*fd_table[fd].refcount--;
-		fd_table[fd].fd = -1;
-		fd_table[fd].refcount = NULL;
-		fd_table[fd].fs = NULL;
-		return 0;
-	}
-
-	rec_inc();
-	r = jclose(fd_table[fd].fs);
-	if (fd_table[fd].fs != NULL) {
-		fd_table[fd].fd = -1;
-		free(fd_table[fd].refcount);
-		fd_table[fd].refcount = NULL;
-		free(fd_table[fd].fs);
-		fd_table[fd].fs = NULL;
-	}
-	rec_dec();
-
-	return r;
-}
 
 int close(int fd)
 {
@@ -412,7 +353,14 @@ int close(int fd)
 	}
 	printd("libjio\n");
 
-	r = unlocked_close(fd);
+	rec_inc();
+	r = jclose(fs);
+	if (fd_table[fd].fs != NULL) {
+		free(fd_table[fd].fs);
+		fd_table[fd].fd = -1;
+		fd_table[fd].fs = NULL;
+	}
+	rec_dec();
 	fd_unlock(fd);
 
 	printd("return %d\n", r);
@@ -438,77 +386,6 @@ int unlink(const char *pathname)
 	r = (*c_unlink)(pathname);
 	printd("return %d\n", r);
 
-	return r;
-}
-
-int dup(int oldfd)
-{
-	int r;
-
-	if (called) {
-		printd("orig\n");
-		return (*c_dup)(oldfd);
-	}
-
-	printd("libjio\n");
-
-	if (!fd_lock(oldfd)) {
-		printd("out of bounds fd: %d\n", fd);
-		return -1;
-	}
-
-	rec_inc();
-	r = (*c_dup)(oldfd);
-	rec_dec();
-
-	if (r >= 0) {
-		fd_lock(r);
-		fd_table[r].fd = r;
-		fd_table[r].refcount = fd_table[oldfd].refcount;
-		*fd_table[r].refcount++;
-		fd_table[r].fs = fd_table[oldfd].fs;
-		fd_unlock(r);
-	}
-
-	fd_unlock(oldfd);
-	printd("return %d\n", r);
-	return r;
-}
-
-int dup2(int oldfd, int newfd)
-{
-	int r;
-
-	if (called) {
-		printd("orig\n");
-		return (*c_dup2)(oldfd, newfd);
-	}
-
-	printd("libjio\n");
-
-	if (!fd_lock(oldfd)) {
-		printd("out of bounds fd: %d\n", fd);
-		return -1;
-	}
-
-	rec_inc();
-	r = (*c_dup2)(oldfd, newfd);
-	rec_dec();
-
-	if (r >= 0) {
-		fd_lock(newfd);
-		if (fd_table[newfd].fs != NULL) {
-			unlocked_close(newfd);
-		}
-		fd_table[newfd].fd = newfd;
-		fd_table[newfd].refcount = fd_table[oldfd].refcount;
-		*fd_table[newfd].refcount++;
-		fd_table[newfd].fs = fd_table[oldfd].fs;
-		fd_unlock(newfd);
-	}
-
-	fd_unlock(oldfd);
-	printd("return %d\n", r);
 	return r;
 }
 
