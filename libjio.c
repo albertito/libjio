@@ -118,6 +118,9 @@ static int get_jdir(char *filename, char *jdir)
 
 	snprintf(jdir, PATH_MAX, "%s/.%s.jio", dir, base);
 
+	free(baset);
+	free(dirt);
+
 	return 1;
 }
 
@@ -138,6 +141,9 @@ static int get_jtfile(char *filename, int tid, char *jtfile)
 	dir = dirname(dirt);
 
 	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%d", dir, base, tid);
+
+	free(baset);
+	free(dirt);
 
 	return 1;
 }
