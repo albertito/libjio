@@ -138,9 +138,16 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 {
 	struct joper *jop, *tmpop;
 
+	pthread_mutex_lock(&(ts->lock));
+
+	/* fail for read-only accesses */
+	if (ts->flags & J_RDONLY) {
+		pthread_mutex_unlock(&(ts->lock));
+		return 0;
+	}
+
 	/* find the last operation in the transaction and create a new one at
 	 * the end */
-	pthread_mutex_lock(&(ts->lock));
 	if (ts->op == NULL) {
 		ts->op = malloc(sizeof(struct joper));
 		if (ts->op == NULL) {
@@ -200,6 +207,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	/* clear the flags */
 	ts->flags = ts->flags & ~J_COMMITTED;
 	ts->flags = ts->flags & ~J_ROLLBACKED;
+
+	/* fail for read-only accesses */
+	if (ts->flags & J_RDONLY)
+		goto exit;
 
 	name = (char *) malloc(PATH_MAX);
 	if (name == NULL)
@@ -525,12 +536,18 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->jdirfd = -1;
 	fs->jmap = MAP_FAILED;
 
-	/* we always need read and write access, because when we commit a
-	 * transaction we read the current contents before applying, and write
-	 * access is needed for locking with fcntl */
-	flags = flags & ~O_WRONLY;
-	flags = flags & ~O_RDONLY;
-	flags = flags | O_RDWR;
+	/* we provide either read-only or read-write access, because when we
+	 * commit a transaction we read the current contents before applying,
+	 * and write access is needed for locking with fcntl; the test is done
+	 * this way because O_RDONLY is usually 0, so "if (flags & O_RDONLY)"
+	 * will fail. */
+	if ((flags & O_WRONLY) || (flags & O_RDWR)) {
+		flags = flags & ~O_WRONLY;
+		flags = flags & ~O_RDONLY;
+		flags = flags | O_RDWR;
+	} else {
+		jflags = jflags | J_RDONLY;
+	}
 
 	fs->name = strdup(name);
 	fs->flags = jflags;
@@ -558,6 +575,11 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->fd = open(name, flags, mode);
 	if (fs->fd < 0)
 		goto error_exit;
+
+	/* nothing else to do for read-only access */
+	if (flags & O_RDONLY) {
+		return fs->fd;
+	}
 
 	if (!get_jdir(name, jdir))
 		goto error_exit;
@@ -645,20 +667,22 @@ int jclose(struct jfs *fs)
 
 	ret = 0;
 
-	if (jsync(fs))
-		ret = -1;
+	if (! (fs->flags & J_RDONLY)) {
+		if (jsync(fs))
+			ret = -1;
+		if (fs->jfd < 0 || close(fs->jfd))
+			ret = -1;
+		if (fs->jdirfd < 0 || close(fs->jdirfd))
+			ret = -1;
+		if (fs->jmap != MAP_FAILED)
+			munmap(fs->jmap, sizeof(unsigned int));
+	}
+
 	if (fs->fd < 0 || close(fs->fd))
-		ret = -1;
-	if (fs->jfd < 0 || close(fs->jfd))
-		ret = -1;
-	if (fs->jdirfd < 0 || close(fs->jdirfd))
 		ret = -1;
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);
-	if (fs->jmap != MAP_FAILED)
-		munmap(fs->jmap, sizeof(unsigned int));
-
 	pthread_mutex_destroy(&(fs->lock));
 
 	return ret;

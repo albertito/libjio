@@ -150,6 +150,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 #define J_COMMITTED	8	/* mark a transaction as committed */
 #define J_ROLLBACKED	16	/* mark a transaction as rollbacked */
 #define J_ROLLBACKING	32	/* mark a transaction as rollbacking */
+#define J_RDONLY	64	/* mark a file as read-only */
 
 /* disk constants */
 #define J_DISKHEADSIZE	 12	/* length of disk_header */
