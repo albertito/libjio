@@ -66,6 +66,8 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 		op->buf = (void *) p;
 		p += op->len;
 
+		op->pdata = NULL;
+
 		if (ts->op == NULL) {
 			ts->op = op;
 			op->prev = NULL;
