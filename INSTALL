@@ -1,0 +1,40 @@
+
+To install the library and the checker (called jiofsck), run as root
+
+# make install
+
+
+It will copy the library to /usr/local/lib, manpages to /usr/local/man,
+binaries to /usr/local/bin, and headers to /usr/local/include.
+
+If you want to change the prefix directory (/usr/local by default), for
+instance, to /home/myself/usr; just run:
+
+# make PREFIX=/home/myself/usr install
+
+
+This will create inside PREFIX the directories "bin", "lib", "include" and
+"man" if necesary, and put the required files in there.
+
+
+After installing, you need to run "ldconfig" in order to update your dynamic
+library cache.
+
+So, if you want to install to /usr (like most distro bundled software do),
+this is a brief command line summary:
+
+make PREFIX=/usr install
+ldconfig
+
+
+There are other small options that might be useful (like compiling with
+debugging information), you can check the Make.conf file for more information.
+
+
+After installing, you're ready to use the library; you can see how by looking
+at the manpage with "man libjio".
+
+
+If you have any question, suggestion or comment, please send it to
+albertogli@telpin.com.ar.
+
