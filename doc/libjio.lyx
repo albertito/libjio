@@ -25,7 +25,7 @@
 
 \layout Title
 
-libjio - A library for journalled I/O 
+libjio - A library for journaled I/O 
 \layout Author
 
 Alberto Bertogli (albertogli@telpin.com.ar) 
@@ -46,7 +46,7 @@ Introduction
 \emph on 
 libjio
 \emph default 
- is a library for doing journalled transaction-oriented I/O, providing atomicity
+ is a library for doing journaled transaction-oriented I/O, providing atomicity
  warantees and a simple to use but powerful API.
 \layout Standard
 
@@ -59,7 +59,7 @@ This document explains the design of the library, how it works internally
 \layout Standard
 
 To the user, libjio provides two groups of functions, one UNIX-alike that
- implements the journalled versions of the classic functions (
+ implements the journaled versions of the classic functions (
 \emph on 
 open()
 \emph default 
@@ -182,7 +182,7 @@ atomically
  all.
  This is a really common word, specially if you have worked with multiprocessing
 , and should be quite familiar.
- We implement atomicity by combining fine-grained locks and journalling,
+ We implement atomicity by combining fine-grained locks and journaling,
  which can assure us both to be able to recover from crashes, and to have
  exclusive access to a portion of the file without having any other transaction
  overlap it.

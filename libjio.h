@@ -1,6 +1,6 @@
 
 /*
- * libjio - A library for Journalled I/O
+ * libjio - A library for Journaled I/O
  * Alberto Bertogli (albertogli@telpin.com.ar)
  */
 
