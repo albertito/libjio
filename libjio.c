@@ -455,6 +455,19 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->name = strdup(name);
 	fs->flags = jflags;
 	
+	/* Note on fs->lock usage: this lock is used only inside the wrappers,
+	 * and exclusively to protect the file pointer. This means that it
+	 * must only be held while performing operations that depend or alter
+	 * the file pointer (jread, jreadv, jwrite, jwritev), but the others
+	 * (jpread, jpwrite) are left unprotected because they can be
+	 * performed in paralell as long as they don't affect the same portion
+	 * of the file (this is protected by lockf). The lock doesn't slow
+	 * things down tho: any threaded app MUST implement this kind of
+	 * locking anyways if it wants to prevent data corruption, we only
+	 * make it easier for them by taking care of it here. If performance
+	 * is essential, the jpread/jpwrite functions should be used, just as
+	 * real life. */
+	
 	pthread_mutex_init( &(fs->lock), NULL);
 
 	if (!get_jdir(name, jdir))
@@ -494,10 +507,14 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	return fd;
 }
 
+
+/* read() family wrappers */
+
 /* read wrapper */
 ssize_t jread(struct jfs *fs, void *buf, size_t count)
 {
 	int rv;
+
 	pthread_mutex_lock(&(fs->lock));
 	lockf(fs->fd, F_LOCK, count);
 	rv = read(fs->fd, buf, count);
@@ -511,6 +528,7 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 {
 	int rv;
+
 	plockf(fs->fd, F_LOCK, offset, count);
 	rv = pread(fs->fd, buf, count, offset);
 	plockf(fs->fd, F_ULOCK, offset, count);
@@ -564,13 +582,13 @@ ssize_t jwrite(struct jfs *fs, void *buf, size_t count)
 	return rv;
 }
 
+/* write family wrappers */
+
 /* pwrite wrapper */
 ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset)
 {
 	int rv;
 	struct jtrans ts;
-	
-	pthread_mutex_lock(&(fs->lock));
 	
 	jtrans_init(fs, &ts);
 	ts.offset = offset;
@@ -580,7 +598,6 @@ ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset)
 	
 	rv = jtrans_commit(&ts);
 	
-	pthread_mutex_unlock(&(fs->lock));
 	return rv;
 }
 
