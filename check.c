@@ -144,7 +144,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	}
 	fs.jfd = rv;
 
-	fs.jmap = (int *) mmap(NULL, sizeof(unsigned int),
+	fs.jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
 	if (fs.jmap == MAP_FAILED) {
 		ret = J_ENOJOURNAL;

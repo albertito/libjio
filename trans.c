@@ -565,7 +565,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 
 	fs->jfd = jfd;
 
-	fs->jmap = (int *) mmap(NULL, sizeof(unsigned int),
+	fs->jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, jfd, 0);
 	if (fs->jmap == MAP_FAILED)
 		return -1;
