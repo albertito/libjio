@@ -694,13 +694,14 @@ int jclose(struct jfs *fs)
 /* check the journal and replay the incomplete transactions */
 int jfsck(char *name, struct jfsck_result *res)
 {
-	int fd, jfd, tfd, rv, i, maxtid;
+	int fd, tfd, rv, i, maxtid;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
 	char *buf = NULL;
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
 	DIR *dir;
+	struct dirent *dent;
 	off_t offset;
 	
 	fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
@@ -716,27 +717,31 @@ int jfsck(char *name, struct jfsck_result *res)
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		return J_ENOJOURNAL;
 	
+	/* open the lock file, which is only used to complete the jfs
+	 * structure */
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
-	jfd = open(jlockfile, O_RDWR | O_SYNC, 0600);
-	if (jfd < 0)
+	rv = open(jlockfile, O_RDWR | O_CREAT, 0600);
+	if (rv < 0)
 		return J_ENOJOURNAL;
-	
-	lstat(jlockfile, &sinfo);
-	if (sinfo.st_size == 0)
-		return J_ENOJOURNAL;
-
-	plockf(jfd, F_LOCK, 0, 0);
-	rv = spread(jfd, &maxtid, sizeof(maxtid), 0);
-	if (rv != sizeof(maxtid)) {
-		return J_ENOJOURNAL;
-	}
-	plockf(jfd, F_ULOCK, 0, 0);
-
-	fs.jfd = jfd;
+	fs.jfd = rv;
 	
 	dir = opendir(jdir);
 	if (dir == NULL)
 		return J_ENOJOURNAL;
+
+	/* loop for each file in the journal directory to find out the greater
+	 * transaction number */
+	maxtid = 0;
+	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+		/* see if the file is named like a transaction, ignore
+		 * otherwise; as transactions are named as numbers > 0, a
+		 * simple atoi() is enough testing */
+		rv = atoi(dent->d_name);
+		if (rv <= 0)
+			continue;
+		if (rv > maxtid)
+			maxtid = rv;
+	}
 
 	/* we loop all the way up to the max transaction id */
 	for (i = 1; i <= maxtid; i++) {
