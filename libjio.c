@@ -732,6 +732,7 @@ int jfsck(char *name, struct jfsck_result *res)
 		if (rv > maxtid)
 			maxtid = rv;
 	}
+	closedir(dir);
 
 	/* we loop all the way up to the max transaction id */
 	for (i = 1; i <= maxtid; i++) {
@@ -859,6 +860,9 @@ loop:
 
 		res->total++;
 	}
+
+	close(fs.fd);
+	close(fs.jfd);
 
 	return 0;
 
