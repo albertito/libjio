@@ -11,23 +11,36 @@
 
 void usage()
 {
-	printf("Use: jiofsck FILE\n\n");
-	printf("Where FILE is the name of the file"
-			"which you want to check the journal from.\n");
+	printf("Use: jiofsck [clean] FILE\n\n");
+	printf("Where \"FILE\" is the name of the file "
+			"which you want to check the journal from,\n"
+			"and the optional parameter \"clean\" makes "
+			"jiofsck to clean up the journal after\n"
+			"recovery.\n");
 }
 
 int main(int argc, char **argv)
 {
-	int rv;
+	int rv, do_cleanup;
 	char *file;
 	struct jfsck_result res;
 	
-	if (argc != 2) {
+	if (argc != 2 && argc != 3) {
 		usage();
 		return 1;
 	}
 
-	file = argv[1];
+	if (argc == 3) {
+		if (strcmp("clean", argv[1]) != 0 ) {
+			usage();
+			return 1;
+		}
+		file = argv[2];
+		do_cleanup = 1;
+	} else {
+		file = argv[1];
+		do_cleanup = 0;
+	}
 
 	memset(&res, 0, sizeof(res));
 	
@@ -45,6 +58,16 @@ int main(int argc, char **argv)
 
 	printf("done\n");
 
+	if (do_cleanup) {
+		printf("Cleaning journal: ");
+		if (!jfsck_cleanup(file)) {
+			printf("Error cleaning journal\n");
+			return 1;
+		}
+
+		printf("done\n");
+	}
+
 	printf("Journal checking results\n");
 	printf("------------------------\n\n");
 
@@ -58,8 +81,12 @@ int main(int argc, char **argv)
 	printf("Rollbacked:\t %d\n", res.rollbacked);
 	printf("\n");
 	
-	printf("You can now safely remove the journal directory completely\n"
-			"to start a new journal.\n");
+	if (!do_cleanup) {
+		printf("You can now safely remove the journal directory "
+				"completely\nto start a new journal.\n");
+	} else {
+		printf("The journal has been checked and cleaned up.\n");
+	}
 
 	return 0;
 }

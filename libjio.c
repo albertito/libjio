@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/uio.h>
+#include <errno.h>
 
 #include "libjio.h"
 
@@ -868,4 +869,44 @@ loop:
 
 }
 
+/* remove all the files in the journal directory (if any) */
+int jfsck_cleanup(const char *name)
+{
+	char jdir[PATH_MAX], tfile[PATH_MAX*3];
+	DIR *dir;
+	struct dirent *dent;
+
+	if (!get_jdir(name, jdir))
+		return 0;
+
+	dir = opendir(jdir);
+	if (dir == NULL && errno == ENOENT)
+		/* it doesn't exist, so it's clean */
+		return 1;
+	else if (dir == NULL)
+		return 0;
+
+	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+		/* we only care about transactions (named as numbers > 0) and
+		 * the lockfile (named "lock"); ignore everything else */
+		if (strcmp(dent->d_name, "lock") && atoi(dent->d_name) <= 0)
+			continue;
+
+		/* build the full path to the transaction file */
+		memset(tfile, 0, PATH_MAX * 3);
+		strcat(tfile, jdir);
+		strcat(tfile, "/");
+		strcat(tfile, dent->d_name);
+
+		/* the full filename is too large */
+		if (strlen(tfile) > PATH_MAX)
+			return 0;
+
+		/* and remove it */
+		unlink(tfile);
+	}
+	closedir(dir);
+
+	return 1;
+}
 

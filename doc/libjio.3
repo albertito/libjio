@@ -34,6 +34,8 @@ libjio - A library for Journaled I/O
 
 .BI "int jfsck(const char *" name ", struct jfsck_result *" res " );
 
+.BI "int jfsck_cleanup(const char *" name" );"
+
 .SH STRUCTURES
 .PP
 .RS
@@ -109,13 +111,22 @@ jfs. To close a file, use jclose(). They're exactly like the open() and
 close() functions but use a struct jfs instead of a file descriptor; take a
 look at their manpages if you have any doubts about how to use them.
 
-There is one function that differs from the rest, which is jfsck(). It is used
-to perform journal checking and recovery in case of a crash. It must be
-performed when nobody else is using the file (like in the case of a filesystem
-which can't be mounted), and it returns 0 if success or -1 in case of a
-failure. If it succeed, a structure jfsck_result that summarizes the outcome
-of the operation. There is also a program named jiofsck which is just a simple
-human frontend to this function.
+There are two functions that differs from the rest, which are jfsck() and
+jfsck_cleanup().
+
+The first one, jfsck(), is used to perform journal checking and recovery in
+case of a crash. It must be performed when nobody else is using the file (like
+in the case of a filesystem which can't be mounted), and it returns 0 if
+success or -1 in case of a failure. If it succeed, a structure jfsck_result
+that summarizes the outcome of the operation. There is also a program named
+jiofsck which is just a simple human frontend to this function.
+
+The second, jfsck_cleanup(), is intended to be used after jfsck() by programs
+wanting to remove all the stall transaction files and leave the journal
+directory ready to use. After calling jfsck(), the transaction files will no
+longer be needed, so by cleaning up the directory you make sure you're
+starting over with a clean journal. It returns 0 if there was an error, or 1
+if it succeeded.
 
 .SH HIGH LEVEL API
 
