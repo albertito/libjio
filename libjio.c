@@ -246,7 +246,7 @@ void jtrans_init(struct jfs *fs, struct jtrans *ts)
 	ts->plen = 0;
 }
 
-/* free a transaction structure */
+/* free the contents of a transaction structure */
 void jtrans_free(struct jtrans *ts)
 {
 	/* NOTE: we only really free the name and previous data, which are the
@@ -256,7 +256,10 @@ void jtrans_free(struct jtrans *ts)
 		free(ts->name);
 	if (ts->pdata)
 		free(ts->pdata);
-	free(ts);
+
+	/* don't free ts itself, it's very common to allocate it in the stack,
+	 * so let the caller take care of it; and, after all, he was the one
+	 * doing the alloc in the first place */
 }
 
 /* commit a transaction */
@@ -579,6 +582,9 @@ ssize_t jwrite(struct jfs *fs, void *buf, size_t count)
 	}
 	
 	pthread_mutex_unlock(&(fs->lock));
+
+	jtrans_free(&ts);
+
 	return rv;
 }
 
@@ -597,7 +603,9 @@ ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset)
 	ts.len = count;
 	
 	rv = jtrans_commit(&ts);
-	
+
+	jtrans_free(&ts);
+
 	return rv;
 }
 
@@ -645,6 +653,9 @@ ssize_t jwritev(struct jfs *fs, struct iovec *vector, int count)
 	}
 	
 	pthread_mutex_unlock(&(fs->lock));
+
+	jtrans_free(&ts);
+
 	return rv;
 
 }
@@ -756,8 +767,6 @@ int jfsck(char *name, struct jfsck_result *res)
 			goto loop;
 		}
 		
-		curts->name = tname;
-
 		/* load from disk, header first */
 		buf = (char *) malloc(J_DISKTFIXSIZE);
 		if (buf == NULL) {
@@ -814,7 +823,6 @@ int jfsck(char *name, struct jfsck_result *res)
 		offset = J_DISKTFIXSIZE;
 		rv = spread(tfd, curts->udata, curts->ulen, offset);
 		if (rv != curts->ulen) {
-			printf("ULEN\n");
 			res->load_error++;
 			goto loop;
 		}
@@ -823,7 +831,6 @@ int jfsck(char *name, struct jfsck_result *res)
 		offset = J_DISKTFIXSIZE + curts->ulen;
 		rv = spread(tfd, curts->pdata, curts->plen, offset);
 		if (rv != curts->plen) {
-			printf("PLEN\n");
 			res->load_error++;
 			goto loop;
 		}
@@ -845,21 +852,31 @@ int jfsck(char *name, struct jfsck_result *res)
 		res->reapplied++;
 
 		/* free the data we just allocated */
-		if (curts->len)
+		if (curts->len) {
 			free(curts->buf);
-		if (curts->plen)
+			curts->buf = NULL;
+		}
+		if (curts->plen) {
 			free(curts->pdata);
-		if (curts->ulen)
+			curts->pdata = NULL;
+		}
+		if (curts->ulen) {
 			free(curts->udata);
+			curts->udata = NULL;
+		}
+		if (curts->name) {
+			free(curts->name);
+			curts->name = NULL;
+		}
 
 loop:
 		if (tfd > 0)
 			close(tfd);
-		
-		res->total++;
 		if (buf)
 			free(buf);
 		free(curts);
+
+		res->total++;
 	}
 
 	return 0;
