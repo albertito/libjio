@@ -77,7 +77,7 @@ static ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 }
 
 /* like spread() but for pwrite() */
-static ssize_t spwrite(int fd, void *buf, size_t count, off_t offset)
+static ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 {
 	int rv, c;
 
@@ -549,7 +549,7 @@ ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count)
 }
 
 /* write wrapper */
-ssize_t jwrite(struct jfs *fs, void *buf, size_t count)
+ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 {
 	int rv;
 	off_t pos;
@@ -581,7 +581,7 @@ ssize_t jwrite(struct jfs *fs, void *buf, size_t count)
 /* write family wrappers */
 
 /* pwrite wrapper */
-ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset)
+ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 {
 	int rv;
 	struct jtrans ts;
@@ -600,7 +600,7 @@ ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset)
 }
 
 /* writev wrapper */
-ssize_t jwritev(struct jfs *fs, struct iovec *vector, int count)
+ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 {
 	int rv, i, bufp;
 	ssize_t sum;

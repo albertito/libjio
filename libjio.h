@@ -31,7 +31,7 @@ struct jtrans {
 	char *name;		/* name of the transaction file */
 	int id;			/* transaction id */
 	int flags;		/* misc flags */
-	void *buf;		/* buffer */
+	const void *buf;	/* buffer */
 	size_t len;		/* buffer lenght */
 	off_t offset;		/* file offset to operate on */
 	void *udata;		/* user-supplied data */
@@ -73,9 +73,9 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags);
 ssize_t jread(struct jfs *fs, void *buf, size_t count);
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset);
 ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count);
-ssize_t jwrite(struct jfs *fs, void *buf, size_t count);
-ssize_t jpwrite(struct jfs *fs, void *buf, size_t count, off_t offset);
-ssize_t jwritev(struct jfs *fs, struct iovec *vector, int count);
+ssize_t jwrite(struct jfs *fs, const void *buf, size_t count);
+ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset);
+ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count);
 int jtruncate(struct jfs *fs, off_t lenght);
 int jclose(struct jfs *fs);
 

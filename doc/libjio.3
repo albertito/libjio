@@ -14,11 +14,11 @@ libjio - A library for Journaled I/O
 
 .BI "ssize_t jreadv(struct jfs *" fs ", struct iovec *" vector ", int " count " );
 
-.BI "ssize_t jwrite(struct jfs *" fs ", void *" buf ", size_t " count " );
+.BI "ssize_t jwrite(struct jfs *" fs ", const void *" buf ", size_t " count " );
 
-.BI "ssize_t jpwrite(struct jfs *" fs ", void *" buf ", size_t " count ", off_t " offset " );
+.BI "ssize_t jpwrite(struct jfs *" fs ", const void *" buf ", size_t " count ", off_t " offset " );
 
-.BI "ssize_t jwritev(struct jfs *" fs ", struct iovec *" vector ", int " count " );
+.BI "ssize_t jwritev(struct jfs *" fs ", const struct iovec *" vector ", int " count " );
 
 .BI "int jtruncate(struct jfs *" fs ", off_t " lenght " );
 
