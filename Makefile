@@ -46,7 +46,7 @@ python_install: python
 
 preload: all
 	install -d bindings/preload/build/
-	$(CC) $(INCLUDES) -Wall -O6 -shared -fPIC \
+	$(CC) $(INCLUDES) -Wall -O3 -shared -fPIC \
 		-D_XOPEN_SOURCE=500 \
 		-ldl -lpthread -L. -ljio -I. \
 		bindings/preload/libjio_preload.c \
