@@ -22,6 +22,8 @@ libjio - A library for Journaled I/O
 
 .BI "int jtruncate(struct jfs *" fs ", off_t " lenght " );
 
+.BI "int jsync(struct jfs *" fs " );
+
 .BI "int jclose(struct jfs *" fs " );
 
 .BI "void jtrans_init(struct jfs *" fs " , struct jtrans *" ts " );
@@ -185,4 +187,5 @@ albertogli@telpin.com.ar.
 .BR pread (2),
 .BR pwrite (2),
 .BR ftruncate (2),
+.BR fsync (2),
 .BR close (2)

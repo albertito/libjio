@@ -56,6 +56,8 @@ This document explains the design of the library, how it works internally
  ways, it provides (or at least tries to =) an insight view on how the library
  performs its job, which can be very valuable knowledge when working with
  it.
+ It assumes that there is some basic knowledge about how the library is
+ used, which can be found in the manpage or in the programmer's guide.
 \layout Standard
 
 To the user, libjio provides two groups of functions, one UNIX-alike that
@@ -83,7 +85,7 @@ write()
 The following sections describe different concepts and procedures that the
  library bases its work on.
  It's not intended to be a replace to reading the source code: please do
- so if you have any doubts, it's not big at all (less than 800 lines, including
+ so if you have any doubts, it's not big at all (less than 1500 lines, including
  comments) and I hope it's readable enough.
  If you think that's not the case, please let me know and I'll try to give
  you a hand.
@@ -131,18 +133,12 @@ The transaction file is composed of two main parts: the header and the payload.
 \layout Standard
 
 The header holds basic information about the transaction itself, including
- the ID, some flags, the offset to commit to and the lenght of the data.
- The payload holds the data, in three parts: user-defined data, previous
- data, and real data.
-\layout Standard
-
-User-defined data is not used by the library itself, but it's a space where
- the user can save private data that can be useful later.
- Previous data is saved by the library prior applying the commit, so transaction
-s can be rollbacked.
- Real data is just the data to save to the disk, and it is saved because
- if a crash occurs when while we are applying the transaction we can recover
- gracefuly.
+ the ID, some flags, and the amount of operations it includes.
+ Then the payload has all the operations one after the other, divided in
+ two parts: the first one includes static information about the operation
+ (the lenght of the data, the offset of the file where it should be applied,
+ etc.) and the data itself, which is saved by the library prior applying
+ the commit, so transactions can be rollbacked.
 \layout Section
 
 The commit procedure
@@ -165,7 +161,7 @@ safely
 \emph default 
 , means that after a commit has been done we can assume the data will not
  get lost and can be retrieved, unless of course some major event happens
- (like a hardware failure).
+ (like a physical hard disk crash).
  For us, this means that the data was effectively written to the disk and
  if a crash occurs after the commit operation has returned, the operation
  will be complete and data will be available from the file.
@@ -175,7 +171,7 @@ The latter,
 \emph on 
 atomically
 \emph default 
-, warantees that the operation is either completely done, or not done at
+, guarantees that the operation is either completely done, or not done at
  all.
  This is a really common word, specially if you have worked with multiprocessing
 , and should be quite familiar.
@@ -193,7 +189,7 @@ jtrans_commit()
 :
 \layout Itemize
 
-Lock the section where the commit takes place
+Lock the file offsets where the commit takes place
 \layout Itemize
 
 Open the transaction file
@@ -202,10 +198,7 @@ Open the transaction file
 Write the header
 \layout Itemize
 
-Write the user data (if any)
-\layout Itemize
-
-Read the previous data from the file
+Read all the previous data from the file
 \layout Itemize
 
 Write the previous data in the transaction
@@ -220,7 +213,7 @@ Mark the transaction as commited by setting a flag in the header
 Unlink the transaction file
 \layout Itemize
 
-Unlock the section where the commit takes place
+Unlock the offsets where the commit takes place
 \layout Standard
 
 This may look as a lot of steps, but they're not as much as it looks like
@@ -245,8 +238,8 @@ undo
  and straightforward.
 \layout Standard
 
-In the previous section we said that each transaction held, besides the
- data to commit to the disk, the data that was on it before commiting.
+In the previous section we said that each transaction held the data that
+ was on it before commiting.
  That data is saved precisely to be able to rollback.
  So, to rollback a transaction all that has to be done is recover that 
 \begin_inset Quotes eld
@@ -332,15 +325,15 @@ In any case, after making the recovery you can simply remove the journal
  transaction atomicity was preserved.
 \layout Section
 
-High-level functions
+UNIX API
 \layout Standard
 
 We call 
 \emph on 
-high-level functions
+UNIX API
 \emph default 
- to the ones provided by the library that emulate the good old unix file
- manipulation calls.
+ to the functions provided by the library that emulate the good old UNIX
+ file manipulation calls.
  Most of them are just wrappers around commits, and implement proper locking
  when operating in order to allow simultaneous operations (either across
  threads or processes).
