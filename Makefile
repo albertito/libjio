@@ -11,7 +11,7 @@ default: all
 all: libjio.so libjio.a jiofsck
 
 libjio.so: $(OBJS)
-	$(CC) -shared $(OBJS) -o libjio.so
+	$(CC) -shared -fPIC $(OBJS) -o libjio.so
 
 libjio.a: $(OBJS)
 	$(AR) cr libjio.a $(OBJS)
