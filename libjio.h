@@ -29,6 +29,7 @@ struct jfs {
 	unsigned int *jmap;	/* journal's lock file mmap area */
 	uint32_t flags;		/* journal flags */
 	struct jlinger *ltrans;	/* lingered transactions */
+	pthread_mutex_t ltlock;	/* lingered transactions' lock */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
 };
 

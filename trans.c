@@ -373,10 +373,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		linger->id = id;
 		linger->name = strdup(name);
 
-		pthread_mutex_lock(&(ts->fs->lock));
+		pthread_mutex_lock(&(ts->fs->ltlock));
 		linger->next = ts->fs->ltrans;
 		ts->fs->ltrans = linger;
-		pthread_mutex_unlock(&(ts->fs->lock));
+		pthread_mutex_unlock(&(ts->fs->ltlock));
 	} else {
 		/* the transaction has been applied, so we cleanup and remove
 		 * it from the disk */
@@ -535,20 +535,22 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->ltrans = NULL;
 
 	/* Note on fs->lock usage: this lock is used only to protect the file
-	 * pointer and the linger list. This means that it must only be held
-	 * while performing operations that depend or alter the file pointer
-	 * or the linger list (jread, jreadv, jwrite, jwritev), but the others
-	 * (jpread, jpwrite) are left unprotected because they can be
-	 * performed in paralell as long as they don't affect the same portion
-	 * of the file (this is protected by lockf). The lock doesn't slow
-	 * things down tho: any threaded app MUST implement this kind of
-	 * locking anyways if it wants to prevent data corruption, we only
-	 * make it easier for them by taking care of it here. If performance
-	 * is essential, the jpread/jpwrite functions should be used, just as
-	 * real life. */
+	 * pointer. This means that it must only be held while performing
+	 * operations that depend or alter the file pointer (jread, jreadv,
+	 * jwrite, jwritev), but the others (jpread, jpwrite) are left
+	 * unprotected because they can be performed in paralell as long as
+	 * they don't affect the same portion of the file (this is protected
+	 * by lockf). The lock doesn't slow things down tho: any threaded app
+	 * MUST implement this kind of locking anyways if it wants to prevent
+	 * data corruption, we only make it easier for them by taking care of
+	 * it here. If performance is essential, the jpread/jpwrite functions
+	 * should be used, just as real life.
+	 * About fs->ltlock, it's used to protect the lingering transactions
+	 * list, fs->ltrans. */
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
 	pthread_mutex_init( &(fs->lock), &attr);
+	pthread_mutex_init( &(fs->ltlock), &attr);
 	pthread_mutexattr_destroy(&attr);
 
 	fs->fd = open(name, flags, mode);
@@ -609,7 +611,7 @@ error_exit:
 int jsync(struct jfs *fs)
 {
 	int rv;
-	struct jlinger *linger, *ltmp;
+	struct jlinger *ltmp;
 
 	if (fs->fd < 0)
 		return -1;
@@ -618,20 +620,19 @@ int jsync(struct jfs *fs)
 	if (rv != 0)
 		return rv;
 
-	pthread_mutex_lock(&(fs->lock));
-	linger = fs->ltrans;
-	while (linger != NULL) {
-		free_tid(fs, linger->id);
-		unlink(linger->name);
-		free(linger->name);
+	pthread_mutex_lock(&(fs->ltlock));
+	while (fs->ltrans != NULL) {
+		free_tid(fs, fs->ltrans->id);
+		unlink(fs->ltrans->name);
+		free(fs->ltrans->name);
 
-		ltmp = linger->next;
-		free(linger);
+		ltmp = fs->ltrans->next;
+		free(fs->ltrans);
 
-		linger = ltmp;
+		fs->ltrans = ltmp;
 	}
 
-	pthread_mutex_unlock(&(fs->lock));
+	pthread_mutex_unlock(&(fs->ltlock));
 	return 0;
 }
 
