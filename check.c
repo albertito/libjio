@@ -277,6 +277,8 @@ int jfsck_cleanup(const char *name)
 	}
 	closedir(dir);
 
+	rmdir(jdir);
+
 	return 1;
 }
 
