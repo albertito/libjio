@@ -501,7 +501,7 @@ exit:
 /* open a file */
 int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 {
-	int fd, jfd, rv;
+	int jfd, rv;
 	unsigned int t;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX];
 	struct stat sinfo;
@@ -518,11 +518,6 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	flags = flags & ~O_RDONLY;
 	flags = flags | O_RDWR;
 
-	fd = open(name, flags, mode);
-	if (fd < 0)
-		return -1;
-
-	fs->fd = fd;
 	fs->name = strdup(name);
 	fs->flags = jflags;
 	fs->ltrans = NULL;
@@ -541,23 +536,27 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	 * real life. */
 	pthread_mutex_init( &(fs->lock), NULL);
 
+	fs->fd = open(name, flags, mode);
+	if (fs->fd < 0)
+		goto error_exit;
+
 	if (!get_jdir(name, jdir))
-		return -1;
+		goto error_exit;
 	rv = mkdir(jdir, 0750);
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
-		return -1;
+		goto error_exit;
 
 	/* open the directory, we will use it to flush transaction files'
 	 * metadata in jtrans_commit() */
 	fs->jdirfd = open(jdir, O_RDONLY);
 	if (fs->jdirfd < 0)
-		return -1;
+		goto error_exit;
 
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
 	jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (jfd < 0)
-		return -1;
+		goto error_exit;
 
 	/* initialize the lock file by writing the first tid to it, but only
 	 * if its empty, otherwise there is a race if two processes call
@@ -569,7 +568,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 		rv = spwrite(jfd, &t, sizeof(t), 0);
 		if (rv != sizeof(t)) {
 			plockf(jfd, F_UNLOCK, 0, 0);
-			return -1;
+			goto error_exit;
 		}
 	}
 	plockf(jfd, F_UNLOCK, 0, 0);
@@ -579,9 +578,16 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, jfd, 0);
 	if (fs->jmap == MAP_FAILED)
-		return -1;
+		goto error_exit;
 
-	return fd;
+	return fs->fd;
+
+error_exit:
+	/* if there was an error, clean up as much as possible so we don't
+	 * leak anything, and return failure; jclose just does this cleaning
+	 * for us */
+	jclose(fs);
+	return -1;
 }
 
 /* sync a file (makes sense only if using lingering transactions) */
