@@ -195,7 +195,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	pthread_mutex_lock(&(ts->lock));
 
 	/* clear the flags */
-	ts->flags = ts->flags & ~J_COMMITED;
+	ts->flags = ts->flags & ~J_COMMITTED;
 	ts->flags = ts->flags & ~J_ROLLBACKED;
 
 	name = (char *) malloc(PATH_MAX);
@@ -380,7 +380,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	}
 
 	/* mark the transaction as commited, _after_ it was removed */
-	ts->flags = ts->flags | J_COMMITED;
+	ts->flags = ts->flags | J_COMMITTED;
 
 
 rollback_exit:
@@ -395,7 +395,7 @@ rollback_exit:
 	 * Transactions that were successfuly recovered by rollbacking them
 	 * will have J_ROLLBACKED in their flags, so the caller can verify if
 	 * the failure was recovered or not. */
-	if (!(ts->flags & J_COMMITED) && !(ts->flags & J_ROLLBACKING)) {
+	if (!(ts->flags & J_COMMITTED) && !(ts->flags & J_ROLLBACKING)) {
 		rv = ts->flags;
 		ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
 		if (jtrans_rollback(ts) >= 0) {
@@ -406,7 +406,7 @@ rollback_exit:
 	}
 
 unlink_exit:
-	if (!(ts->flags & J_COMMITED)) {
+	if (!(ts->flags & J_COMMITTED)) {
 		unlink(name);
 		free_tid(ts->fs, ts->id);
 	}
@@ -421,7 +421,7 @@ exit:
 	pthread_mutex_unlock(&(ts->lock));
 
 	/* return the length only if it was properly commited */
-	if (ts->flags & J_COMMITED)
+	if (ts->flags & J_COMMITTED)
 		return written;
 	else
 		return -1;

@@ -136,7 +136,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 #define J_NOLOCK	1	/* don't lock the file before operating on it */
 #define J_NOROLLBACK	2	/* no need to read rollback information */
 #define J_LINGER	4	/* use lingering transactions */
-#define J_COMMITED	8	/* mark a transaction as commited */
+#define J_COMMITTED	8	/* mark a transaction as committed */
 #define J_ROLLBACKED	16	/* mark a transaction as rollbacked */
 #define J_ROLLBACKING	32	/* mark a transaction as rollbacking */
 
