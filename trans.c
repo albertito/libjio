@@ -213,7 +213,7 @@ int jtrans_commit(struct jtrans *ts)
 	/* save the header */
 	buf_init = malloc(J_DISKHEADSIZE);
 	if (buf_init == NULL)
-		goto exit;
+		goto unlink_exit;
 
 	bufp = buf_init;
 
@@ -229,7 +229,7 @@ int jtrans_commit(struct jtrans *ts)
 	rv = spwrite(fd, buf_init, J_DISKHEADSIZE, 0);
 	if (rv != J_DISKHEADSIZE) {
 		free(buf_init);
-		goto exit;
+		goto unlink_exit;
 	}
 
 	free(buf_init);
@@ -245,7 +245,7 @@ int jtrans_commit(struct jtrans *ts)
 			rv = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
 			if (rv == -1)
 				/* note it can fail with EDEADLK */
-				goto exit;
+				goto unlink_exit;
 			op->locked = 1;
 		}
 	}
@@ -259,14 +259,14 @@ int jtrans_commit(struct jtrans *ts)
 		if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
 			op->pdata = malloc(op->len);
 			if (op->pdata == NULL)
-				goto exit;
+				goto unlink_exit;
 
 			op->plen = op->len;
 
 			rv = spread(ts->fs->fd, op->pdata, op->len,
 					op->offset);
 			if (rv < 0)
-				goto exit;
+				goto unlink_exit;
 			if (rv < op->len) {
 				/* we are extending the file! */
 				/* ftruncate(ts->fs->fd, op->offset + op->len); */
@@ -277,7 +277,7 @@ int jtrans_commit(struct jtrans *ts)
 		/* save the operation's header */
 		buf_init = malloc(J_DISKOPHEADSIZE);
 		if (buf_init == NULL)
-			goto exit;
+			goto unlink_exit;
 
 		bufp = buf_init;
 
@@ -293,7 +293,7 @@ int jtrans_commit(struct jtrans *ts)
 		rv = spwrite(fd, buf_init, J_DISKOPHEADSIZE, curpos);
 		if (rv != J_DISKOPHEADSIZE) {
 			free(buf_init);
-			goto exit;
+			goto unlink_exit;
 		}
 
 		free(buf_init);
@@ -303,18 +303,18 @@ int jtrans_commit(struct jtrans *ts)
 		/* and save it to the disk */
 		rv = spwrite(fd, op->buf, op->len, curpos);
 		if (rv != op->len)
-			goto exit;
+			goto unlink_exit;
 
 		curpos += op->len;
 	}
 
 	/* compute and save the checksum */
 	if (!checksum(fd, curpos, &csum))
-		goto exit;
+		goto unlink_exit;
 
 	rv = spwrite(fd, &csum, sizeof(uint32_t), curpos);
 	if (rv != sizeof(uint32_t))
-		goto exit;
+		goto unlink_exit;
 	curpos += sizeof(uint32_t);
 
 	/* this is a simple but efficient optimization: instead of doing
@@ -323,7 +323,7 @@ int jtrans_commit(struct jtrans *ts)
 	 * transaction file is only useful if it's complete (ie. after this
 	 * point) so we only flush here (both data and metadata) */
 	if (fsync(fd) != 0)
-		goto exit;
+		goto unlink_exit;
 	if (fsync(ts->fs->jdirfd) != 0) {
 		/* it seems to be legal that fsync() on directories is not
 		 * implemented, so if this fails with EINVAL or EBADF, just
@@ -333,7 +333,7 @@ int jtrans_commit(struct jtrans *ts)
 		if (errno == EINVAL || errno == EBADF) {
 			sync();
 		} else {
-			goto exit;
+			goto unlink_exit;
 		}
 	}
 
@@ -346,7 +346,7 @@ int jtrans_commit(struct jtrans *ts)
 		op->locked = 0;
 
 		if (rv != op->len)
-			goto exit;
+			goto rollback_exit;
 
 		written += rv;
 	}
@@ -354,7 +354,7 @@ int jtrans_commit(struct jtrans *ts)
 	if (ts->flags & J_LINGER) {
 		linger = malloc(sizeof(struct jlinger));
 		if (linger == NULL)
-			goto exit;
+			goto rollback_exit;
 
 		linger->id = id;
 		linger->name = strdup(name);
@@ -372,7 +372,7 @@ int jtrans_commit(struct jtrans *ts)
 	ts->flags = ts->flags | J_COMMITED;
 
 
-exit:
+rollback_exit:
 	/* If the transaction failed we try to recover by rollbacking it
 	 * NOTE: on extreme conditions (ENOSPC/disk failure) this can fail
 	 * too! There's nothing much we can do in that case, the caller should
@@ -384,22 +384,20 @@ exit:
 	 * Transactions that were successfuly recovered by rollbacking them
 	 * will have J_ROLLBACKED in their flags, so the caller can verify if
 	 * the failure was recovered or not. */
+	if (!(ts->flags & J_COMMITED) && !(ts->flags & J_ROLLBACKING)) {
+		rv = ts->flags;
+		ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
+		if (jtrans_rollback(ts) >= 0) {
+			ts->flags = rv | J_ROLLBACKED;
+		} else {
+			ts->flags = rv;
+		}
+	}
+
+unlink_exit:
 	if (!(ts->flags & J_COMMITED)) {
 		unlink(name);
 		free_tid(ts->fs, ts->id);
-
-		/* We want to avoid an endless loop of
-		 * commit (failed) -> rollback -> commit (failed)
-		 * so we use J_ROLLBACKING. */
-		if (!(ts->flags & J_ROLLBACKING)) {
-			rv = ts->flags;
-			ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
-			if (jtrans_rollback(ts) >= 0) {
-				ts->flags = rv | J_ROLLBACKED;
-			} else {
-				ts->flags = rv;
-			}
-		}
 	}
 
 	close(fd);
@@ -408,6 +406,7 @@ exit:
 			plockf(ts->fs->fd, F_UNLOCK, op->offset, op->len);
 	}
 
+exit:
 	pthread_mutex_unlock(&(ts->lock));
 
 	/* return the length only if it was properly commited */
