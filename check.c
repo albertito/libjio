@@ -174,7 +174,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 		/* try to lock the transaction file, if it's locked then it is
 		 * currently being used so we skip it */
-		rv = plockf(tfd, F_TLOCK, 0, 0);
+		rv = plockf(tfd, F_TLOCKW, 0, 0);
 		if (rv == -1) {
 			res->in_progress++;
 			goto loop;

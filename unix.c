@@ -27,9 +27,9 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 
 	pos = lseek(fs->fd, 0, SEEK_CUR);
 
-	plockf(fs->fd, F_LOCK, pos, count);
+	plockf(fs->fd, F_LOCKR, pos, count);
 	rv = spread(fs->fd, buf, count, pos);
-	plockf(fs->fd, F_ULOCK, pos, count);
+	plockf(fs->fd, F_UNLOCK, pos, count);
 
 	if (rv == count) {
 		/* if success, advance the file pointer */
@@ -46,9 +46,9 @@ ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 {
 	int rv;
 
-	plockf(fs->fd, F_LOCK, offset, count);
+	plockf(fs->fd, F_LOCKR, offset, count);
 	rv = spread(fs->fd, buf, count, offset);
-	plockf(fs->fd, F_ULOCK, offset, count);
+	plockf(fs->fd, F_UNLOCK, offset, count);
 
 	return rv;
 }
@@ -66,9 +66,9 @@ ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count)
 
 	pthread_mutex_lock(&(fs->lock));
 	pos = lseek(fs->fd, 0, SEEK_CUR);
-	plockf(fs->fd, F_LOCK, pos, count);
+	plockf(fs->fd, F_LOCKR, pos, count);
 	rv = readv(fs->fd, vector, count);
-	plockf(fs->fd, F_ULOCK, pos, count);
+	plockf(fs->fd, F_UNLOCK, pos, count);
 	pthread_mutex_unlock(&(fs->lock));
 
 	return rv;
@@ -162,9 +162,9 @@ int jtruncate(struct jfs *fs, off_t length)
 	int rv;
 
 	/* lock from length to the end of file */
-	plockf(fs->fd, F_LOCK, length, 0);
+	plockf(fs->fd, F_LOCKW, length, 0);
 	rv = ftruncate(fs->fd, length);
-	plockf(fs->fd, F_ULOCK, length, 0);
+	plockf(fs->fd, F_UNLOCK, length, 0);
 
 	return rv;
 }

@@ -33,7 +33,7 @@ static unsigned int get_tid(struct jfs *fs)
 	int r, rv;
 
 	/* lock the whole file */
-	plockf(fs->jfd, F_LOCK, 0, 0);
+	plockf(fs->jfd, F_LOCKW, 0, 0);
 
 	/* read the current max. curid */
 	r = spread(fs->jfd, &curid, sizeof(curid), 0);
@@ -55,7 +55,7 @@ static unsigned int get_tid(struct jfs *fs)
 	}
 
 exit:
-	plockf(fs->jfd, F_ULOCK, 0, 0);
+	plockf(fs->jfd, F_UNLOCK, 0, 0);
 	return rv;
 }
 
@@ -67,7 +67,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	char name[PATH_MAX];
 
 	/* lock the whole file */
-	plockf(fs->jfd, F_LOCK, 0, 0);
+	plockf(fs->jfd, F_LOCKW, 0, 0);
 
 	/* read the current max. curid */
 	r = spread(fs->jfd, &curid, sizeof(curid), 0);
@@ -99,7 +99,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	}
 
 exit:
-	plockf(fs->jfd, F_ULOCK, 0, 0);
+	plockf(fs->jfd, F_UNLOCK, 0, 0);
 	return;
 }
 
@@ -218,7 +218,7 @@ int jtrans_commit(struct jtrans *ts)
 		goto exit;
 
 	/* and lock it */
-	plockf(fd, F_LOCK, 0, 0);
+	plockf(fd, F_LOCKW, 0, 0);
 
 	ts->id = id;
 	ts->name = name;
@@ -255,7 +255,7 @@ int jtrans_commit(struct jtrans *ts)
 	 * break atomicity warantees if we need to rollback */
 	if (!(ts->flags & J_NOLOCK)) {
 		for (op = ts->op; op != NULL; op = op->next) {
-			rv = plockf(ts->fs->fd, F_LOCK, op->offset, op->len);
+			rv = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
 			if (rv == -1)
 				/* note it can fail with EDEADLK */
 				goto exit;
@@ -332,7 +332,7 @@ int jtrans_commit(struct jtrans *ts)
 	for (op = ts->op; op != NULL; op = op->next) {
 		rv = spwrite(ts->fs->fd, op->buf, op->len, op->offset);
 
-		plockf(ts->fs->fd, F_ULOCK, op->offset, op->len);
+		plockf(ts->fs->fd, F_UNLOCK, op->offset, op->len);
 		op->locked = 0;
 
 		if (rv != op->len)
@@ -354,7 +354,7 @@ exit:
 	close(fd);
 	for (op = ts->op; op != NULL; op = op->next) {
 		if (op->locked)
-			plockf(ts->fs->fd, F_ULOCK, op->offset, op->len);
+			plockf(ts->fs->fd, F_UNLOCK, op->offset, op->len);
 	}
 
 	pthread_mutex_unlock(&(ts->lock));
@@ -481,17 +481,17 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	/* initialize the lock file by writing the first tid to it, but only
 	 * if its empty, otherwise there is a race if two processes call
 	 * jopen() simultaneously and both initialize the file */
-	plockf(jfd, F_LOCK, 0, 0);
+	plockf(jfd, F_LOCKW, 0, 0);
 	lstat(jlockfile, &sinfo);
 	if (sinfo.st_size == 0) {
 		t = 1;
 		rv = write(jfd, &t, sizeof(t));
 		if (rv != sizeof(t)) {
-			plockf(jfd, F_ULOCK, 0, 0);
+			plockf(jfd, F_UNLOCK, 0, 0);
 			return -1;
 		}
 	}
-	plockf(jfd, F_ULOCK, 0, 0);
+	plockf(jfd, F_UNLOCK, 0, 0);
 
 	fs->jfd = jfd;
 

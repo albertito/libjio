@@ -24,17 +24,23 @@ off_t plockf(int fd, int cmd, off_t offset, off_t len)
 	struct flock fl;
 	int op;
 
-	if (cmd == F_LOCK) {
+	op = -1;
+	fl.l_type = -1;
+
+	if (cmd & _F_READ) {
+		fl.l_type = F_RDLCK;
+	} else if (cmd & _F_WRITE) {
 		fl.l_type = F_WRLCK;
+	}
+
+	if (cmd & _F_LOCK) {
 		op = F_SETLKW;
-	} else if (cmd == F_ULOCK) {
-		fl.l_type = F_UNLCK;
-		op = F_SETLKW;
-	} else if (cmd == F_TLOCK) {
-		fl.l_type = F_WRLCK;
+	} else if (cmd & _F_TLOCK) {
 		op = F_SETLK;
-	} else
-		return 0;
+	} else if (cmd & F_UNLOCK) {
+		fl.l_type = F_UNLCK;
+		op = F_SETLKW; /* not very relevant */
+	}
 
 	fl.l_whence = SEEK_SET;
 	fl.l_start = offset;
