@@ -611,6 +611,8 @@ int jclose(struct jfs *fs)
 		return -1;
 	if (close(fs->jfd))
 		return -1;
+	if (close(fs->jdirfd))
+		return -1;
 	if (fs->name)
 		/* allocated by strdup() in jopen() */
 		free(fs->name);

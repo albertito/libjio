@@ -93,7 +93,7 @@ error:
 /* check the journal and rollback incomplete transactions */
 int jfsck(const char *name, struct jfsck_result *res)
 {
-	int fd, tfd, rv, i;
+	int fd, tfd, rv, i, ret;
 	unsigned int maxtid;
 	uint32_t csum1, csum2;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
@@ -105,40 +105,57 @@ int jfsck(const char *name, struct jfsck_result *res)
 	unsigned char *map;
 	off_t filelen;
 
+	fd = tfd = -1;
+	dir = NULL;
+	ret = 0;
 
 	fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
-	if (fd < 0)
-		return J_ENOENT;
+	if (fd < 0) {
+		ret = J_ENOENT;
+		goto exit;
+	}
 
 	fs.fd = fd;
 	fs.name = (char *) name;
 
-	if (!get_jdir(name, jdir))
-		return J_ENOMEM;
+	if (!get_jdir(name, jdir)) {
+		ret = J_ENOMEM;
+		goto exit;
+	}
 	rv = lstat(jdir, &sinfo);
-	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
-		return J_ENOJOURNAL;
+	if (rv < 0 || !S_ISDIR(sinfo.st_mode)) {
+		ret = J_ENOJOURNAL;
+		goto exit;
+	}
 
 	fs.jdirfd = open(jdir, O_RDONLY);
-	if (fs.jdirfd < 0)
-		return J_ENOJOURNAL;
+	if (fs.jdirfd < 0) {
+		ret = J_ENOJOURNAL;
+		goto exit;
+	}
 
 	/* open the lock file, which is only used to complete the jfs
 	 * structure */
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
 	rv = open(jlockfile, O_RDWR | O_CREAT, 0600);
-	if (rv < 0)
-		return J_ENOJOURNAL;
+	if (rv < 0) {
+		ret = J_ENOJOURNAL;
+		goto exit;
+	}
 	fs.jfd = rv;
 
 	fs.jmap = (int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
-	if (fs.jmap == MAP_FAILED)
-		return J_ENOJOURNAL;
+	if (fs.jmap == MAP_FAILED) {
+		ret = J_ENOJOURNAL;
+		goto exit;
+	}
 
 	dir = opendir(jdir);
-	if (dir == NULL)
-		return J_ENOJOURNAL;
+	if (dir == NULL) {
+		ret = J_ENOJOURNAL;
+		goto exit;
+	}
 
 	/* loop for each file in the journal directory to find out the greater
 	 * transaction number */
@@ -153,20 +170,22 @@ int jfsck(const char *name, struct jfsck_result *res)
 		if (rv > maxtid)
 			maxtid = rv;
 	}
-	closedir(dir);
 
 	/* rewrite the lockfile, writing the new maxtid on it, so that when we
 	 * rollback a transaction it doesn't step over existing ones */
 	rv = spwrite(fs.jfd, &maxtid, sizeof(maxtid), 0);
 	if (rv != sizeof(maxtid)) {
-		return J_ENOMEM;
+		ret = J_ENOMEM;
+		goto exit;
 	}
 
 	/* we loop all the way up to the max transaction id */
 	for (i = 1; i <= maxtid; i++) {
 		curts = malloc(sizeof(struct jtrans));
-		if (curts == NULL)
-			return J_ENOMEM;
+		if (curts == NULL) {
+			ret = J_ENOMEM;
+			goto exit;
+		}
 
 		jtrans_init(&fs, curts);
 		curts->id = i;
@@ -175,8 +194,10 @@ int jfsck(const char *name, struct jfsck_result *res)
 		 * really looping in order (recovering transaction in a
 		 * different order as they were applied means instant
 		 * corruption) */
-		if (!get_jtfile(name, i, tname))
-			return J_ENOMEM;
+		if (!get_jtfile(name, i, tname)) {
+			ret = J_ENOMEM;
+			goto exit;
+		}
 		tfd = open(tname, O_RDWR | O_SYNC | O_LARGEFILE, 0600);
 		if (tfd < 0) {
 			res->invalid++;
@@ -232,10 +253,17 @@ loop:
 		res->total++;
 	}
 
-	close(fs.fd);
-	close(fs.jfd);
+exit:
+	if (fs.fd >= 0)
+		close(fs.fd);
+	if (fs.jfd >= 0)
+		close(fs.jfd);
+	if (fs.jdirfd >= 0)
+		close(fs.jdirfd);
+	if (dir != NULL)
+		closedir(dir);
 
-	return 0;
+	return ret;
 
 }
 
@@ -269,8 +297,10 @@ int jfsck_cleanup(const char *name)
 		strcat(tfile, dent->d_name);
 
 		/* the full filename is too large */
-		if (strlen(tfile) > PATH_MAX)
+		if (strlen(tfile) > PATH_MAX) {
+			closedir(dir);
 			return 0;
+		}
 
 		/* and remove it */
 		unlink(tfile);
