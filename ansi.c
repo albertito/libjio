@@ -175,7 +175,7 @@ int jferror(struct jfs *stream)
 /* fseek wrapper */
 int jfseek(struct jfs *stream, long offset, int whence)
 {
-	long pos;
+	off_t pos;
 
 	pthread_mutex_lock(&(stream->lock));
 	pos = lseek(stream->fd, offset, whence);
@@ -189,9 +189,10 @@ int jfseek(struct jfs *stream, long offset, int whence)
 }
 
 /* ftell wrapper */
-int jftell(struct jfs *stream)
+long jftell(struct jfs *stream)
 {
-	return lseek(stream->fd, 0, SEEK_CUR);
+	/* forced conversion to long to meet the prototype */
+	return (long) lseek(stream->fd, 0, SEEK_CUR);
 }
 
 /* rewind wrapper */

@@ -106,7 +106,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 	DIR *dir;
 	struct dirent *dent;
 	unsigned char *map;
-	off_t filelen;
+	off_t filelen, lr;
 
 	tfd = -1;
 	filelen = 0;
@@ -239,13 +239,15 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 
 		/* try to lock the transaction file, if it's locked then it is
 		 * currently being used so we skip it */
-		rv = plockf(tfd, F_TLOCKW, 0, 0);
-		if (rv == -1) {
+		lr = plockf(tfd, F_TLOCKW, 0, 0);
+		if (lr == -1) {
 			res->in_progress++;
 			goto loop;
 		}
 
 		filelen = lseek(tfd, 0, SEEK_END);
+		/* no overflow problems because we know the transaction size
+		 * is limited to SSIZE_MAX */
 		map = mmap(0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
 		if (map == MAP_FAILED) {
 			res->broken++;

@@ -141,7 +141,7 @@ int jfeof(struct jfs *stream);
 void jclearerr(struct jfs *stream);
 int jferror(struct jfs *stream);
 int jfseek(struct jfs *stream, long offset, int whence);
-int jftell(struct jfs *stream);
+long jftell(struct jfs *stream);
 void jrewind(struct jfs *stream);
 FILE *jfsopen(struct jfs *stream, const char *mode);
 

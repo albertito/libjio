@@ -278,9 +278,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	 * same spots and we could end up with interleaved writes, that could
 	 * break atomicity warantees if we need to rollback */
 	if (!(ts->flags & J_NOLOCK)) {
+		off_t lr;
 		for (op = ts->op; op != NULL; op = op->next) {
-			rv = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
-			if (rv == -1)
+			lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
+			if (lr == -1)
 				/* note it can fail with EDEADLK */
 				goto unlink_exit;
 			op->locked = 1;
@@ -345,7 +346,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		curpos += op->len;
 	}
 
-	/* compute and save the checksum */
+	/* compute and save the checksum (curpos is always small, so there's
+	 * no overflow possibility when we convert to size_t) */
 	if (!checksum(fd, curpos, &csum))
 		goto unlink_exit;
 
