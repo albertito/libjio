@@ -481,12 +481,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 		return -1;
 	
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
-	if (access(jlockfile, F_OK) != 0) {
-		/* file doesn't exists, create it */
-		jfd = open(jlockfile, O_RDWR | O_CREAT | O_SYNC, 0600);
-	} else {
-		jfd = open(jlockfile, O_RDWR | O_SYNC, 0600);
-	}
+	jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (jfd < 0)
 		return -1;
 	
