@@ -27,7 +27,7 @@ struct jfs {
 	int jdirfd;		/* journal directory file descriptor */
 	int jfd;		/* journal's lock file descriptor */
 	unsigned int *jmap;	/* journal's lock file mmap area */
-	int flags;		/* journal flags */
+	uint32_t flags;		/* journal flags */
 	struct jlinger *ltrans;	/* lingered transactions */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
 };
@@ -49,7 +49,7 @@ struct jtrans {
 	struct jfs *fs;		/* journal file structure to operate on */
 	char *name;		/* name of the transaction file */
 	int id;			/* transaction id */
-	int flags;		/* misc flags */
+	uint32_t flags;		/* transaction flags */
 	unsigned int numops;	/* quantity of operations in the list */
 	pthread_mutex_t lock;	/* used to modify the operation list */
 	struct joper *op;	/* list of operations */
