@@ -363,9 +363,11 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 		linger->id = id;
 		linger->name = strdup(name);
-		linger->next = ts->fs->ltrans;
 
+		pthread_mutex_lock(&(ts->fs->lock));
+		linger->next = ts->fs->ltrans;
 		ts->fs->ltrans = linger;
+		pthread_mutex_unlock(&(ts->fs->lock));
 	} else {
 		/* the transaction has been applied, so we cleanup and remove
 		 * it from the disk */
@@ -522,10 +524,10 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->flags = jflags;
 	fs->ltrans = NULL;
 
-	/* Note on fs->lock usage: this lock is used only inside the wrappers,
-	 * and exclusively to protect the file pointer. This means that it
-	 * must only be held while performing operations that depend or alter
-	 * the file pointer (jread, jreadv, jwrite, jwritev), but the others
+	/* Note on fs->lock usage: this lock is used only to protect the file
+	 * pointer and the linger list. This means that it must only be held
+	 * while performing operations that depend or alter the file pointer
+	 * or the linger list (jread, jreadv, jwrite, jwritev), but the others
 	 * (jpread, jpwrite) are left unprotected because they can be
 	 * performed in paralell as long as they don't affect the same portion
 	 * of the file (this is protected by lockf). The lock doesn't slow
@@ -596,12 +598,11 @@ int jsync(struct jfs *fs)
 	int rv;
 	struct jlinger *linger, *ltmp;
 
-	pthread_mutex_lock(&(fs->lock));
-
 	rv = fsync(fs->fd);
 	if (rv != 0)
-		goto exit;
+		return rv;
 
+	pthread_mutex_lock(&(fs->lock));
 	linger = fs->ltrans;
 	while (linger != NULL) {
 		free_tid(fs, linger->id);
@@ -614,9 +615,8 @@ int jsync(struct jfs *fs)
 		linger = ltmp;
 	}
 
-exit:
 	pthread_mutex_unlock(&(fs->lock));
-	return rv;
+	return 0;
 }
 
 /* close a file */
