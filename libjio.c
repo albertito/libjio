@@ -57,7 +57,7 @@ static ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 	c = 0;
 
 	while (c < count) {
-		rv = pread(fd, buf + c, count - c, offset + c);
+		rv = pread(fd, (char *) buf + c, count - c, offset + c);
 		
 		if (rv == count)
 			/* we're done */
@@ -84,7 +84,7 @@ static ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 	c = 0;
 
 	while (c < count) {
-		rv = pwrite(fd, buf + c, count - c, offset + c);
+		rv = pwrite(fd, (char *) buf + c, count - c, offset + c);
 		
 		if (rv == count)
 			/* we're done */
@@ -267,7 +267,7 @@ int jtrans_commit(struct jtrans *ts)
 {
 	int id, fd, rv, t;
 	char *name;
-	void *buf_init, *bufp;
+	unsigned char *buf_init, *bufp;
 	
 	name = (char *) malloc(PATH_MAX);
 	if (name == NULL)
@@ -763,7 +763,7 @@ int jfsck(char *name, struct jfsck_result *res)
 		}
 		
 		/* load from disk, header first */
-		buf = (char *) malloc(J_DISKTFIXSIZE);
+		buf = (unsigned char *) malloc(J_DISKTFIXSIZE);
 		if (buf == NULL) {
 			res->load_error++;
 			goto loop;
