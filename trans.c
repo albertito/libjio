@@ -63,10 +63,9 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	/* read the current max. curid */
 	curid = *(fs->jmap);
 
-	if (tid < curid) {
-		/* we're not freeing the max. curid, so we just return */
-		goto exit;
-	} else {
+	/* if we're the max tid, scan the directory looking up for the new
+	 * max; the detailed description can be found in the "doc/" dir */
+	if (tid == curid) {
 		/* look up the new max. */
 		for (i = curid - 1; i > 0; i--) {
 			/* this can fail if we're low on mem, but we don't
@@ -83,7 +82,6 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 		*(fs->jmap) = i;
 	}
 
-exit:
 	plockf(fs->jfd, F_UNLOCK, 0, 0);
 	return;
 }
