@@ -118,6 +118,14 @@ int jfsck(const char *name, struct jfsck_result *res)
 	map = NULL;
 	ret = 0;
 
+	res->total = 0;
+	res->invalid = 0;
+	res->in_progress = 0;
+	res->broken = 0;
+	res->corrupt = 0;
+	res->apply_error = 0;
+	res->reapplied = 0;
+
 	fs.fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
 	if (fs.fd < 0) {
 		ret = J_ENOENT;
