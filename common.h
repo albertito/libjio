@@ -30,7 +30,7 @@ off_t plockf(int fd, int cmd, off_t offset, off_t len);
 ssize_t spread(int fd, void *buf, size_t count, off_t offset);
 ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset);
 int get_jdir(const char *filename, char *jdir);
-int get_jtfile(const char *filename, int tid, char *jtfile);
+int get_jtfile(const char *filename, unsigned int tid, char *jtfile);
 
 int checksum(int fd, size_t len, uint32_t *csum);
 uint32_t checksum_map(uint8_t *map, size_t count);

@@ -126,7 +126,7 @@ int get_jdir(const char *filename, char *jdir)
 }
 
 /* build the filename of a given transaction */
-int get_jtfile(const char *filename, int tid, char *jtfile)
+int get_jtfile(const char *filename, unsigned int tid, char *jtfile)
 {
 	char *base, *baset;
 	char *dir, *dirt;
@@ -141,7 +141,7 @@ int get_jtfile(const char *filename, int tid, char *jtfile)
 		return 0;
 	dir = dirname(dirt);
 
-	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%d", dir, base, tid);
+	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%u", dir, base, tid);
 
 	free(baset);
 	free(dirt);
