@@ -441,6 +441,13 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	unsigned int t;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX];
 	struct stat sinfo;
+
+	/* we always need read access, because when we commit a transaction we
+	 * read the current contents before applying */
+	if (flags & O_WRONLY) {
+		flags = flags & ~O_WRONLY;
+		flags = flags | O_RDWR;
+	}
 	
 	fd = open(name, flags, mode);
 	if (fd < 0)
