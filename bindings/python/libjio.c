@@ -67,6 +67,20 @@ static void jf_dealloc(jfileobject *fp)
 	PyObject_Del(fp);
 }
 
+/* fileno */
+PyDoc_STRVAR(jf_fileno__doc,
+"fileno()\n\
+\n\
+Return the file descriptor number for the file.\n");
+
+static PyObject *jf_fileno(jfileobject *fp, PyObject *args)
+{
+	if (!PyArg_ParseTuple(args, ":fileno"))
+		return NULL;
+
+	return PyInt_FromLong(fp->fs->fd);
+}
+
 /* read */
 PyDoc_STRVAR(jf_read__doc,
 "read(size)\n\
@@ -304,6 +318,7 @@ static PyObject *jf_new_trans(jfileobject *fp, PyObject *args)
 
 /* method table */
 static PyMethodDef jfile_methods[] = {
+	{ "fileno", (PyCFunction)jf_fileno, METH_VARARGS, jf_fileno__doc },
 	{ "read", (PyCFunction)jf_read, METH_VARARGS, jf_read__doc },
 	{ "pread", (PyCFunction)jf_pread, METH_VARARGS, jf_pread__doc },
 	{ "write", (PyCFunction)jf_write, METH_VARARGS, jf_write__doc },
