@@ -1,0 +1,21 @@
+
+Source layout
+-------------
+
+The source is structured so code can be read and reviewed in an independant
+way, following the way the code really works.
+
+The main file is called "trans.c" which contains the transaction API; all the
+other wrappers depend on it, and they're the core of the library.
+
+There is also a "common.c" file with some common functions.
+
+And finally, "unix.c" which implement the wrappers for the UNIX API (read(),
+write() and their family), and "ansi.c" where ANSI wrappers live (fopen(),
+fread(), etc.).
+
+If you're trying to read the code for the first time, you can start from
+either from the more simple unix.c which relies on trans.c; or from trans.c
+which is what everything else relies on, and then the wrappers will be
+obvious.
+

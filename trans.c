@@ -2,6 +2,8 @@
 /*
  * libjio - A library for Journaled I/O
  * Alberto Bertogli (albertogli@telpin.com.ar)
+ *
+ * Core transaction API and recovery functions
  */
 
 #include <sys/types.h>
@@ -14,92 +16,11 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <dirent.h>
-#include <sys/uio.h>
 #include <errno.h>
 
 #include "libjio.h"
+#include "common.h"
 
-
-/*
- * small util functions
- */
-
-/* like lockf, but lock always from the beginning of the file */
-static off_t plockf(int fd, int cmd, off_t offset, off_t len)
-{
-	struct flock fl;
-	int op;
-
-	if (cmd == F_LOCK) {
-		fl.l_type = F_WRLCK;
-		op = F_SETLKW;
-	} else if (cmd == F_ULOCK) {
-		fl.l_type = F_UNLCK;
-		op = F_SETLKW;
-	} else if (cmd == F_TLOCK) {
-		fl.l_type = F_WRLCK;
-		op = F_SETLK;
-	} else
-		return 0;
-	
-	fl.l_whence = SEEK_SET;
-	fl.l_start = offset;
-	fl.l_len = len;
-	
-	return fcntl(fd, op, &fl);
-}
-
-/* like pread but either fails, or return a complete read; if we return less
- * than count is because EOF was reached */
-static ssize_t spread(int fd, void *buf, size_t count, off_t offset)
-{
-	int rv, c;
-
-	c = 0;
-
-	while (c < count) {
-		rv = pread(fd, (char *) buf + c, count - c, offset + c);
-		
-		if (rv == count)
-			/* we're done */
-			return count;
-		else if (rv < 0)
-			/* error */
-			return rv;
-		else if (rv == 0)
-			/* got EOF */
-			return c;
-		
-		/* incomplete read, keep on reading */
-		c += rv;
-	}
-	
-	return count;
-}
-
-/* like spread() but for pwrite() */
-static ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
-{
-	int rv, c;
-
-	c = 0;
-
-	while (c < count) {
-		rv = pwrite(fd, (char *) buf + c, count - c, offset + c);
-		
-		if (rv == count)
-			/* we're done */
-			return count;
-		else if (rv <= 0)
-			/* error/nothing was written */
-			return rv;
-		
-		/* incomplete write, keep on writing */
-		c += rv;
-	}
-	
-	return count;
-}
 
 /* build the journal directory name out of the filename */
 static int get_jdir(const char *filename, char *jdir)
@@ -154,7 +75,7 @@ static unsigned int get_tid(struct jfs *fs)
 {
 	unsigned int curid;
 	int r, rv;
-	
+
 	/* lock the whole file */
 	plockf(fs->jfd, F_LOCK, 0, 0);
 
@@ -164,19 +85,19 @@ static unsigned int get_tid(struct jfs *fs)
 		rv = 0;
 		goto exit;
 	}
-	
+
 	/* increment it and handle overflows */
 	rv = curid + 1;
 	if (rv == 0)
 		rv = 1;
-	
+
 	/* write to the file descriptor */
 	r = spwrite(fs->jfd, &rv, sizeof(rv), 0);
 	if (r != sizeof(curid)) {
 		rv = 0;
 		goto exit;
 	}
-	
+
 exit:
 	plockf(fs->jfd, F_ULOCK, 0, 0);
 	return rv;
@@ -188,7 +109,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	unsigned int curid, i;
 	int r;
 	char name[PATH_MAX];
-	
+
 	/* lock the whole file */
 	plockf(fs->jfd, F_LOCK, 0, 0);
 
@@ -219,7 +140,7 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 		if (r != sizeof(curid)) {
 			goto exit;
 		}
-	}	
+	}
 
 exit:
 	plockf(fs->jfd, F_ULOCK, 0, 0);
@@ -269,37 +190,37 @@ int jtrans_commit(struct jtrans *ts)
 	int id, fd, rv, t;
 	char *name;
 	unsigned char *buf_init, *bufp;
-	
+
 	name = (char *) malloc(PATH_MAX);
 	if (name == NULL)
 		return -1;
-	
+
 	id = get_tid(ts->fs);
 	if (id == 0)
 		return -1;
-	
+
 	/* open the transaction file */
 	if (!get_jtfile(ts->fs->name, id, name))
 		return -1;
 	fd = open(name, O_RDWR | O_CREAT | O_TRUNC | O_LARGEFILE, 0600);
 	if (fd < 0)
 		return -1;
-	
+
 	/* and lock it */
 	plockf(fd, F_LOCK, 0, 0);
-	
+
 	ts->id = id;
 	ts->name = name;
-	
+
 	/* lock the file region to work on */
 	if (!(ts->fs->flags & J_NOLOCK))
 		plockf(ts->fs->fd, F_LOCK, ts->offset, ts->len);
-	
+
 	/* read the current content and fill in the transaction structure */
 	ts->pdata = malloc(ts->len);
 	if (ts->pdata == NULL)
 		goto exit;
-	
+
 	ts->plen = ts->len;
 
 	rv = spread(ts->fs->fd, ts->pdata, ts->len, ts->offset);
@@ -312,38 +233,38 @@ int jtrans_commit(struct jtrans *ts)
 	}
 
 	/* now save the transaction to the file, static data first */
-	
+
 	buf_init = malloc(J_DISKTFIXSIZE);
 	if (buf_init == NULL)
 		return -1;
-	
+
 	bufp = buf_init;
-	
+
 	memcpy(bufp, (void *) &(ts->id), sizeof(ts->id));
 	bufp += 4;
-	
+
 	memcpy(bufp, (void *) &(ts->flags), sizeof(ts->flags));
 	bufp += 4;
-	
+
 	memcpy(bufp, (void *) &(ts->len), sizeof(ts->len));
 	bufp += 4;
-	
+
 	memcpy(bufp, (void *) &(ts->plen), sizeof(ts->plen));
 	bufp += 4;
-	
+
 	memcpy(bufp, (void *) &(ts->ulen), sizeof(ts->ulen));
 	bufp += 4;
-	
+
 	memcpy(bufp, (void *) &(ts->offset), sizeof(ts->offset));
 	bufp += 8;
-	
+
 	rv = spwrite(fd, buf_init, J_DISKTFIXSIZE, 0);
 	if (rv != J_DISKTFIXSIZE)
 		goto exit;
-	
+
 	free(buf_init);
-	
-	
+
+
 	/* and now the variable data */
 
 	if (ts->udata) {
@@ -351,24 +272,24 @@ int jtrans_commit(struct jtrans *ts)
 		if (rv != ts->ulen)
 			goto exit;
 	}
-	
+
 	t = J_DISKTFIXSIZE + ts->ulen;
 	rv = spwrite(fd, ts->pdata, ts->plen, t);
 	if (rv != ts->plen)
 		goto exit;
-	
+
 	/* this is a simple but efficient optimization: instead of doing
 	 * everything O_SYNC, we sync at this point only, this way we avoid
 	 * doing a lot of very small writes; in case of a crash the
 	 * transaction file is only useful if it's complete (ie. after this
 	 * point) so we only flush here */
 	fsync(fd);
-	
+
 	/* now that we have a safe transaction file, let's apply it */
 	rv = spwrite(ts->fs->fd, ts->buf, ts->len, ts->offset);
 	if (rv != ts->len)
 		goto exit;
-	
+
 	/* the transaction has been applied, so we cleanup and remove it from
 	 * the disk */
 	free_tid(ts->fs, ts->id);
@@ -377,13 +298,13 @@ int jtrans_commit(struct jtrans *ts)
 	/* mark the transaction as commited, _after_ it was removed */
 	ts->flags = ts->flags | J_COMMITED;
 
-	
+
 exit:
 	close(fd);
-	
+
 	if (!(ts->fs->flags & J_NOLOCK))
 		plockf(ts->fs->fd, F_ULOCK, ts->offset, ts->len);
-	
+
 	/* return the lenght only if it was properly commited */
 	if (ts->flags & J_COMMITED)
 		return ts->len;
@@ -406,7 +327,7 @@ int jtrans_rollback(struct jtrans *ts)
 
 	newts.buf = ts->pdata;
 	newts.len = ts->plen;
-	
+
 	if (ts->plen < ts->len) {
 		/* we extended the data in the previous transaction, so we
 		 * should truncate it back */
@@ -416,15 +337,15 @@ int jtrans_rollback(struct jtrans *ts)
 		 * extended the file further, this will cut it back to what it
 		 * was; read the docs for more detail */
 		ftruncate(ts->fs->fd, ts->offset + ts->plen);
-		
+
 	}
-	
+
 	newts.pdata = ts->pdata;
 	newts.plen = ts->plen;
 
 	newts.udata = ts->udata;
 	newts.ulen = ts->ulen;
-	
+
 	rv = jtrans_commit(&newts);
 	return rv;
 }
@@ -448,7 +369,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 		flags = flags & ~O_WRONLY;
 		flags = flags | O_RDWR;
 	}
-	
+
 	fd = open(name, flags, mode);
 	if (fd < 0)
 		return -1;
@@ -456,7 +377,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->fd = fd;
 	fs->name = strdup(name);
 	fs->flags = jflags;
-	
+
 	/* Note on fs->lock usage: this lock is used only inside the wrappers,
 	 * and exclusively to protect the file pointer. This means that it
 	 * must only be held while performing operations that depend or alter
@@ -469,7 +390,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	 * make it easier for them by taking care of it here. If performance
 	 * is essential, the jpread/jpwrite functions should be used, just as
 	 * real life. */
-	
+
 	pthread_mutex_init( &(fs->lock), NULL);
 
 	if (!get_jdir(name, jdir))
@@ -478,12 +399,12 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		return -1;
-	
+
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
 	jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (jfd < 0)
 		return -1;
-	
+
 	/* initialize the lock file by writing the first tid to it, but only
 	 * if its empty, otherwise there is a race if two processes call
 	 * jopen() simultaneously and both initialize the file */
@@ -502,181 +423,6 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->jfd = jfd;
 
 	return fd;
-}
-
-
-/* read() family wrappers */
-
-/* read wrapper */
-ssize_t jread(struct jfs *fs, void *buf, size_t count)
-{
-	int rv;
-	off_t pos;
-
-	pthread_mutex_lock(&(fs->lock));
-
-	pos = lseek(fs->fd, 0, SEEK_CUR);
-
-	plockf(fs->fd, F_LOCK, pos, count);
-	rv = spread(fs->fd, buf, count, pos);
-	plockf(fs->fd, F_ULOCK, pos, count);
-
-	if (rv == count) {
-		/* if success, advance the file pointer */
-		lseek(fs->fd, count, SEEK_CUR);
-	}
-
-	pthread_mutex_unlock(&(fs->lock));
-
-	return rv;
-}
-
-/* pread wrapper */
-ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
-{
-	int rv;
-
-	plockf(fs->fd, F_LOCK, offset, count);
-	rv = spread(fs->fd, buf, count, offset);
-	plockf(fs->fd, F_ULOCK, offset, count);
-	
-	return rv;
-}
-
-/* readv wrapper */
-ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count)
-{
-	int rv, i;
-	size_t sum;
-	off_t pos;
-	
-	sum = 0;
-	for (i = 0; i < count; i++)
-		sum += vector[i].iov_len;
-	
-	pthread_mutex_lock(&(fs->lock));
-	pos = lseek(fs->fd, 0, SEEK_CUR);
-	plockf(fs->fd, F_LOCK, pos, count);
-	rv = readv(fs->fd, vector, count);
-	plockf(fs->fd, F_ULOCK, pos, count);
-	pthread_mutex_unlock(&(fs->lock));
-
-	return rv;
-}
-
-/* write wrapper */
-ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
-{
-	int rv;
-	off_t pos;
-	struct jtrans ts;
-	
-	pthread_mutex_lock(&(fs->lock));
-	
-	jtrans_init(fs, &ts);
-	pos = lseek(fs->fd, 0, SEEK_CUR);
-	ts.offset = pos;
-	
-	ts.buf = buf;
-	ts.len = count;
-	
-	rv = jtrans_commit(&ts);
-
-	if (rv >= 0) {
-		/* if success, advance the file pointer */
-		lseek(fs->fd, count, SEEK_CUR);
-	}
-	
-	pthread_mutex_unlock(&(fs->lock));
-
-	jtrans_free(&ts);
-
-	return rv;
-}
-
-/* write family wrappers */
-
-/* pwrite wrapper */
-ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
-{
-	int rv;
-	struct jtrans ts;
-	
-	jtrans_init(fs, &ts);
-	ts.offset = offset;
-	
-	ts.buf = buf;
-	ts.len = count;
-	
-	rv = jtrans_commit(&ts);
-
-	jtrans_free(&ts);
-
-	return rv;
-}
-
-/* writev wrapper */
-ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
-{
-	int rv, i, bufp;
-	ssize_t sum;
-	char *buf;
-	off_t pos;
-	struct jtrans ts;
-	
-	sum = 0;
-	for (i = 0; i < count; i++)
-		sum += vector[i].iov_len;
-
-	/* unify the buffers into one big chunk to commit */
-	/* FIXME: can't we do this more efficient? It ruins the whole purpose
-	 * of using writev() :\
-	 * maybe we should do one transaction per vector */
-	buf = malloc(sum);
-	if (buf == NULL)
-		return -1;
-	bufp = 0;
-
-	for (i = 0; i < count; i++) {
-		memcpy(buf + bufp, vector[i].iov_base, vector[i].iov_len);
-		bufp += vector[i].iov_len;
-	}
-	
-	pthread_mutex_lock(&(fs->lock));
-	
-	jtrans_init(fs, &ts);
-	pos = lseek(fs->fd, 0, SEEK_CUR);
-	ts.offset = pos;
-	
-	ts.buf = buf;
-	ts.len = sum;
-	
-	rv = jtrans_commit(&ts);
-
-	if (rv >= 0) {
-		/* if success, advance the file pointer */
-		lseek(fs->fd, count, SEEK_CUR);
-	}
-	
-	pthread_mutex_unlock(&(fs->lock));
-
-	jtrans_free(&ts);
-
-	return rv;
-
-}
-
-/* truncate a file - be careful with this */
-int jtruncate(struct jfs *fs, off_t lenght)
-{
-	int rv;
-	
-	/* lock from lenght to the end of file */
-	plockf(fs->fd, F_LOCK, lenght, 0);
-	rv = ftruncate(fs->fd, lenght);
-	plockf(fs->fd, F_ULOCK, lenght, 0);
-	
-	return rv;
 }
 
 /* close a file */
@@ -709,7 +455,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	DIR *dir;
 	struct dirent *dent;
 	off_t offset;
-	
+
 	fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
 	if (fd < 0)
 		return J_ENOENT;
@@ -722,7 +468,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		return J_ENOJOURNAL;
-	
+
 	/* open the lock file, which is only used to complete the jfs
 	 * structure */
 	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
@@ -730,7 +476,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 	if (rv < 0)
 		return J_ENOJOURNAL;
 	fs.jfd = rv;
-	
+
 	dir = opendir(jdir);
 	if (dir == NULL)
 		return J_ENOJOURNAL;
@@ -762,10 +508,10 @@ int jfsck(const char *name, struct jfsck_result *res)
 		curts = malloc(sizeof(struct jtrans));
 		if (curts == NULL)
 			return J_ENOMEM;
-		
+
 		jtrans_init(&fs, curts);
 		curts->id = i;
-		
+
 		/* open the transaction file, using i as its name, so we are
 		 * really looping in order (recovering transaction in a
 		 * different order as they were applied means instant
@@ -785,14 +531,14 @@ int jfsck(const char *name, struct jfsck_result *res)
 			res->in_progress++;
 			goto loop;
 		}
-		
+
 		/* load from disk, header first */
 		buf = (unsigned char *) malloc(J_DISKTFIXSIZE);
 		if (buf == NULL) {
 			res->load_error++;
 			goto loop;
 		}
-		
+
 		rv = read(tfd, buf, J_DISKTFIXSIZE);
 		if (rv != J_DISKTFIXSIZE) {
 			res->broken_head++;
@@ -830,7 +576,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 			res->load_error++;
 			goto loop;
 		}
-		
+
 		curts->udata = malloc(curts->ulen);
 		if (curts->udata == NULL) {
 			res->load_error++;

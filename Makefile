@@ -3,18 +3,18 @@ include Make.conf
 
 
 # objects to build
-OBJS = libjio.o
+OBJS = common.o trans.o unix.o
 
 # rules
 default: all
 
 all: shared static jiofsck
 
-shared: libjio.o
-	$(CC) -shared libjio.o -o libjio.so
+shared: $(OBJS)
+	$(CC) -shared $(OBJS) -o libjio.so
 
-static: libjio.o
-	$(AR) cr libjio.a libjio.o
+static: $(OBJS)
+	$(AR) cr libjio.a $(OBJS)
 
 jiofsck: jiofsck.o static
 	$(CC) jiofsck.o libjio.a -lpthread -o jiofsck
@@ -38,7 +38,7 @@ install: all
 
 
 clean:
-	rm -f libjio.o libjio.a libjio.so jiofsck.o jiofsck
+	rm -f $(OBJS) libjio.a libjio.so jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov gmon.out
 
 
