@@ -5,5 +5,6 @@ not much documentation besides the code.
 
 Another really useful way of doing testing is using some of the well known
 filesystem benchmarking applications and modify them to use libjio. I regulary
-use Bonnie and dbench, so if you want the patches please let me know.
+use dbench, fsx, tiobench and the tdb test suite, the patches are available on
+the website.
 
