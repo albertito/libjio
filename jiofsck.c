@@ -77,6 +77,7 @@ int main(int argc, char **argv)
 	printf("Broken head:\t %d\n", res.broken_head);
 	printf("Broken body:\t %d\n", res.broken_body);
 	printf("Load error:\t %d\n", res.load_error);
+	printf("Corrupt:\t %d\n", res.corrupt);
 	printf("Apply error:\t %d\n", res.apply_error);
 	printf("Reapplied:\t %d\n", res.reapplied);
 	printf("\n");

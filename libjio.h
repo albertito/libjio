@@ -67,6 +67,7 @@ struct jfsck_result {
 	int invalid;		/* invalid files in the journal directory */
 	int in_progress;	/* transactions in progress */
 	int broken;		/* transactions broken */
+	int corrupt;		/* corrupt transactions */
 	int apply_error;	/* errors applying the transaction */
 	int reapplied;		/* transactions that were reapplied */
 };

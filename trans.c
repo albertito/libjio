@@ -179,6 +179,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 int jtrans_commit(struct jtrans *ts)
 {
 	int id, rv, fd = -1;
+	uint32_t csum;
 	char *name;
 	unsigned char *buf_init, *bufp;
 	struct joper *op;
@@ -306,6 +307,15 @@ int jtrans_commit(struct jtrans *ts)
 
 		curpos += op->len;
 	}
+
+	/* compute and save the checksum */
+	if (!checksum(fd, curpos, &csum))
+		goto exit;
+
+	rv = spwrite(fd, &csum, sizeof(uint32_t), curpos);
+	if (rv != sizeof(uint32_t))
+		goto exit;
+	curpos += sizeof(uint32_t);
 
 	/* this is a simple but efficient optimization: instead of doing
 	 * everything O_SYNC, we sync at this point only, this way we avoid

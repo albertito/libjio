@@ -95,13 +95,14 @@ int jfsck(const char *name, struct jfsck_result *res)
 {
 	int fd, tfd, rv, i;
 	unsigned int maxtid;
+	uint32_t csum1, csum2;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX], tname[PATH_MAX];
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
 	DIR *dir;
 	struct dirent *dent;
-	void *map;
+	unsigned char *map;
 	off_t filelen;
 
 
@@ -192,9 +193,17 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 		filelen = lseek(tfd, 0, SEEK_END);
 		map = mmap(0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
-		rv = fill_trans((unsigned char *) map, filelen, curts);
+		rv = fill_trans(map, filelen, curts);
 		if (rv != 1) {
 			res->broken++;
+			goto loop;
+		}
+
+		/* verify the checksum */
+		csum1 = checksum_map(map, filelen - (sizeof(uint32_t)));
+		csum2 = * (uint32_t *) (map + filelen - (sizeof(uint32_t)));
+		if (csum1 != csum2) {
+			res->corrupt++;
 			goto loop;
 		}
 
