@@ -102,13 +102,17 @@ int jfsck(const char *name, struct jfsck_result *res)
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
+	struct joper *tmpop;
 	DIR *dir;
 	struct dirent *dent;
 	unsigned char *map;
 	off_t filelen;
 
 	fd = tfd = -1;
+	filelen = 0;
 	dir = NULL;
+	fs.jmap = NULL;
+	map = NULL;
 	ret = 0;
 
 	fd = open(name, O_RDWR | O_SYNC | O_LARGEFILE);
@@ -150,6 +154,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
 	if (fs.jmap == MAP_FAILED) {
 		ret = J_ENOJOURNAL;
+		fs.jmap = NULL;
 		goto exit;
 	}
 
@@ -216,6 +221,11 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 		filelen = lseek(tfd, 0, SEEK_END);
 		map = mmap(0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
+		if (map == MAP_FAILED) {
+			res->broken++;
+			map = NULL;
+			goto loop;
+		}
 		rv = fill_trans(map, filelen, curts);
 		if (rv != 1) {
 			res->broken++;
@@ -235,21 +245,30 @@ int jfsck(const char *name, struct jfsck_result *res)
 
 		rv = jtrans_commit(curts);
 
-		munmap(map, filelen);
-
 		if (rv < 0) {
 			res->apply_error++;
 			goto loop;
 		}
 		res->reapplied++;
 
-
 loop:
 		if (tfd >= 0) {
 			close(tfd);
 			tfd = -1;
 		}
+		if (map != NULL)
+			munmap(map, filelen);
 
+		if (curts->name)
+			free(curts->name);
+		while (curts->op != NULL) {
+			tmpop = curts->op->next;
+			if (curts->op->pdata)
+				free(curts->op->pdata);
+			free(curts->op);
+			curts->op = tmpop;
+		}
+		pthread_mutex_destroy(&(curts->lock));
 		free(curts);
 
 		res->total++;
@@ -264,6 +283,8 @@ exit:
 		close(fs.jdirfd);
 	if (dir != NULL)
 		closedir(dir);
+	if (fs.jmap != NULL)
+		munmap(fs.jmap, sizeof(unsigned int));
 
 	return ret;
 
