@@ -555,7 +555,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	plockf(jfd, F_LOCKW, 0, 0);
 	lstat(jlockfile, &sinfo);
 	if (sinfo.st_size != sizeof(unsigned int)) {
-		t = 1;
+		t = 0;
 		rv = spwrite(jfd, &t, sizeof(t), 0);
 		if (rv != sizeof(t)) {
 			plockf(jfd, F_UNLOCK, 0, 0);
