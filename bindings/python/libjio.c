@@ -115,11 +115,11 @@ static PyObject *jf_pread(jfileobject *fp, PyObject *args)
 {
 	long rv;
 	long len;
-	long offset;
+	long long offset;
 	unsigned char *buf;
 	PyObject *r;
 
-	if (!PyArg_ParseTuple(args, "il:pread", &len, &offset))
+	if (!PyArg_ParseTuple(args, "iL:pread", &len, &offset))
 		return NULL;
 
 	buf = malloc(len);
@@ -176,10 +176,10 @@ static PyObject *jf_pwrite(jfileobject *fp, PyObject *args)
 {
 	long rv;
 	unsigned char *buf;
-	long offset;
+	long long offset;
 	long len;
 
-	if (!PyArg_ParseTuple(args, "s#l:pwrite", &buf, &len, &offset))
+	if (!PyArg_ParseTuple(args, "s#L:pwrite", &buf, &len, &offset))
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
@@ -199,9 +199,9 @@ It's a wrapper to jtruncate().\n");
 static PyObject *jf_truncate(jfileobject *fp, PyObject *args)
 {
 	int rv;
-	long lenght;
+	long long lenght;
 
-	if (!PyArg_ParseTuple(args, "l:truncate", &lenght))
+	if (!PyArg_ParseTuple(args, "L:truncate", &lenght))
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
@@ -211,7 +211,7 @@ static PyObject *jf_truncate(jfileobject *fp, PyObject *args)
 	if (rv != 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyInt_FromLong(rv);
+	return PyLong_FromLongLong(rv);
 }
 
 /* lseek */
@@ -230,11 +230,11 @@ It's a wrapper to jlseek().\n");
 
 static PyObject *jf_lseek(jfileobject *fp, PyObject *args)
 {
-	long rv;
+	long long rv;
 	int whence;
-	long offset;
+	long long offset;
 
-	if (!PyArg_ParseTuple(args, "li:lseek", &offset, &whence))
+	if (!PyArg_ParseTuple(args, "Li:lseek", &offset, &whence))
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
@@ -244,7 +244,7 @@ static PyObject *jf_lseek(jfileobject *fp, PyObject *args)
 	if (rv == -1)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return PyLong_FromLongLong(rv);
 }
 
 /* jsync */
@@ -359,10 +359,10 @@ static PyObject *jt_add(jtransobject *tp, PyObject *args)
 {
 	long rv;
 	long len;
-	long offset;
+	long long offset;
 	unsigned char *buf;
 
-	if (!PyArg_ParseTuple(args, "s#l:add", &buf, &len, &offset))
+	if (!PyArg_ParseTuple(args, "s#L:add", &buf, &len, &offset))
 		return NULL;
 
 	rv = jtrans_add(tp->ts, buf, len, offset);
@@ -465,7 +465,7 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 	jfileobject *fp;
 
 	flags = O_RDWR;
-	mode = 0666;
+	mode = 0600;
 	jflags = 0;
 
 	if (!PyArg_ParseTuple(args, "s|iii:open", &file, &flags, &mode,
