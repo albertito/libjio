@@ -240,6 +240,8 @@ int jtrans_commit(struct jtrans *ts)
 	void *buf_init, *bufp;
 	
 	name = (char *) malloc(PATH_MAX);
+	if (name == NULL)
+		return -1;
 	
 	id = get_tid(ts->fs);
 	if (id == 0)
@@ -264,6 +266,9 @@ int jtrans_commit(struct jtrans *ts)
 	/* first the static data */
 	
 	buf_init = malloc(J_DISKTFIXSIZE);
+	if (buf_init == NULL)
+		return -1;
+	
 	bufp = buf_init;
 	
 	memcpy(bufp, (void *) &(ts->id), sizeof(ts->id));
@@ -297,6 +302,9 @@ int jtrans_commit(struct jtrans *ts)
 	}
 	
 	ts->pdata = malloc(ts->len);
+	if (ts->pdata == NULL)
+		goto exit;
+	
 	ts->plen = ts->len;
 
 	/* copy the current content into the transaction file */
@@ -366,6 +374,9 @@ int jtrans_rollback(struct jtrans *ts)
 	jtrans_init(ts->fs, &newts);
 
 	newts.name = malloc(strlen(ts->name));
+	if (newts.name == NULL)
+		return -1;
+	
 	strcpy(newts.name, ts->name);
 	newts.flags = ts->flags;
 	newts.offset = ts->offset;
@@ -557,6 +568,8 @@ ssize_t jwritev(struct jfs *fs, struct iovec *vector, int count)
 	 * of using writev() :\
 	 * maybe we should do one transaction per vector */
 	buf = malloc(sum);
+	if (buf == NULL)
+		return -1;
 	bufp = 0;
 
 	for (i = 0; i < count; i++) {
@@ -657,6 +670,9 @@ int jfsck(char *name, struct jfsck_result *res)
 	/* we loop all the way up to the max transaction id */
 	for (i = 1; i <= maxtid; i++) {
 		curts = malloc(sizeof(struct jtrans));
+		if (curts == NULL)
+			return J_ENOMEM;
+		
 		jtrans_init(&fs, curts);
 		curts->id = i;
 		
@@ -683,6 +699,11 @@ int jfsck(char *name, struct jfsck_result *res)
 
 		/* load from disk, header first */
 		buf = (char *) malloc(J_DISKTFIXSIZE);
+		if (buf == NULL) {
+			res->load_error++;
+			goto loop;
+		}
+		
 		rv = read(tfd, buf, J_DISKTFIXSIZE);
 		if (rv != J_DISKTFIXSIZE) {
 			res->broken_head++;
@@ -711,8 +732,22 @@ int jfsck(char *name, struct jfsck_result *res)
 		 * successful, so we read it to complete the transaction
 		 * structure and apply it again */
 		curts->buf = malloc(curts->len);
+		if (curts->buf == NULL) {
+			res->load_error++;
+			goto loop;
+		}
+		
 		curts->pdata = malloc(curts->plen);
+		if (curts->pdata == NULL) {
+			res->load_error++;
+			goto loop;
+		}
+		
 		curts->udata = malloc(curts->ulen);
+		if (curts->udata == NULL) {
+			res->load_error++;
+			goto loop;
+		}
 
 		/* user data */
 		offset = J_DISKTFIXSIZE;

@@ -99,6 +99,7 @@ int jfsck(char *name, struct jfsck_result *res);
 #define J_ESUCCESS	0	/* success - shouldn't be used */
 #define J_ENOENT	1	/* no such file */
 #define J_ENOJOURNAL	2	/* no journal associated */
+#define J_ENOMEM	3	/* no enough free memory */
 
 #endif
 
