@@ -503,11 +503,13 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 ssize_t jread(struct jfs *fs, void *buf, size_t count)
 {
 	int rv;
+	off_t pos;
 
 	pthread_mutex_lock(&(fs->lock));
-	lockf(fs->fd, F_LOCK, count);
+	pos = lseek(fs->fd, 0, SEEK_CUR);
+	plockf(fs->fd, F_LOCK, pos, count);
 	rv = read(fs->fd, buf, count);
-	lockf(fs->fd, F_ULOCK, -count);
+	plockf(fs->fd, F_ULOCK, pos, count);
 	pthread_mutex_unlock(&(fs->lock));
 
 	return rv;
@@ -530,15 +532,17 @@ ssize_t jreadv(struct jfs *fs, struct iovec *vector, int count)
 {
 	int rv, i;
 	size_t sum;
+	off_t pos;
 	
 	sum = 0;
 	for (i = 0; i < count; i++)
 		sum += vector[i].iov_len;
 	
 	pthread_mutex_lock(&(fs->lock));
-	lockf(fs->fd, F_LOCK, sum);
+	pos = lseek(fs->fd, 0, SEEK_CUR);
+	plockf(fs->fd, F_LOCK, pos, count);
 	rv = readv(fs->fd, vector, count);
-	lockf(fs->fd, F_ULOCK, -sum);
+	plockf(fs->fd, F_ULOCK, pos, count);
 	pthread_mutex_unlock(&(fs->lock));
 
 	return rv;
