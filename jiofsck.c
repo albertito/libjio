@@ -45,6 +45,7 @@ int main(int argc, char **argv)
 	memset(&res, 0, sizeof(res));
 	
 	printf("Checking journal: ");
+	fflush(stdout);
 	rv = jfsck(file, &res);
 
 	if (rv == J_ENOENT) {
@@ -60,6 +61,7 @@ int main(int argc, char **argv)
 
 	if (do_cleanup) {
 		printf("Cleaning journal: ");
+		fflush(stdout);
 		if (!jfsck_cleanup(file)) {
 			printf("Error cleaning journal\n");
 			return 1;
