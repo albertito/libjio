@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	printf("Broken body:\t %d\n", res.broken_body);
 	printf("Load error:\t %d\n", res.load_error);
 	printf("Apply error:\t %d\n", res.apply_error);
-	printf("Rollbacked:\t %d\n", res.rollbacked);
+	printf("Reapplied:\t %d\n", res.reapplied);
 	printf("\n");
 	
 	if (!do_cleanup) {

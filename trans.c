@@ -265,10 +265,11 @@ int jtrans_commit(struct jtrans *ts)
 
 	/* save each transacion in the file */
 	for (op = ts->op; op != NULL; op = op->next) {
-		/* read the current content only if it's not there yet, which
-		 * is the normal case, but for rollbacking we fill it
+		/* read the current content only if the transaction is not
+		 * marked as NOROLLBACK, and if the data is not there yet,
+		 * which is the normal case, but for rollbacking we fill it
 		 * ourselves */
-		if (op->pdata == NULL) {
+		if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
 			op->pdata = malloc(op->len);
 			if (op->pdata == NULL)
 				goto exit;
@@ -313,11 +314,11 @@ int jtrans_commit(struct jtrans *ts)
 		curpos += J_DISKOPHEADSIZE;
 
 		/* and save it to the disk */
-		rv = spwrite(fd, op->pdata, op->plen, curpos);
-		if (rv != op->plen)
+		rv = spwrite(fd, op->buf, op->len, curpos);
+		if (rv != op->len)
 			goto exit;
 
-		curpos += op->plen;
+		curpos += op->len;
 	}
 
 	/* this is a simple but efficient optimization: instead of doing
@@ -388,8 +389,9 @@ int jtrans_rollback(struct jtrans *ts)
 
 	/* FIXME: this looks like a mess! */
 
-	if (ts->op == NULL) {
-		/* we're trying to rollback an empty transaction */
+	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
+		/* we're either trying to rollback an empty or transaction, or
+		 * a one marked without rollbacking support */
 		return 0;
 	}
 

@@ -59,7 +59,7 @@ struct jfsck_result {
 	int in_progress;	/* transactions in progress */
 	int broken;		/* transactions broken */
 	int apply_error;	/* errors applying the transaction */
-	int rollbacked;		/* transactions that were rollbacked */
+	int reapplied;		/* transactions that were reapplied */
 };
 
 
@@ -122,6 +122,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 
 /* jfs constants */
 #define J_NOLOCK	1	/* don't lock the file before operating on it */
+#define J_NOROLLBACK	2	/* no need to read rollback information */
 
 /* jtrans constants */
 #define J_COMMITED	1	/* mark a transaction as commited */

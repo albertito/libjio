@@ -60,11 +60,11 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 		op->offset = *( (uint64_t *) p);
 		p += 8;
 
-		if (len < (p - map) + op->plen)
+		if (len < (p - map) + op->len)
 			goto error;
 
-		op->pdata = (void *) p;
-		p += op->plen;
+		op->buf = (void *) p;
+		p += op->len;
 
 		if (ts->op == NULL) {
 			ts->op = op;
@@ -115,6 +115,10 @@ int jfsck(const char *name, struct jfsck_result *res)
 		return J_ENOMEM;
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
+		return J_ENOJOURNAL;
+
+	fs.jdirfd = open(jdir, O_RDONLY);
+	if (fs.jdirfd < 0)
 		return J_ENOJOURNAL;
 
 	/* open the lock file, which is only used to complete the jfs
@@ -188,7 +192,10 @@ int jfsck(const char *name, struct jfsck_result *res)
 			goto loop;
 		}
 
-		rv = jtrans_rollback(curts);
+		/* remove flags from the transaction */
+		curts->flags = 0;
+
+		rv = jtrans_commit(curts);
 
 		munmap(map, filelen);
 
@@ -196,7 +203,7 @@ int jfsck(const char *name, struct jfsck_result *res)
 			res->apply_error++;
 			goto loop;
 		}
-		res->rollbacked++;
+		res->reapplied++;
 
 
 loop:
