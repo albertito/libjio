@@ -31,9 +31,9 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 	rv = spread(fs->fd, buf, count, pos);
 	plockf(fs->fd, F_UNLOCK, pos, count);
 
-	if (rv >= 0) {
+	if (rv > 0) {
 		/* if success, advance the file pointer */
-		lseek(fs->fd, count, SEEK_CUR);
+		lseek(fs->fd, rv, SEEK_CUR);
 	}
 
 	pthread_mutex_unlock(&(fs->lock));
@@ -92,9 +92,9 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 
 	rv = jtrans_commit(&ts);
 
-	if (rv >= 0) {
+	if (rv > 0) {
 		/* if success, advance the file pointer */
-		lseek(fs->fd, count, SEEK_CUR);
+		lseek(fs->fd, rv, SEEK_CUR);
 	}
 
 	pthread_mutex_unlock(&(fs->lock));
@@ -143,9 +143,9 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 
 	rv = jtrans_commit(&ts);
 
-	if (rv >= 0) {
+	if (rv > 0) {
 		/* if success, advance the file pointer */
-		lseek(fs->fd, sum, SEEK_CUR);
+		lseek(fs->fd, rv, SEEK_CUR);
 	}
 
 	pthread_mutex_unlock(&(fs->lock));
