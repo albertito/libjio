@@ -735,6 +735,13 @@ int jfsck(const char *name, struct jfsck_result *res)
 	}
 	closedir(dir);
 
+	/* rewrite the lockfile, writing the new maxtid on it, so that when we
+	 * rollback a transaction it doesn't step over existing ones */
+	rv = spwrite(fs.jfd, &maxtid, sizeof(maxtid), 0);
+	if (rv != sizeof(maxtid)) {
+		return J_ENOMEM;
+	}
+
 	/* we loop all the way up to the max transaction id */
 	for (i = 1; i <= maxtid; i++) {
 		curts = malloc(sizeof(struct jtrans));
