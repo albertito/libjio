@@ -101,27 +101,45 @@ static ssize_t spwrite(int fd, void *buf, size_t count, off_t offset)
 }
 
 /* build the journal directory name out of the filename */
-static void get_jdir(char *filename, char *jdir)
+static int get_jdir(char *filename, char *jdir)
 {
-	char *base;
-	char *dir;
+	char *base, *baset;
+	char *dir, *dirt;
 
-	base = basename(strdup(filename));
-	dir = dirname(strdup(filename));
-	
+	baset = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	base = basename(baset);
+
+	dirt = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	dir = dirname(dirt);
+
 	snprintf(jdir, PATH_MAX, "%s/.%s.jio", dir, base);
+
+	return 1;
 }
 
 /* build the filename of a given transaction */
-static void get_jtfile(char *filename, int tid, char *jtfile)
+static int get_jtfile(char *filename, int tid, char *jtfile)
 {
-	char *base;
-	char *dir;
+	char *base, *baset;
+	char *dir, *dirt;
 
-	base = basename(strdup(filename));
-	dir = dirname(strdup(filename));
+	baset = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	base = basename(baset);
+
+	dirt = strdup(filename);
+	if (baset == NULL)
+		return 0;
+	dir = dirname(dirt);
 
 	snprintf(jtfile, PATH_MAX, "%s/.%s.jio/%d", dir, base, tid);
+
+	return 1;
 }
 
 /* gets a new transaction id */
@@ -179,6 +197,9 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	} else {
 		/* look up the new max. */
 		for (i = curid - 1; i > 0; i--) {
+			/* this can fail if we're low on mem, but we don't
+			 * care checking here because the problem will come
+			 * out later and we can fail more properly */
 			get_jtfile(fs->name, i, name);
 			if (access(name, R_OK | W_OK) == 0) {
 				curid = i;
@@ -248,7 +269,8 @@ int jtrans_commit(struct jtrans *ts)
 		return -1;
 	
 	/* open the transaction file */
-	get_jtfile(ts->fs->name, id, name);
+	if (!get_jtfile(ts->fs->name, id, name))
+		return -1;
 	fd = open(name, O_RDWR | O_CREAT | O_TRUNC | O_LARGEFILE, 0600);
 	if (fd < 0)
 		return -1;
@@ -429,7 +451,8 @@ int jopen(struct jfs *fs, char *name, int flags, int mode, int jflags)
 	
 	pthread_mutex_init( &(fs->lock), NULL);
 
-	get_jdir(name, jdir);
+	if (!get_jdir(name, jdir))
+		return -1;
 	rv = mkdir(jdir, 0750);
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
@@ -640,7 +663,8 @@ int jfsck(char *name, struct jfsck_result *res)
 	fs.fd = fd;
 	fs.name = name;
 
-	get_jdir(name, jdir);
+	if (!get_jdir(name, jdir))
+		return J_ENOMEM;
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		return J_ENOJOURNAL;
@@ -680,7 +704,8 @@ int jfsck(char *name, struct jfsck_result *res)
 		 * really looping in order (recovering transaction in a
 		 * different order as they were applied means instant
 		 * corruption) */
-		get_jtfile(name, i, tname);
+		if (!get_jtfile(name, i, tname))
+			return J_ENOMEM;
 		tfd = open(tname, O_RDWR | O_SYNC | O_LARGEFILE, 0600);
 		if (tfd < 0) {
 			res->invalid++;
