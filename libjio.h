@@ -132,15 +132,13 @@ void frewind(struct jfs *stream);
 FILE *jfsopen(struct jfs *stream, const char *mode);
 
 
-/* jfs constants */
+/* jfs and jtrans constants */
 #define J_NOLOCK	1	/* don't lock the file before operating on it */
 #define J_NOROLLBACK	2	/* no need to read rollback information */
-#define J_LINGER	3	/* use lingering transactions */
-
-/* jtrans constants */
-#define J_COMMITED	1	/* mark a transaction as commited */
-#define J_ROLLBACKED	2	/* mark a transaction as rollbacked */
-#define J_ROLLBACKING	4	/* mark a transaction as rollbacking */
+#define J_LINGER	4	/* use lingering transactions */
+#define J_COMMITED	8	/* mark a transaction as commited */
+#define J_ROLLBACKED	16	/* mark a transaction as rollbacked */
+#define J_ROLLBACKING	32	/* mark a transaction as rollbacking */
 
 /* disk constants */
 #define J_DISKHEADSIZE	 12	/* length of disk_header */
