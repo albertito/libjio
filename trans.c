@@ -240,22 +240,24 @@ int jtrans_commit(struct jtrans *ts)
 
 	bufp = buf_init;
 
-	memcpy(bufp, (void *) &(ts->id), sizeof(ts->id));
+	/* the sizes are put explicitly (instead of using sizeof()) because
+	 * they're really fixed and defined in the on-disk format */
+	memcpy(bufp, (void *) &(ts->id), 4);
 	bufp += 4;
 
-	memcpy(bufp, (void *) &(ts->flags), sizeof(ts->flags));
+	memcpy(bufp, (void *) &(ts->flags), 4);
 	bufp += 4;
 
-	memcpy(bufp, (void *) &(ts->len), sizeof(ts->len));
+	memcpy(bufp, (void *) &(ts->len), 4);
 	bufp += 4;
 
-	memcpy(bufp, (void *) &(ts->plen), sizeof(ts->plen));
+	memcpy(bufp, (void *) &(ts->plen), 4);
 	bufp += 4;
 
-	memcpy(bufp, (void *) &(ts->ulen), sizeof(ts->ulen));
+	memcpy(bufp, (void *) &(ts->ulen), 4);
 	bufp += 4;
 
-	memcpy(bufp, (void *) &(ts->offset), sizeof(ts->offset));
+	memcpy(bufp, (void *) &(ts->offset), 8);
 	bufp += 8;
 
 	rv = spwrite(fd, buf_init, J_DISKTFIXSIZE, 0);
