@@ -38,53 +38,58 @@ libjio - A library for Journaled I/O
 
 .SH STRUCTURES
 .PP
-.RS
-.NF
-struct jfs
-{
-    int fd;                 /* main file descriptor */
-    char *name;             /* and its name */
-    int jfd;                /* journal's lock file descriptor */
-    int flags;              /* journal mode options used in jopen() */
-    pthread_mutex_t lock;   /* a soft lock used in some operations */
- }
+.br
+.nf
+.in 10
+struct jfs {
+.in 14
+int fd;                 /* main file descriptor */
+char *name;             /* and its name */
+int jfd;                /* journal's lock file descriptor */
+int flags;              /* journal mode options used in jopen() */
+pthread_mutex_t lock;   /* a soft lock used in some operations */
+.in 10
+};
 .FI
-.RE
 
-.RS
-.NF
-struct jtrans
-{
-    struct jfs *fs;         /* journal file structure to operate on */
-    char *name;             /* name of the transaction file */
-    int id;                 /* transaction id */
-    int flags;              /* misc flags */
-    void *buf;              /* buffer */
-    size_t len;             /* buffer lenght */
-    off_t offset;           /* file offset to operate on */
-    void *udata;            /* user-supplied data */
-    size_t ulen;            /* udata lenght */
-    void *pdata;            /* previous data, for rollback */
-    size_t plen;            /* pdata lenght */
- }
+.PP
+.br
+.nf
+.in 10
+struct jtrans {
+.in 14
+struct jfs *fs;         /* journal file structure to operate on */
+char *name;             /* name of the transaction file */
+int id;                 /* transaction id */
+int flags;              /* misc flags */
+void *buf;              /* buffer */
+size_t len;             /* buffer lenght */
+off_t offset;           /* file offset to operate on */
+void *udata;            /* user-supplied data */
+size_t ulen;            /* udata lenght */
+void *pdata;            /* previous data, for rollback */
+size_t plen;            /* pdata lenght */
+.in 10
+};
 .FI
-.RE
 
-.RS
-.NF
-struct jfsck_result
-{
-    int total;              /* total transactions files we looked at */
-    int invalid;            /* invalid files in the journal directory */
-    int in_progress;        /* transactions in progress */
-    int broken_head;        /* transactions broken (header missing) */
-    int broken_body;        /* transactions broken (body missing) */
-    int load_error;         /* errors loading the transaction */
-    int apply_error;        /* errors applying the transaction */
-    int reapplied;          /* transactions that were re-applied */
- }
+.PP
+.br
+.nf
+.in 10
+struct jfsck_result {
+.in 14
+int total;              /* total transactions files we looked at */
+int invalid;            /* invalid files in the journal directory */
+int in_progress;        /* transactions in progress */
+int broken_head;        /* transactions broken (header missing) */
+int broken_body;        /* transactions broken (body missing) */
+int load_error;         /* errors loading the transaction */
+int apply_error;        /* errors applying the transaction */
+int rollbacked;         /* transactions that were rollbacked */
+.in 10
+};
 .FI
-.RE
 
 .SH DESCRIPTION
 
