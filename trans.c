@@ -96,13 +96,18 @@ exit:
 /* initialize a transaction structure */
 void jtrans_init(struct jfs *fs, struct jtrans *ts)
 {
+	pthread_mutexattr_t attr;
+
 	ts->fs = fs;
 	ts->name = NULL;
 	ts->id = 0;
 	ts->flags = fs->flags;
 	ts->op = NULL;
 	ts->numops = 0;
-	pthread_mutex_init( &(ts->lock), NULL);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
+	pthread_mutex_init( &(ts->lock), &attr);
+	pthread_mutexattr_destroy(&attr);
 }
 
 
@@ -511,6 +516,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	unsigned int t;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX];
 	struct stat sinfo;
+	pthread_mutexattr_t attr;
 
 	fs->fd = -1;
 	fs->jfd = -1;
@@ -540,7 +546,10 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	 * make it easier for them by taking care of it here. If performance
 	 * is essential, the jpread/jpwrite functions should be used, just as
 	 * real life. */
-	pthread_mutex_init( &(fs->lock), NULL);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
+	pthread_mutex_init( &(fs->lock), &attr);
+	pthread_mutexattr_destroy(&attr);
 
 	fs->fd = open(name, flags, mode);
 	if (fs->fd < 0)
