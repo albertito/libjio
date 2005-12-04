@@ -594,7 +594,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 		goto error_exit;
 
 	/* nothing else to do for read-only access */
-	if (flags & O_RDONLY) {
+	if (jflags & J_RDONLY) {
 		return fs->fd;
 	}
 
