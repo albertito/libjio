@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+"Generate a transaction file"
+
+import sys
+import struct
+
+def help():
+	print "Use: mktrans tfile tid flags len plen ulen offset udata pdata"
+	sys.exit(1)
+
+
+if sys.argv < 10:
+	help()
+
+try:
+	file = sys.argv[1]
+	tid = int(sys.argv[2])
+	flags = int(sys.argv[3])
+	dlen = int(sys.argv[4])
+	plen = int(sys.argv[5])
+	ulen = int(sys.argv[6])
+	offset = int(sys.argv[7])
+	udata = sys.argv[8]
+	pdata = sys.argv[9]
+except:
+	help()
+
+fd = open(file, "w");
+
+s = struct.pack("IIIIIQ%ds%ds" % (len(udata), len(pdata)),\
+		tid, flags, dlen, plen, ulen, offset, \
+		udata, pdata)
+
+print 'tid:', tid
+print 'flags:', flags
+print 'dlen:', dlen
+print 'plen:', plen
+print 'ulen:', ulen
+print 'offset:', offset
+print 'udata: +%s+' % udata
+print 'pdata: +%s+' % pdata
+print 'total lenght:', len(s)
+
+fd.write(s)
+
+fd.close()
+
