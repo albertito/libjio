@@ -9,7 +9,7 @@
 #include "libjio.h"
 
 
-static void usage()
+static void usage(void)
 {
 	printf("\
 Use: jiofsck [clean=1] [dir=DIR] FILE\n\
