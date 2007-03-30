@@ -248,7 +248,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 		filelen = lseek(tfd, 0, SEEK_END);
 		/* no overflow problems because we know the transaction size
 		 * is limited to SSIZE_MAX */
-		map = mmap(0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
+		map = mmap((void *) 0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
 		if (map == MAP_FAILED) {
 			res->broken++;
 			map = NULL;
