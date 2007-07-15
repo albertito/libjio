@@ -1,0 +1,7 @@
+
+ * allow to store the journal somewhere else (or just leave it as-is, and
+	let the user do a simple symlink of the journal directory?)
+ * make jfsck return a list of fixed transactions
+ * more testing on j{read|write}v()
+ * more samples and integration inside the build system
+ * a better manpage

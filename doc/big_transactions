@@ -1,0 +1,9 @@
+
+If you have to create big transactions, instead of creating a huge buffer you
+can mmap a temporary file and periodically sync it; and when you're done, just
+jtrans_commit() the whole thing.
+
+This would be a quite efficient way, without any performance penalty and a
+very simple approach; I originally thought of doing this on the journal, but
+it had many drawbacks that made it much expensive, slower and complex.
+

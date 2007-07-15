@@ -1,0 +1,4 @@
+gcc -Wall -O6 -I.. -lpthread jio1.c ../libjio.a -o jio1
+gcc -Wall -O6 -I.. -lpthread jio2.c ../libjio.a -o jio2
+gcc -Wall -O6 -I.. -lpthread jio3.c ../libjio.a -o jio3
+
