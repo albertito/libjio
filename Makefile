@@ -1,7 +1,6 @@
 
 VERSION="0.23"
 
-CC = gcc
 CFLAGS += -std=c99 -pedantic -Wall -O3 -fPIC \
 	-D_LARGEFILE_SOURCE=1 -D_LARGEFILE64_SOURCE=1 \
 	-D_LFS_LARGEFILE=1 -D_LFS64_LARGEFILE=1 \
@@ -17,6 +16,15 @@ endif
 PREFIX=/usr/local
 
 
+ifneq ($(V), 1)
+        NICE_CC = @echo "  CC  $@"; $(CC)
+        NICE_AR = @echo "  AR  $@"; $(AR)
+else
+        NICE_CC = $(CC)
+        NICE_AR = $(AR)
+endif
+
+
 # objects to build
 OBJS = checksum.o common.o trans.o check.o unix.o ansi.o
 
@@ -26,13 +34,13 @@ default: all
 all: libjio.so libjio.a jiofsck
 
 libjio.so: $(OBJS)
-	$(CC) -shared -fPIC $(OBJS) -o libjio.so
+	$(NICE_CC) -shared -fPIC $(OBJS) -o libjio.so
 
 libjio.a: $(OBJS)
-	$(AR) cr libjio.a $(OBJS)
+	$(NICE_AR) cr libjio.a $(OBJS)
 
 jiofsck: jiofsck.o libjio.a
-	$(CC) jiofsck.o libjio.a -lpthread -o jiofsck
+	$(NICE_CC) jiofsck.o libjio.a -lpthread -o jiofsck
 
 install: all
 	install -d $(PREFIX)/lib
@@ -49,7 +57,7 @@ install: all
 	@echo
 
 .c.o:
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(NICE_CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 
 python: all
@@ -61,7 +69,7 @@ python_install: python
 
 preload: all
 	install -d bindings/preload/build/
-	$(CC) $(INCLUDES) -Wall -O3 -shared -fPIC \
+	$(NICE_CC) $(INCLUDES) -Wall -O3 -shared -fPIC \
 		-D_XOPEN_SOURCE=500 \
 		-ldl -lpthread -L. -ljio -I. \
 		bindings/preload/libjio_preload.c \
