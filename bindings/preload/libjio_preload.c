@@ -1,7 +1,7 @@
 
 /*
  * libjio C preloader
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  *
  * This generates a shared object that, when prelinked, can be used to make an
  * existing application to use libjio for UNIX I/O.

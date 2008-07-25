@@ -1,7 +1,7 @@
 
 /*
  * jiofsck - A journal checker and recovery tool for libjio
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
 #include <stdio.h>

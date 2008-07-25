@@ -1,6 +1,6 @@
 
 libjio - A library for Journaled I/O
-Alberto Bertogli (albertogli@telpin.com.ar)
+Alberto Bertogli (albertito@blitiri.com.ar)
 -------------------------------------------
 
 As the name says, this is a simple userspace library to do journaled,
@@ -28,8 +28,8 @@ To see how to install it, please read the INSTALL file.
 
 It is licensed under the Open Software License version 3.0.
 
-Comments and patches are always welcome; please send them to the mailing list,
-libjio-devel@auriga.wearlab.de.
+Comments and patches are always welcome; please send them to my email address,
+albertito@blitiri.com.ar.
 
 Thanks,
 		Alberto

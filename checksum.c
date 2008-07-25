@@ -1,7 +1,7 @@
 
 /*
  * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  *
  * Checksum functions
  * Based on RFC 1071, "Computing the Internet Checksum"

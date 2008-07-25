@@ -1,7 +1,7 @@
 
 /*
  * streaming.c - A program to test speed of a streaming write using libjio.
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
 

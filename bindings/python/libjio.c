@@ -1,7 +1,7 @@
 
 /*
  * Python bindings for libjio
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  * Aug/2004
  */
 
@@ -618,7 +618,7 @@ static PyMethodDef libjio_functions[] = {
 /* module initialization */
 PyDoc_STRVAR(libjio__doc,
 "libjio is a library to do transactional, journaled I/O\n\
-You can find it at http://users.auriga.wearlab.de/~alb/libjio/\n\
+You can find it at http://blitiri.com.ar/p/libjio/\n\
 \n\
 Use the open() method to create a file object, and then operate on it.\n\
 Please read the documentation for more information.\n");

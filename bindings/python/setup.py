@@ -9,8 +9,8 @@ setup(
 	name = 'libjio',
 	description = "A library for journaled I/O",
 	author="Alberto Bertogli",
-	author_email="albertogli@telpin.com.ar",
-	url="http://users.auriga.wearlab.de/~alb/libjio",
+	author_email="albertito@blitiri.com.ar",
+	url="http://blitiri.com.ar/p/libjio",
 	ext_modules = [libjio]
 )
 

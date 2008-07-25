@@ -1,7 +1,7 @@
 
 /*
  * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  *
  * Recovery functions
  */

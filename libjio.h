@@ -1,7 +1,7 @@
 
 /*
  * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertogli@telpin.com.ar)
+ * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
 #ifndef _LIBJIO_H
@@ -167,7 +167,7 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 
 
 #ifdef __cplusplus
-} /* from extern "C" avobe */
+} /* from extern "C" above */
 #endif
 
 #endif
