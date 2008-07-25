@@ -19,7 +19,7 @@
  * library (which uses LFS) and that's just begging for problems. There should
  * be a portable way for the C library to do some of this for us, but until I
  * find one, this is the best we can do */
-#if (!defined _FILE_OFFSET_BITS) && (_FILE_OFFSET_BITS != 64)
+#if (!defined _FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS != 64)
 #error "You must compile your application with Large File Support"
 #endif
 
