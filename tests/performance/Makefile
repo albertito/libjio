@@ -4,10 +4,10 @@ CFLAGS = -Wall -O6
 
 default: all
 
-all: paralell streaming
+all: parallel streaming
 
-paralell: paralell.o
-	$(CC) $(LIBS) paralell.o -o paralell
+parallell: parallel.o
+	$(CC) $(LIBS) parallel.o -o parallel
 
 streaming: streaming.o
 	$(CC) $(LIBS) streaming.o -o streaming
@@ -16,7 +16,7 @@ streaming: streaming.o
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f streaming.o streaming paralell.o paralell
+	rm -f streaming.o streaming parallel.o parallel
 	rm -f *.bb *.bbg *.da *.gcov gmon.out
 
 

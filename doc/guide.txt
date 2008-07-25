@@ -244,11 +244,11 @@ intuitive locking rules you have to bear in mind.
 
 Most is fully threadsafe so you don't need to worry 
 about concurrency; in fact, a lot of effort has been 
-put in making paralell operation safe and fast.
+put in making parallel operation safe and fast.
 
 You need to care only when opening, closing and 
 checking for integrity. In practise, that means that 
-you shouldn't call jopen(), jclose() in paralell with 
+you shouldn't call jopen(), jclose() in parallel with 
 the same jfs structure, or in the middle of an I/O 
 operation, just like you do when using the normal UNIX 
 calls. In the case of jfsck(), you shouldn't invoke it 

@@ -574,7 +574,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	 * pointer. This means that it must only be held while performing
 	 * operations that depend or alter the file pointer (jread, jreadv,
 	 * jwrite, jwritev), but the others (jpread, jpwrite) are left
-	 * unprotected because they can be performed in paralell as long as
+	 * unprotected because they can be performed in parallel as long as
 	 * they don't affect the same portion of the file (this is protected
 	 * by lockf). The lock doesn't slow things down tho: any threaded app
 	 * MUST implement this kind of locking anyways if it wants to prevent

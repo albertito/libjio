@@ -25,7 +25,7 @@ holds the maximum transaction ID in use. This file gets opened and mmap()'ed
 for faster use inside jopen(). That way, we can treat it directly as an
 integer holding the max tid.
 
-To avoid paralell modifications, we will always lock the file with fcntl()
+To avoid parallel modifications, we will always lock the file with fcntl()
 before accessing it.
 
 Let's begin by describing how get_tid() works, because it's quite simple: it

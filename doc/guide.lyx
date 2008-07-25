@@ -491,7 +491,7 @@ The library is completely safe to use in multithreaded applications; however,
 \layout Standard
 
 Most is fully threadsafe so you don't need to worry about concurrency; in
- fact, a lot of effort has been put in making paralell operation safe and
+ fact, a lot of effort has been put in making parallel operation safe and
  fast.
 \layout Standard
 
@@ -504,7 +504,7 @@ jopen()
 \family typewriter 
 jclose()
 \family default 
- in paralell with the same jfs structure, or in the middle of an I/O operation,
+ in parallel with the same jfs structure, or in the middle of an I/O operation,
  just like you do when using the normal UNIX calls.
  In the case of 
 \family typewriter 

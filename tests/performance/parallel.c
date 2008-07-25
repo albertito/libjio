@@ -1,6 +1,6 @@
 
 /*
- * streaming.c - A program to test speed of paralell writes using libjio.
+ * streaming.c - A program to test speed of parallel writes using libjio.
  * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
@@ -19,7 +19,7 @@
 #include <sys/time.h>
 #include <libjio.h>
 
-#define FILENAME "test_file-paralell"
+#define FILENAME "test_file-parallel"
 
 /* Declare here what's shared among threads
  * It's not the cleanest design ever, but let's face it, it's a simple
@@ -30,7 +30,7 @@ int blocksize, towrite, mb;
 
 void help(void)
 {
-	printf("Use: paralell MBs_to_write_per_thread blocksize nthreads\n");
+	printf("Use: parallel MBs_to_write_per_thread blocksize nthreads\n");
 	exit(1);
 }
 
