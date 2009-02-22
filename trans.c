@@ -68,12 +68,13 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	if (tid == curid) {
 		/* look up the new max. */
 		for (i = curid - 1; i > 0; i--) {
-			/* this can fail if we're low on mem, but we don't
-			 * care checking here because the problem will come
-			 * out later and we can fail more properly */
 			get_jtfile(fs, i, name);
 			if (access(name, R_OK | W_OK) == 0) {
-				curid = i;
+				break;
+			} else if (errno != EACCES) {
+				/* Real error, stop looking for a new max. It
+				 * doesn't hurt us because it's ok if the max
+				 * is higher than it could be */
 				break;
 			}
 		}
