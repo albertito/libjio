@@ -1,0 +1,12 @@
+
+prefix=++PREFIX++
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libjio
+Description: A library for Journaled I/O
+URL: http://blitiri.com.ar/p/libjio/
+Version: 0.23
+Libs: -L${libdir} -ljio
+Cflags: -I${includedir} ++CFLAGS++
+
