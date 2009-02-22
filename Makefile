@@ -1,14 +1,16 @@
 
 VERSION="0.23"
 
-CFLAGS += -std=c99 -pedantic -Wall -O3 -fPIC \
+CFLAGS = -std=c99 -pedantic -Wall -O3
+
+ALL_CFLAGS += $(CFLAGS) -fPIC \
 	-D_LARGEFILE_SOURCE=1 -D_LARGEFILE64_SOURCE=1 \
 	-D_LFS_LARGEFILE=1 -D_LFS64_LARGEFILE=1 \
 	-D_FILE_OFFSET_BITS=64 `getconf LFS_CFLAGS 2>/dev/null` \
 	-D_XOPEN_SOURCE=500
 
 ifdef DEBUG
-CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
+ALL_CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
 endif
 
 
@@ -34,7 +36,7 @@ default: all
 all: libjio.so libjio.a jiofsck
 
 libjio.so: $(OBJS)
-	$(NICE_CC) -shared -fPIC $(OBJS) -o libjio.so
+	$(NICE_CC) -shared $(ALL_CFLAGS) $(OBJS) -o libjio.so
 
 libjio.a: $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
@@ -57,7 +59,7 @@ install: all
 	@echo
 
 .c.o:
-	$(NICE_CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(NICE_CC) $(ALL_CFLAGS) $(INCLUDES) -c $< -o $@
 
 
 python: all
