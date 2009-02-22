@@ -227,10 +227,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 		 * really looping in order (recovering transaction in a
 		 * different order as they were applied means instant
 		 * corruption) */
-		if (!get_jtfile(&fs, i, tname)) {
-			ret = J_ENOMEM;
-			goto exit;
-		}
+		get_jtfile(&fs, i, tname);
 		tfd = open(tname, O_RDWR | O_SYNC, 0600);
 		if (tfd < 0) {
 			res->invalid++;

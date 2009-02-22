@@ -126,11 +126,11 @@ int get_jdir(const char *filename, char *jdir)
 	return 1;
 }
 
-/* build the filename of a given transaction */
-int get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile)
+/* build the filename of a given transaction; assumes jtfile can hold at least
+ * PATH_MAX bytes */
+void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile)
 {
 	snprintf(jtfile, PATH_MAX, "%s/%u", fs->jdir, tid);
-	return 1;
 }
 
 

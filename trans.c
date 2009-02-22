@@ -236,8 +236,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		goto exit;
 
 	/* open the transaction file */
-	if (!get_jtfile(ts->fs, id, name))
-		goto exit;
+	get_jtfile(ts->fs, id, name);
 	fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (fd < 0)
 		goto exit;
