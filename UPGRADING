@@ -13,8 +13,9 @@ If you want to see what motivated the changes, see the changelog or just ask.
 
 0.22 -> 0.23
 * The return values of jfsck() have changed, so applications using it need to
-	be recompiled. The Python version now raises IOError on failures, and
-	no longer returns None.
+	be recompiled.
+* Python bindings' jfsck(), jfsck_cleanup(), jsync(), jwrite() and jpwrite()
+	now raise an IOError on failures.
 
 0.21 -> 0.22
 * Applications need to be recompiled due to a change in the jfs structure.

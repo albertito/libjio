@@ -175,6 +175,9 @@ static PyObject *jf_write(jfileobject *fp, PyObject *args)
 	rv = jwrite(fp->fs, buf, len);
 	Py_END_ALLOW_THREADS
 
+	if (rv < 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
 	return PyLong_FromLong(rv);
 }
 
@@ -199,6 +202,9 @@ static PyObject *jf_pwrite(jfileobject *fp, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS
 	rv = jpwrite(fp->fs, buf, len, offset);
 	Py_END_ALLOW_THREADS
+
+	if (rv < 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
 
 	return PyLong_FromLong(rv);
 }
@@ -279,6 +285,9 @@ static PyObject *jf_jsync(jfileobject *fp, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS
 	rv = jsync(fp->fs);
 	Py_END_ALLOW_THREADS
+
+	if (rv < 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
 
 	return PyLong_FromLong(rv);
 }
@@ -607,6 +616,11 @@ static PyObject *jf_jfsck_cleanup(PyObject *self, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS
 	rv = jfsck_cleanup(name, jdir);
 	Py_END_ALLOW_THREADS
+
+	if (rv != 1) {
+		PyErr_SetObject(PyExc_IOError, PyInt_FromLong(rv));
+		return NULL;
+	}
 
 	return PyInt_FromLong(rv);
 }
