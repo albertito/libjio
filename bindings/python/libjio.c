@@ -110,7 +110,7 @@ static PyObject *jf_read(jfileobject *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
-		r = PyString_FromStringAndSize(buf, rv);
+		r = PyString_FromStringAndSize((char *) buf, rv);
 	}
 
 	free(buf);
@@ -147,7 +147,7 @@ static PyObject *jf_pread(jfileobject *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
-		r = PyString_FromStringAndSize(buf, rv);
+		r = PyString_FromStringAndSize((char *) buf, rv);
 	}
 
 	free(buf);
