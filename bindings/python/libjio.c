@@ -545,8 +545,9 @@ PyDoc_STRVAR(jf_jfsck__doc,
 \n\
 Checks the integrity of the file with the given name, using (optionally) jdir\n\
 as the journal directory; returns a dictionary with all the different values\n\
-of the check (equivalent to the 'struct jfsck_result'), or None if there was\n\
-nothing to check.\n\
+of the check (equivalent to the 'struct jfsck_result'). If the path is\n\
+incorrect, or there is no journal associated with it, an IOError will be\n\
+raised.\n\
 It's a wrapper to jfsck().\n");
 
 static PyObject *jf_jfsck(PyObject *self, PyObject *args)
@@ -568,9 +569,12 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 	Py_END_ALLOW_THREADS
 
 	if (rv == J_ENOMEM) {
+		Py_XDECREF(dict);
 		return PyErr_NoMemory();
 	} else if (rv != 0) {
-		return Py_None;
+		Py_XDECREF(dict);
+		PyErr_SetObject(PyExc_IOError, PyInt_FromLong(rv));
+		return NULL;
 	}
 
 	PyDict_SetItemString(dict, "total", PyLong_FromLong(res.total));

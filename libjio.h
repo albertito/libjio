@@ -161,9 +161,9 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 
 /* jfsck constants (return values) */
 #define J_ESUCCESS	0	/* success - shouldn't be used */
-#define J_ENOENT	1	/* no such file */
-#define J_ENOJOURNAL	2	/* no journal associated */
-#define J_ENOMEM	3	/* no enough free memory */
+#define J_ENOENT	-1	/* no such file */
+#define J_ENOJOURNAL	-2	/* no journal associated */
+#define J_ENOMEM	-3	/* no enough free memory */
 
 
 #ifdef __cplusplus
