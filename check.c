@@ -147,12 +147,11 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 			goto exit;
 		}
 	} else {
-		fs.jdir = (char *) malloc(strlen(jdir) + 1);
+		fs.jdir = strdup(jdir);
 		if (fs.jdir == NULL) {
 			ret = J_ENOMEM;
 			goto exit;
 		}
-		strcpy(fs.jdir, jdir);
 	}
 
 	rv = lstat(fs.jdir, &sinfo);
