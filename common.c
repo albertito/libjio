@@ -114,8 +114,10 @@ int get_jdir(const char *filename, char *jdir)
 	base = basename(baset);
 
 	dirt = strdup(filename);
-	if (dirt == NULL)
+	if (dirt == NULL) {
+		free(baset);
 		return 0;
+	}
 	dir = dirname(dirt);
 
 	snprintf(jdir, PATH_MAX, "%s/.%s.jio", dir, base);
