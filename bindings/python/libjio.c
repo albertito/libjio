@@ -553,7 +553,7 @@ It's a wrapper to jfsck().\n");
 static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 {
 	int rv;
-	char *name, *jdir;
+	char *name, *jdir = NULL;
 	struct jfsck_result res;
 	PyObject *dict;
 
@@ -599,7 +599,7 @@ It's a wrapper to jfsck_cleanup().\n");
 static PyObject *jf_jfsck_cleanup(PyObject *self, PyObject *args)
 {
 	long rv;
-	char *name, *jdir;
+	char *name, *jdir = NULL;
 
 	if (!PyArg_ParseTuple(args, "s|s:jfsck_cleanup", &name, &jdir))
 		return NULL;
