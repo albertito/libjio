@@ -356,11 +356,16 @@ int jfsck_cleanup(const char *name, const char *jdir)
 		}
 
 		/* and remove it */
-		unlink(tfile);
+		if (unlink(tfile) != 0) {
+			closedir(dir);
+			return 0;
+		}
 	}
-	closedir(dir);
+	if (closedir(dir) != 0)
+		return 0;
 
-	rmdir(path);
+	if (rmdir(path) != 0)
+		return 0;
 
 	return 1;
 }
