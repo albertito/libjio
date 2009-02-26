@@ -51,7 +51,7 @@ libjio.pc: libjio.skel.pc
 		> libjio.pc
 
 jiofsck: jiofsck.o libjio.a
-	$(NICE_CC) jiofsck.o libjio.a -lpthread -o jiofsck
+	$(NICE_CC) $(ALL_CFLAGS) jiofsck.o libjio.a -lpthread -o jiofsck
 
 install: all
 	install -d $(PREFIX)/lib
