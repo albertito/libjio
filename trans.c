@@ -490,8 +490,11 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		 * if for some reason, after the previous transacton, we have
 		 * extended the file further, this will cut it back to what it
 		 * was; read the docs for more detail */
-		if (op->plen < op->len)
-			ftruncate(ts->fs->fd, op->offset + op->plen);
+		if (op->plen < op->len) {
+			rv = ftruncate(ts->fs->fd, op->offset + op->plen);
+			if (rv != 0)
+				goto exit;
+		}
 
 		/* manually add the operation to the new transaction */
 		curop = malloc(sizeof(struct joper));
