@@ -19,10 +19,6 @@ everything is isolated.
 There are more detailed documents: a programming guide, a brief introduction
 to the design and inner workings, and the manpage; all in the doc/ directory.
 
-The first two, called 'guide' and 'libjio' respectively, are both in txt and
-lyx formats, with HTML, Postscript and PDF versions in the website, which are
-not included in the package for space reasons.
-
 
 To see how to install it, please read the INSTALL file.
 
