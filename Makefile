@@ -99,7 +99,7 @@ preload_install: preload
 
 clean:
 	rm -f $(OBJS) libjio.a libjio.so libjio.pc jiofsck.o jiofsck
-	rm -f *.bb *.bbg *.da *.gcov *.gcno gmon.out
+	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
 	rm -rf bindings/python/build/
 	rm -rf bindings/preload/build/
 
