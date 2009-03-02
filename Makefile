@@ -12,6 +12,10 @@ MANDATORY_CFLAGS := \
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 
 ifdef DEBUG
+ALL_CFLAGS += -g
+endif
+
+ifdef PROFILE
 ALL_CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
 endif
 
