@@ -44,7 +44,7 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 	p += 4;
 
 	for (i = 0; i < ts->numops; i++) {
-		if (len < (p - map) + J_DISKOPHEADSIZE)
+		if (p + J_DISKOPHEADSIZE > map + len)
 			goto error;
 
 		op = malloc(sizeof(struct joper));
@@ -60,7 +60,7 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 		op->offset = *( (uint64_t *) p);
 		p += 8;
 
-		if (len < (p - map) + op->len)
+		if (p + op->len > map + len)
 			goto error;
 
 		op->buf = (void *) p;
@@ -73,7 +73,7 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 			op->prev = NULL;
 			op->next = NULL;
 		} else {
-			for(tmp = ts->op; tmp->next != NULL; tmp = tmp->next)
+			for (tmp = ts->op; tmp->next != NULL; tmp = tmp->next)
 				;
 			tmp->next = op;
 			op->prev = tmp;
