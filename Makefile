@@ -11,6 +11,8 @@ MANDATORY_CFLAGS := \
 
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 
+LIBS = -lpthread
+
 ifdef DEBUG
 ALL_CFLAGS += -g
 endif
@@ -19,6 +21,10 @@ ifdef PROFILE
 ALL_CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
 endif
 
+ifdef FIU
+ALL_CFLAGS += -DFIU_ENABLE=1
+LIBS += -lfiu
+endif
 
 # prefix for installing the binaries
 PREFIX=/usr/local
@@ -42,7 +48,7 @@ default: all
 all: libjio.so libjio.a libjio.pc jiofsck
 
 libjio.so: $(OBJS)
-	$(NICE_CC) -shared $(ALL_CFLAGS) $(OBJS) -lpthread -o libjio.so
+	$(NICE_CC) -shared $(ALL_CFLAGS) $(LIBS) $(OBJS) -o libjio.so
 
 libjio.a: $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
@@ -55,7 +61,7 @@ libjio.pc: libjio.skel.pc
 		> libjio.pc
 
 jiofsck: jiofsck.o libjio.a
-	$(NICE_CC) $(ALL_CFLAGS) jiofsck.o libjio.a -lpthread -o jiofsck
+	$(NICE_CC) $(ALL_CFLAGS) jiofsck.o libjio.a $(LIBS) -lpthread -o jiofsck
 
 install: all
 	install -d $(PREFIX)/lib

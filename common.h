@@ -13,6 +13,7 @@
 #include <stdint.h>	/* for uint*_t */
 
 #include "libjio.h"	/* for struct jfs */
+#include "fiu-local.h"	/* for fault injection functions */
 
 #define _F_READ		0x00001
 #define _F_WRITE	0x00010

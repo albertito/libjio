@@ -38,6 +38,8 @@ static unsigned int get_tid(struct jfs *fs)
 	/* read the current max. curid */
 	curid = *(fs->jmap);
 
+	fiu_do_on("jio/get_tid/overflow", curid = -1);
+
 	/* increment it and handle overflows */
 	rv = curid + 1;
 	if (rv == 0)
@@ -241,6 +243,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (fd < 0)
 		goto exit;
 
+	fiu_exit_on("jio/commit/created_tf");
+
 	/* and lock it */
 	plockf(fd, F_LOCKW, 0, 0);
 
@@ -268,6 +272,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		free(buf_init);
 		goto unlink_exit;
 	}
+
+	fiu_exit_on("jio/commit/tf_header");
 
 	free(buf_init);
 
@@ -334,6 +340,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 			goto unlink_exit;
 		}
 
+		fiu_exit_on("jio/commit/tf_ophdr");
+
 		free(buf_init);
 
 		curpos += J_DISKOPHEADSIZE;
@@ -344,7 +352,11 @@ ssize_t jtrans_commit(struct jtrans *ts)
 			goto unlink_exit;
 
 		curpos += op->len;
+
+		fiu_exit_on("jio/commit/tf_opdata");
 	}
+
+	fiu_exit_on("jio/commit/tf_data");
 
 	/* compute and save the checksum (curpos is always small, so there's
 	 * no overflow possibility when we convert to size_t) */
@@ -376,6 +388,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		}
 	}
 
+	fiu_exit_on("jio/commit/tf_sync");
+
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
 	for (op = ts->op; op != NULL; op = op->next) {
@@ -384,7 +398,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 			goto rollback_exit;
 
 		written += rv;
+		fiu_exit_on("jio/commit/wrote_op");
 	}
+
+	fiu_exit_on("jio/commit/wrote_all_ops");
 
 	if (ts->flags & J_LINGER) {
 		linger = malloc(sizeof(struct jlinger));
@@ -402,6 +419,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		/* the transaction has been applied, so we cleanup and remove
 		 * it from the disk */
 		unlink(name);
+		fiu_exit_on("jio/commit/pre_ok_free_tid");
 		free_tid(ts->fs, ts->id);
 	}
 
@@ -673,6 +691,7 @@ int jsync(struct jfs *fs)
 	pthread_mutex_lock(&(fs->ltlock));
 	while (fs->ltrans != NULL) {
 		free_tid(fs, fs->ltrans->id);
+		fiu_exit_on("jio/jsync/pre_unlink");
 		unlink(fs->ltrans->name);
 		free(fs->ltrans->name);
 
