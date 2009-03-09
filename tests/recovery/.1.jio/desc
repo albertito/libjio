@@ -1,9 +1,0 @@
-
-1	valid					Rollbacked
-2	pdata too big				Broken body
-3	udata too big, pdata too small		Broken body
-4	random data, short header		Broken header
-5	random data, header lenght ok		Broken body
-6	random data, long file			Broken body
-7	valid, shorten the file via ftruncate	Rollbacked
-
