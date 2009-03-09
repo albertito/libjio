@@ -23,11 +23,12 @@
 
 
 /* fill a transaction structure from a mmapped transaction file */
-static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
+static off_t fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 {
 	int i;
 	unsigned char *p;
 	struct joper *op, *tmp;
+	off_t translen;
 
 	if (len < J_DISKHEADSIZE)
 		return 0;
@@ -42,6 +43,8 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 
 	ts->numops = *( (uint32_t *) p);
 	p += 4;
+
+	translen = J_DISKHEADSIZE;
 
 	for (i = 0; i < ts->numops; i++) {
 		if (p + J_DISKOPHEADSIZE > map + len)
@@ -79,9 +82,11 @@ static int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 			op->prev = tmp;
 			op->next = NULL;
 		}
+
+		translen += J_DISKOPHEADSIZE + op->len;
 	}
 
-	return 1;
+	return translen;
 
 error:
 	while (ts->op != NULL) {
@@ -106,7 +111,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 	DIR *dir;
 	struct dirent *dent;
 	unsigned char *map;
-	off_t filelen, lr;
+	off_t filelen, translen, lr;
 
 	tfd = -1;
 	filelen = 0;
@@ -250,8 +255,15 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 			map = NULL;
 			goto loop;
 		}
-		rv = fill_trans(map, filelen, curts);
-		if (rv != 1) {
+		translen = fill_trans(map, filelen, curts);
+		if (translen == 0) {
+			res->broken++;
+			goto loop;
+		}
+
+		/* see if there's enough room for the checksum after the
+		 * transaction information */
+		if (filelen != translen + sizeof(uint32_t)) {
 			res->broken++;
 			goto loop;
 		}
