@@ -471,6 +471,7 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 
 	jtrans_init(ts->fs, &newts);
 	newts.flags = ts->flags;
+	newts.numops = ts->numops;
 
 	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
 		rv = -1;
