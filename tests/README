@@ -1,10 +1,5 @@
 
-Here you will find a small set of testing utilities for libjio that cover
-performance testing and recovery testings. They're really simple so there's
-not much documentation besides the code.
-
-Another really useful way of doing testing is using some of the well known
-filesystem benchmarking applications and modify them to use libjio. I regulary
-use dbench, fsx, tiobench and the tdb test suite, the patches are available on
-the website.
+Here you will find testing utilities for libjio that cover performance and
+behaviour testing. They can be found in the "performance" and "auto"
+directories, respectively.
 

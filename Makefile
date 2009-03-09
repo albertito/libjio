@@ -21,7 +21,7 @@ ifdef PROFILE
 ALL_CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
 endif
 
-ifdef FIU
+ifdef FI
 ALL_CFLAGS += -DFIU_ENABLE=1
 LIBS += -lfiu
 endif

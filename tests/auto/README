@@ -1,0 +1,15 @@
+
+In this directory you'll find libjio's automated tests.
+
+They're split in three suites: normal, corruption and fi. The normal suite
+tests normal, expected behaviour. The corruption suite checks how the library
+behaves in presence of disk corruption. The fi suite uses libfiu to inject
+faults in order to simulate unexpected interruptions (like power failures) and
+checks how the library behaves in those cases.
+
+To run them, use "./runtests <suite name>". To run all tests, you can run
+"./runtests all".
+
+Note that the corruption and fi suite depends on libfiu being installed, and
+libjio having been built using FI=1.
+
