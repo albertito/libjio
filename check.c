@@ -1,8 +1,5 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
  * Recovery functions
  */
 
@@ -194,8 +191,8 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 		goto exit;
 	}
 
-	/* loop for each file in the journal directory to find out the greater
-	 * transaction number */
+	/* find the greatest transaction number by looking into the journal
+	 * directory */
 	maxtid = 0;
 	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
 		/* see if the file is named like a transaction, ignore
@@ -216,7 +213,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 		goto exit;
 	}
 
-	/* we loop all the way up to the max transaction id */
+	/* verify (and possibly fix) all the transactions */
 	for (i = 1; i <= maxtid; i++) {
 		curts = malloc(sizeof(struct jtrans));
 		if (curts == NULL) {
@@ -229,7 +226,7 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 
 		/* open the transaction file, using i as its name, so we are
 		 * really looping in order (recovering transaction in a
-		 * different order as they were applied means instant
+		 * different order as they were applied would result in
 		 * corruption) */
 		get_jtfile(&fs, i, tname);
 		tfd = open(tname, O_RDWR | O_SYNC, 0600);
@@ -276,7 +273,8 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 			goto loop;
 		}
 
-		/* remove flags from the transaction */
+		/* remove flags from the transaction, so we don't have issues
+		 * re-committing */
 		curts->flags = 0;
 
 		rv = jtrans_commit(curts);
@@ -361,13 +359,11 @@ int jfsck_cleanup(const char *name, const char *jdir)
 		strcat(tfile, "/");
 		strcat(tfile, dent->d_name);
 
-		/* the full filename is too large */
 		if (strlen(tfile) > PATH_MAX) {
 			closedir(dir);
 			return 0;
 		}
 
-		/* and remove it */
 		if (unlink(tfile) != 0) {
 			closedir(dir);
 			return 0;
