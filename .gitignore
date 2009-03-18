@@ -3,3 +3,7 @@
 *.so
 jiofsck
 libjio.pc
+samples/full
+samples/jio1
+samples/jio2
+samples/jio3
