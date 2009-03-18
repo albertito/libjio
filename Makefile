@@ -42,7 +42,7 @@ default: all
 all: libjio.so libjio.a libjio.pc jiofsck
 
 libjio.so: $(OBJS)
-	$(NICE_CC) -shared $(ALL_CFLAGS) $(OBJS) -o libjio.so
+	$(NICE_CC) -shared $(ALL_CFLAGS) $(OBJS) -lpthread -o libjio.so
 
 libjio.a: $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
