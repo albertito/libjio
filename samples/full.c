@@ -17,11 +17,11 @@ int main(void)
 	struct jfsck_result result;
 
 	/* check the file is OK */
-	jfsck(FILENAME, &result);
-	jfsck_cleanup(FILENAME);
+	jfsck(FILENAME, NULL, &result);
+	jfsck_cleanup(FILENAME, NULL);
 
 	/* and open it */
-	r = jopen(&file, FILENAME, O_SYNC | O_CREAT | O_TRUNC, 0600, 0);
+	r = jopen(&file, FILENAME, O_RDWR | O_CREAT | O_TRUNC, 0600, 0);
 	if (r < 0) {
 		perror("jopen");
 		return 1;
