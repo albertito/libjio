@@ -83,11 +83,11 @@ install: all
 	$(NICE_CC) $(ALL_CFLAGS) $(INCLUDES) -c $< -o $@
 
 
-python: all
-	cd bindings/python && python setup.py build
+python2:
+	cd bindings/python2 && python setup.py build
 
-python_install: python
-	cd bindings/python && python setup.py install
+python2_install: python2
+	cd bindings/python2 && python setup.py install
 
 
 preload: all
@@ -106,9 +106,10 @@ preload_install: preload
 clean:
 	rm -f $(OBJS) libjio.a libjio.so libjio.pc jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
-	rm -rf bindings/python/build/
+	rm -rf bindings/python2/build/
 	rm -rf bindings/preload/build/
 
 
-.PHONY: default all install python python_install preload preload_install clean
+.PHONY: default all install python2 python2_install preload preload_install \
+	clean
 
