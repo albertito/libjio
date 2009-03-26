@@ -1,38 +1,37 @@
 
-To install the library and the checker (called jiofsck), run as root
+Building and installing
+-----------------------
 
-# make install
+To build and install the library and the checker (called jiofsck), run "make"
+and then "make install" (usually as root). That installs everything using
+/usr/local as the base directory (so the library gets installed in
+/usr/local/lib, the manpage at /usr/local/man, and so on).
 
-
-It will copy the library to /usr/local/lib, manpages to /usr/local/man,
-binaries to /usr/local/bin, and headers to /usr/local/include.
-
-If you want to change the prefix directory (/usr/local by default), for
-instance, to /home/myself/usr; just run:
-
-# make PREFIX=/home/myself/usr install
-
-
-This will create inside PREFIX the directories "bin", "lib", "include" and
-"man" if necesary, and put the required files in there.
-
+To use a different base directory, for example /home/myself, run
+"make PREFIX=/home/myself install".
 
 After installing, you need to run "ldconfig" in order to update your dynamic
 library cache.
 
-So, if you want to install to /usr (like most distro bundled software do),
-this is a brief command line summary:
-
-make PREFIX=/usr install
-ldconfig
-
-
-There are other small options that might be useful (like compiling with
-debugging information), you can check the Make.conf file for more information.
-
-If you use any BSD, or if the default "make" is not GNU make, use "gmake"
+If the default "make" is not GNU make (like in BSD systems), use "gmake"
 instead.
 
-After installing, you're ready to use the library; you can see how by looking
-at the manpage with "man libjio".
+
+Special builds
+--------------
+
+ - To build with debugging information: "make DEBUG=1".
+ - To build with profiling support: "make PROFILE=1".
+ - To build with fault injection support, if you have libfiu: "make FI=1".
+
+
+Python bindings
+---------------
+
+In order to build the Python bindings, you should have libjio already
+installed.
+
+To build the bindings, run "make python2". To install them, run
+"make python2_install".
+
 
