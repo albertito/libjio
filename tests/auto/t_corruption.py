@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Corruption tests using libfiu. libjio must have been built with libfiu
-# enabled (using something like make FIU=1) for them to work.
+# enabled (using something like make FI=1) for them to work.
 
 from tf import *
 
@@ -11,8 +11,9 @@ except ImportError:
 	print
 	print "Error: unable to load fiu module. Corruption tests need"
 	print "libfiu support. Please install libfiu and recompile libjio"
-	print "with FIU=1. You can still run the other tests."
+	print "with FI=1. You can still run the other tests."
 	print
+	raise
 
 
 def test_c01():

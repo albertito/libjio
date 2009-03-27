@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # General tests using libfiu. libjio must have been built with libfiu enabled
-# (using something like make FIU=1) for them to work.
+# (using something like make FI=1) for them to work.
 
 import struct
 from tf import *
@@ -13,8 +13,9 @@ except ImportError:
 	print
 	print "Error: unable to load fiu module. Fault injection tests need"
 	print "libfiu support. Please install libfiu and recompile libjio"
-	print "with FIU=1. You can still run the other tests."
+	print "with FI=1. You can still run the other tests."
 	print
+	raise
 
 
 def test_f01():
