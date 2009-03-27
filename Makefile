@@ -89,6 +89,13 @@ python2:
 python2_install: python2
 	cd bindings/python2 && python setup.py install
 
+python3:
+	cd bindings/python3 && python3 setup.py build
+
+python3_install: python3
+	cd bindings/python3 && python3 setup.py install
+
+
 
 preload: all
 	install -d bindings/preload/build/
@@ -107,9 +114,12 @@ clean:
 	rm -f $(OBJS) libjio.a libjio.so libjio.pc jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
 	rm -rf bindings/python2/build/
+	rm -rf bindings/python3/build/
 	rm -rf bindings/preload/build/
 
 
-.PHONY: default all install python2 python2_install preload preload_install \
+.PHONY: default all install \
+	python2 python2_install python3 python3_install \
+	preload preload_install \
 	clean
 

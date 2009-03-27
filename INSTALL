@@ -28,10 +28,11 @@ Special builds
 Python bindings
 ---------------
 
-In order to build the Python bindings, you should have libjio already
-installed.
+The library comes with bindings for Python 2 and Python 3. In order to build
+them, you should have libjio already installed.
 
-To build the bindings, run "make python2". To install them, run
-"make python2_install".
-
+ - To build the Python 2 bindings, run "make python2". To install them, run
+   "make python2_install".
+ - To build the Python 3 bindings, run "make python3". To install them, run
+   "make python3_install".
 
