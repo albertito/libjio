@@ -2,7 +2,6 @@
 /*
  * Python bindings for libjio
  * Alberto Bertogli (albertito@blitiri.com.ar)
- * Aug/2004
  */
 
 
@@ -41,16 +40,18 @@
 typedef struct {
 	PyObject_HEAD
 	struct jfs *fs;
-} jfileobject;
-static PyTypeObject JFileType;
+} jfile_object;
+
+static PyTypeObject jfile_type;
 
 /* jtrans */
 typedef struct {
 	PyObject_HEAD
 	struct jtrans *ts;
-	jfileobject *jfile;
-} jtransobject;
-static PyTypeObject JTransType;
+	jfile_object *jfile;
+} jtrans_object;
+
+static PyTypeObject jtrans_type;
 
 
 /*
@@ -58,7 +59,7 @@ static PyTypeObject JTransType;
  */
 
 /* delete */
-static void jf_dealloc(jfileobject *fp)
+static void jf_dealloc(jfile_object *fp)
 {
 	if (fp->fs) {
 		jclose(fp->fs);
@@ -73,7 +74,7 @@ PyDoc_STRVAR(jf_fileno__doc,
 \n\
 Return the file descriptor number for the file.\n");
 
-static PyObject *jf_fileno(jfileobject *fp, PyObject *args)
+static PyObject *jf_fileno(jfile_object *fp, PyObject *args)
 {
 	if (!PyArg_ParseTuple(args, ":fileno"))
 		return NULL;
@@ -89,7 +90,7 @@ Read at most size bytes from the file, returns the string with\n\
 the contents.\n\
 It's a wrapper to jread().\n");
 
-static PyObject *jf_read(jfileobject *fp, PyObject *args)
+static PyObject *jf_read(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	long len;
@@ -125,7 +126,7 @@ Read size bytes from the file at the given offset, return a string with the\n\
 contents.\n\
 It's a wrapper to jpread().\n");
 
-static PyObject *jf_pread(jfileobject *fp, PyObject *args)
+static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	long len;
@@ -162,7 +163,7 @@ Write the contents of the given buffer (a string) to the file, returns the\n\
 number of bytes written.\n\
 It's a wrapper to jwrite().\n");
 
-static PyObject *jf_write(jfileobject *fp, PyObject *args)
+static PyObject *jf_write(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	unsigned char *buf;
@@ -189,7 +190,7 @@ Write the contents of the given buffer (a string) to the file at the given\n\
 offset, returns the number of bytes written.\n\
 It's a wrapper to jpwrite().\n");
 
-static PyObject *jf_pwrite(jfileobject *fp, PyObject *args)
+static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	unsigned char *buf;
@@ -216,7 +217,7 @@ PyDoc_STRVAR(jf_truncate__doc,
 Truncate the file to the given size.\n\
 It's a wrapper to jtruncate().\n");
 
-static PyObject *jf_truncate(jfileobject *fp, PyObject *args)
+static PyObject *jf_truncate(jfile_object *fp, PyObject *args)
 {
 	int rv;
 	long long lenght;
@@ -248,7 +249,7 @@ These constants are defined in the module. See lseek's manpage for more\n\
 information.\n\
 It's a wrapper to jlseek().\n");
 
-static PyObject *jf_lseek(jfileobject *fp, PyObject *args)
+static PyObject *jf_lseek(jfile_object *fp, PyObject *args)
 {
 	long long rv;
 	int whence;
@@ -275,7 +276,7 @@ Used with lingering transactions, see the library documentation for more\n\
 detailed information.\n\
 It's a wrapper to jsync().\n");
 
-static PyObject *jf_jsync(jfileobject *fp, PyObject *args)
+static PyObject *jf_jsync(jfile_object *fp, PyObject *args)
 {
 	long rv;
 
@@ -300,7 +301,7 @@ Moves the journal directory to the new path; note that there MUST NOT BE\n\
 anything else operating on the file.\n\
 It's a wrapper to jmove_journal().\n");
 
-static PyObject *jf_jmove_journal(jfileobject *fp, PyObject *args)
+static PyObject *jf_jmove_journal(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	char *newpath;
@@ -325,14 +326,14 @@ PyDoc_STRVAR(jf_new_trans__doc,
 Returns an object representing a new empty transaction.\n\
 It's a wrapper to jtrans_init().\n");
 
-static PyObject *jf_new_trans(jfileobject *fp, PyObject *args)
+static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 {
-	jtransobject *tp;
+	jtrans_object *tp;
 
 	if (!PyArg_ParseTuple(args, ":new_trans"))
 		return NULL;
 
-	tp = PyObject_New(jtransobject, &JTransType);
+	tp = PyObject_New(jtrans_object, &jtrans_type);
 	if (tp == NULL)
 		return NULL;
 
@@ -353,29 +354,32 @@ static PyObject *jf_new_trans(jfileobject *fp, PyObject *args)
 
 /* method table */
 static PyMethodDef jfile_methods[] = {
-	{ "fileno", (PyCFunction)jf_fileno, METH_VARARGS, jf_fileno__doc },
-	{ "read", (PyCFunction)jf_read, METH_VARARGS, jf_read__doc },
-	{ "pread", (PyCFunction)jf_pread, METH_VARARGS, jf_pread__doc },
-	{ "write", (PyCFunction)jf_write, METH_VARARGS, jf_write__doc },
-	{ "pwrite", (PyCFunction)jf_pwrite, METH_VARARGS, jf_pwrite__doc },
-	{ "truncate", (PyCFunction)jf_truncate, METH_VARARGS, jf_truncate__doc },
-	{ "lseek", (PyCFunction)jf_lseek, METH_VARARGS, jf_lseek__doc },
-	{ "jsync", (PyCFunction)jf_jsync, METH_VARARGS, jf_jsync__doc },
-	{ "jmove_journal", (PyCFunction)jf_jmove_journal, METH_VARARGS, jf_jmove_journal__doc },
-	{ "new_trans", (PyCFunction)jf_new_trans, METH_VARARGS, jf_new_trans__doc },
+	{ "fileno", (PyCFunction) jf_fileno, METH_VARARGS, jf_fileno__doc },
+	{ "read", (PyCFunction) jf_read, METH_VARARGS, jf_read__doc },
+	{ "pread", (PyCFunction) jf_pread, METH_VARARGS, jf_pread__doc },
+	{ "write", (PyCFunction) jf_write, METH_VARARGS, jf_write__doc },
+	{ "pwrite", (PyCFunction) jf_pwrite, METH_VARARGS, jf_pwrite__doc },
+	{ "truncate", (PyCFunction) jf_truncate, METH_VARARGS,
+		jf_truncate__doc },
+	{ "lseek", (PyCFunction) jf_lseek, METH_VARARGS, jf_lseek__doc },
+	{ "jsync", (PyCFunction) jf_jsync, METH_VARARGS, jf_jsync__doc },
+	{ "jmove_journal", (PyCFunction) jf_jmove_journal, METH_VARARGS,
+		jf_jmove_journal__doc },
+	{ "new_trans", (PyCFunction) jf_new_trans, METH_VARARGS,
+		jf_new_trans__doc },
 	{ NULL }
 };
 
-static PyObject *jf_getattr(jfileobject *fp, char *name)
+static PyObject *jf_getattr(jfile_object *fp, char *name)
 {
 	return Py_FindMethod(jfile_methods, (PyObject *)fp, name);
 }
 
-static PyTypeObject JFileType = {
+static PyTypeObject jfile_type = {
 	PyObject_HEAD_INIT(NULL)
 	0,
 	"libjio.jfile",
-	sizeof(jfileobject),
+	sizeof(jfile_object),
 	0,
 	(destructor)jf_dealloc,
 	0,
@@ -388,7 +392,7 @@ static PyTypeObject JFileType = {
  */
 
 /* delete */
-static void jt_dealloc(jtransobject *tp)
+static void jt_dealloc(jtrans_object *tp)
 {
 	if (tp->ts != NULL) {
 		jtrans_free(tp->ts);
@@ -406,7 +410,7 @@ Add an operation to write the given buffer at the given offset to the\n\
 transaction.\n\
 It's a wrapper to jtrans_add().\n");
 
-static PyObject *jt_add(jtransobject *tp, PyObject *args)
+static PyObject *jt_add(jtrans_object *tp, PyObject *args)
 {
 	long rv;
 	int len;
@@ -430,7 +434,7 @@ PyDoc_STRVAR(jt_commit__doc,
 Commits a transaction.\n\
 It's a wrapper to jtrans_commit().\n");
 
-static PyObject *jt_commit(jtransobject *tp, PyObject *args)
+static PyObject *jt_commit(jtrans_object *tp, PyObject *args)
 {
 	long rv;
 
@@ -454,7 +458,7 @@ PyDoc_STRVAR(jt_rollback__doc,
 Rollbacks a transaction.\n\
 It's a wrapper to jtrans_rollback().\n");
 
-static PyObject *jt_rollback(jtransobject *tp, PyObject *args)
+static PyObject *jt_rollback(jtrans_object *tp, PyObject *args)
 {
 	long rv;
 
@@ -473,22 +477,23 @@ static PyObject *jt_rollback(jtransobject *tp, PyObject *args)
 
 /* method table */
 static PyMethodDef jtrans_methods[] = {
-	{ "add", (PyCFunction)jt_add, METH_VARARGS, jt_add__doc },
-	{ "commit", (PyCFunction)jt_commit, METH_VARARGS, jt_commit__doc },
-	{ "rollback", (PyCFunction)jt_rollback, METH_VARARGS, jt_rollback__doc },
+	{ "add", (PyCFunction) jt_add, METH_VARARGS, jt_add__doc },
+	{ "commit", (PyCFunction) jt_commit, METH_VARARGS, jt_commit__doc },
+	{ "rollback", (PyCFunction) jt_rollback, METH_VARARGS,
+		jt_rollback__doc },
 	{ NULL }
 };
 
-static PyObject *jt_getattr(jtransobject *tp, char *name)
+static PyObject *jt_getattr(jtrans_object *tp, char *name)
 {
 	return Py_FindMethod(jtrans_methods, (PyObject *)tp, name);
 }
 
-static PyTypeObject JTransType = {
+static PyTypeObject jtrans_type = {
 	PyObject_HEAD_INIT(NULL)
 	0,
 	"libjio.jtrans",
-	sizeof(jtransobject),
+	sizeof(jtrans_object),
 	0,
 	(destructor)jt_dealloc,
 	0,
@@ -515,7 +520,7 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 	int rv;
 	char *file;
 	int flags, mode, jflags;
-	jfileobject *fp;
+	jfile_object *fp;
 
 	flags = O_RDWR;
 	mode = 0600;
@@ -525,7 +530,7 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 				&jflags))
 		return NULL;
 
-	fp = PyObject_New(jfileobject, &JFileType);
+	fp = PyObject_New(jfile_object, &jfile_type);
 	if (fp == NULL)
 		return NULL;
 
@@ -627,9 +632,10 @@ static PyObject *jf_jfsck_cleanup(PyObject *self, PyObject *args)
 
 /* function table */
 static PyMethodDef libjio_functions[] = {
-	{ "open", (PyCFunction)jf_open, METH_VARARGS, jf_open__doc },
-	{ "jfsck", (PyCFunction)jf_jfsck, METH_VARARGS, jf_jfsck__doc },
-	{ "jfsck_cleanup", (PyCFunction)jf_jfsck_cleanup, METH_VARARGS, jf_jfsck_cleanup__doc },
+	{ "open", (PyCFunction) jf_open, METH_VARARGS, jf_open__doc },
+	{ "jfsck", (PyCFunction) jf_jfsck, METH_VARARGS, jf_jfsck__doc },
+	{ "jfsck_cleanup", (PyCFunction) jf_jfsck_cleanup, METH_VARARGS,
+		jf_jfsck_cleanup__doc },
 	{ NULL, },
 };
 
@@ -645,16 +651,16 @@ PyMODINIT_FUNC initlibjio(void)
 {
 	PyObject* m;
 
-	JFileType.ob_type = &PyType_Type;
-	JTransType.ob_type = &PyType_Type;
+	jfile_type.ob_type = &PyType_Type;
+	jtrans_type.ob_type = &PyType_Type;
 
 	m = Py_InitModule3("libjio", libjio_functions, libjio__doc);
 
-	Py_INCREF(&JFileType);
-	PyModule_AddObject(m, "jfile", (PyObject *) &JFileType);
+	Py_INCREF(&jfile_type);
+	PyModule_AddObject(m, "jfile", (PyObject *) &jfile_type);
 
-	Py_INCREF(&JTransType);
-	PyModule_AddObject(m, "jtrans", (PyObject *) &JTransType);
+	Py_INCREF(&jtrans_type);
+	PyModule_AddObject(m, "jtrans", (PyObject *) &jtrans_type);
 
 	/* libjio's constants */
 	PyModule_AddIntConstant(m, "J_NOLOCK", J_NOLOCK);
