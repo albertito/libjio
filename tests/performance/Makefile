@@ -1,23 +1,23 @@
 
-LIBS = -ljio -lpthread
-CFLAGS = -Wall -O6
+CFLAGS := -Wall -O3 -D_XOPEN_SOURCE=500 \
+	$(shell getconf LFS_CFLAGS 2>/dev/null)
+LIBS = -ljio
 
 default: all
 
-all: parallel streaming
+all: performance
 
-parallell: parallel.o
-	$(CC) $(LIBS) parallel.o -o parallel
-
-streaming: streaming.o
-	$(CC) $(LIBS) streaming.o -o streaming
+performance: performance.o
+	$(CC) $(LIBS) performance.o -o performance
 
 .c.o:
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f streaming.o streaming parallel.o parallel
+	rm -f performance.o performance
 	rm -f *.bb *.bbg *.da *.gcov gmon.out
+	rm -f test_file
+	rm -rf .test_file.jio
 
 
 .PHONY: default all clean
