@@ -1,5 +1,0 @@
-
-Here you will find testing utilities for libjio that cover performance and
-behaviour testing. They can be found in the "performance" and "auto"
-directories, respectively.
-
