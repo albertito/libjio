@@ -7,7 +7,10 @@ MANDATORY_CFLAGS := \
 	-D_LARGEFILE_SOURCE=1 $(shell getconf LFS_CFLAGS 2>/dev/null) \
 	-D_XOPEN_SOURCE=500
 
+MANDATORY_LDFLAGS := $(shell getconf LFS_LIBS 2>/dev/null)
+
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
+ALL_LDFLAGS += $(LDFLAGS) $(MANDATORY_LDFLAGS) -fPIC
 
 LIBS = -lpthread
 
@@ -46,7 +49,7 @@ default: all
 all: libjio.so libjio.a libjio.pc jiofsck
 
 libjio.so: $(OBJS)
-	$(NICE_CC) -shared $(ALL_CFLAGS) $(LIBS) $(OBJS) -o libjio.so
+	$(NICE_CC) -shared $(ALL_LDFLAGS) $(LIBS) $(OBJS) -o libjio.so
 
 libjio.a: $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
@@ -59,7 +62,7 @@ libjio.pc: libjio.skel.pc
 		> libjio.pc
 
 jiofsck: jiofsck.o libjio.a
-	$(NICE_CC) $(ALL_CFLAGS) jiofsck.o libjio.a $(LIBS) -lpthread -o jiofsck
+	$(NICE_CC) $(ALL_LDFLAGS) jiofsck.o libjio.a $(LIBS) -o jiofsck
 
 install: all
 	install -d $(PREFIX)/lib
