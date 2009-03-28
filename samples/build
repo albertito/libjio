@@ -1,6 +1,0 @@
-
-B="gcc -Wall -O3 -ljio `getconf LFS_CFLAGS` -D_FILE_OFFSET_BITS=64"
-for i in jio1 jio2 jio3 full; do
-	echo "CC  " $i
-	$B $i.c -o $i
-done

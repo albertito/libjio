@@ -1,5 +1,4 @@
 
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -16,9 +15,9 @@ int main(int argc, char **argv)
 	struct jfs fs;
 	struct jtrans ts;
 
-	fd = jopen(&fs, "test1", O_RDWR | O_CREAT | O_SYNC, 0660, 0);
+	fd = jopen(&fs, "test3", O_RDWR | O_CREAT, 0660, 0);
 	if (fd < 0)
-		perror("OPEN");
+		perror("jopen()");
 
 	jtrans_init(&fs, &ts);
 
@@ -31,19 +30,16 @@ int main(int argc, char **argv)
 #define str3 "3ROLLBACKTEST3!\n"
 	jtrans_add(&ts, str3, strlen(str3), strlen(str1) + strlen(str2));
 
-
 	rv = jtrans_commit(&ts);
 	if (rv != strlen(str1) + strlen(str2) + strlen(str3))
-		perror("COMMIT");
-	printf("COMMIT OK: %d\n", rv);
-
+		perror("jtrans_commit()");
+	printf("commit ok: %d\n", rv);
 
 	rv = jtrans_rollback(&ts);
 	if (rv < 0)
-		perror("ROLLBACK");
-	printf("ROLLBACK OK: %d\n", rv);
+		perror("jtrans_rollback()");
+	printf("rollback ok: %d\n", rv);
 
 	return 0;
-
 }
 
