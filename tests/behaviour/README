@@ -1,5 +1,5 @@
 
-In this directory you'll find libjio's automated tests.
+In this directory you'll find libjio's automated behaviour tests.
 
 They're split in three suites: normal, corruption and fi. The normal suite
 tests normal, expected behaviour. The corruption suite checks how the library
