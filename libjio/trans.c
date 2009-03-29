@@ -21,6 +21,7 @@
 
 #include "libjio.h"
 #include "common.h"
+#include "compat.h"
 
 
 /*
@@ -202,6 +203,10 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	jop->plen = 0;
 	jop->pdata = NULL;
 	jop->locked = 0;
+
+	/* it's highly likely that jtrans_commit() will want to read the
+	 * current data, so we tell the kernel about that */
+	posix_fadvise(ts->fs->fd, offset, count, POSIX_FADV_WILLNEED);
 
 	return 1;
 }

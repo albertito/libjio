@@ -3,7 +3,7 @@ CFLAGS = -std=c99 -pedantic -Wall -O3
 
 MANDATORY_CFLAGS := \
 	-D_LARGEFILE_SOURCE=1 $(shell getconf LFS_CFLAGS 2>/dev/null) \
-	-D_XOPEN_SOURCE=500
+	-D_XOPEN_SOURCE=600
 
 MANDATORY_LDFLAGS := $(shell getconf LFS_LIBS 2>/dev/null)
 
