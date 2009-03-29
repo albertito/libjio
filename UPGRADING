@@ -10,6 +10,8 @@ take much effort. When it's mandatory, it will be noted.
 -> 0.25
   - It is no longer necessary to pass O_SYNC to jopen() if lingering
     transactions are not in use.
+  - libjio.h can no longer be included from C++ source without surrounding it
+    by an 'extern "C"'. This obviously should only affect C++ applications.
 
 -> 0.24
   - The return values of jfsck() have changed, so applications using it need

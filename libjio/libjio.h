@@ -23,10 +23,6 @@
 #error "You must compile your application with Large File Support"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 /* logical structures */
 
@@ -165,10 +161,6 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 #define J_ENOJOURNAL	-2	/* no journal associated */
 #define J_ENOMEM	-3	/* no enough free memory */
 
-
-#ifdef __cplusplus
-} /* from extern "C" above */
-#endif
 
 #endif
 
