@@ -1,36 +1,32 @@
 
-Here are the notes for upgrading libjio from one version to another.
-
-While normally nothing should be done, sometimes things change and some
-actions need to be done. Here's the listing for the releases, you should
-always check it before upgrading.
+Here you can find a summary of the changes in the library that could require
+an effort from its users, like the ones affecting the API, ABI or semantics.
 
 You should always clean all your files before upgrading. While I don't expect
 the transaction on-disk format to change, it's a good practise and it doesn't
-take much. If it's mandatory, it will be noted.
+take much effort. When it's mandatory, it will be noted.
 
-If you want to see what motivated the changes, see the changelog or just ask.
 
-0.24 -> 0.25
-* It is no longer necessary to pass O_SYNC to jopen() if lingering
-	transactions are not in use.
+-> 0.25
+  - It is no longer necessary to pass O_SYNC to jopen() if lingering
+    transactions are not in use.
 
-0.22 -> 0.24
-* The return values of jfsck() have changed, so applications using it need to
-	be recompiled.
-* Python bindings' jfsck(), jfsck_cleanup(), jsync(), jwrite() and jpwrite()
-	now raise an IOError on failures.
+-> 0.24
+  - The return values of jfsck() have changed, so applications using it need
+    to be recompiled.
+  - Python bindings' jfsck(), jfsck_cleanup(), jsync(), jwrite() and jpwrite()
+    now raise an IOError on failures.
 
-0.21 -> 0.22
-* Applications need to be recompiled due to a change in the jfs structure.
+-> 0.22
+  - Applications need to be recompiled due to a change in the jfs structure.
 
-0.19 -> 0.20
-* Applications need to be recompiled due to a change in the jfs structure.
-* When you link your applications with libjio, you need to make sure you
-	compile using large file support.
+-> 0.20
+  - Applications need to be recompiled due to a change in the jfs structure.
+  - When you link your applications with libjio, you need to make sure you
+    compile using large file support.
 
-0.18 -> 0.19
-* Applications need to be recompiled due to a change in the flag numbering.
-* A flag number has changed, from J_COMMITED to J_COMMITTED. If you used that
-	flag, you need to rename it.
+-> 0.19
+  - Applications need to be recompiled due to a change in the flag numbering.
+  - A flag number has changed, from J_COMMITED to J_COMMITTED. If you used
+    that flag, you need to rename it.
 
