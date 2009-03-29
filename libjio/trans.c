@@ -416,6 +416,9 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		ts->fs->ltrans = linger;
 		pthread_mutex_unlock(&(ts->fs->ltlock));
 	} else {
+		if (fdatasync(ts->fs->fd) != 0)
+			goto rollback_exit;
+
 		/* the transaction has been applied, so we cleanup and remove
 		 * it from the disk */
 		unlink(name);
