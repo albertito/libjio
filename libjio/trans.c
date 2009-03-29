@@ -426,7 +426,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		free_tid(ts->fs, ts->id);
 	}
 
-	/* mark the transaction as commited, _after_ it was removed */
+	/* mark the transaction as committed, _after_ it was removed */
 	ts->flags = ts->flags | J_COMMITTED;
 
 
@@ -475,12 +475,11 @@ unlink_exit:
 exit:
 	pthread_mutex_unlock(&(ts->lock));
 
-	/* return the length only if it was properly commited */
+	/* return the length only if it was properly committed */
 	if (ts->flags & J_COMMITTED)
 		return written;
 	else
 		return -1;
-
 }
 
 /* rollback a transaction */

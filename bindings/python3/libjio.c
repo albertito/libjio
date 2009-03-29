@@ -24,7 +24,7 @@
  * UNIX file.
  *
  * The second one represents a single transaction, which is composed of
- * several operations that get added by its add() method. It gets commited
+ * several operations that get added by its add() method. It gets committed
  * with commit(), and rolled back with rollback().
  *
  * There rest of the module's functions are related to file checking, called
