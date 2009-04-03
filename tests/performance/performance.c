@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 	if (ckres.total != 0) {
 		fprintf(stderr, "There were %d errors during the test\n",
 				ckres.total);
-		fprintf(stderr, "jfsck() was used to fix them, but that");
+		fprintf(stderr, "jfsck() was used to fix them, but that ");
 		fprintf(stderr, "shouldn't happen.\n");
 		return 1;
 	}
