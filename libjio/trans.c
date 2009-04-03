@@ -456,15 +456,18 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 
 rollback_exit:
-	/* If the transaction failed we try to recover by rollbacking it
+	/* If the transaction failed we try to recover by rolling it back.
+	 *
 	 * NOTE: on extreme conditions (ENOSPC/disk failure) this can fail
 	 * too! There's nothing much we can do in that case, the caller should
 	 * take care of it by itself.
+	 *
 	 * The transaction file might be OK at this point, so the data could
 	 * be recovered by a posterior jfsck(); however, that's not what the
 	 * user expects (after all, if we return failure, new data should
-	 * never appear), so we remove the transaction file.
-	 * Transactions that were successfuly recovered by rollbacking them
+	 * never appear), so we remove the transaction file (see unlink_exit).
+	 *
+	 * Transactions that were successfuly recovered by rolling them back
 	 * will have J_ROLLBACKED in their flags, so the caller can verify if
 	 * the failure was recovered or not. */
 	if (!(ts->flags & J_COMMITTED) && !(ts->flags & J_ROLLBACKING)) {
@@ -487,7 +490,7 @@ unlink_exit:
 
 	/* always unlock everything at the end; otherwise we could have
 	 * half-overlapping transactions applying simultaneously, and if
-	 * anything goes wrong it's possible to break consistency */
+	 * anything goes wrong it would be possible to break consistency */
 	if (!(ts->flags & J_NOLOCK)) {
 		for (op = ts->op; op != NULL; op = op->next) {
 			if (op->locked) {
