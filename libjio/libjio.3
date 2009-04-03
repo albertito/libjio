@@ -201,7 +201,12 @@ will be applied in order.
 .B jtrans_commit()
 commits the given transaction to disk. After it has returned, data has been
 saved to the disk. It returns the number of bytes written or -1 if there was
-an error. The commit operation is atomic with regards to other read or write
+an error. On an error, the
+.B flags
+field of the
+.B jtrans
+structure will have the J_ROLLBACKED set if the transaction was successfuly
+rollbacked. The commit operation is atomic with regards to other read or write
 operations on different processes, as long as they all access it via libjio.
 
 .B jtrans_rollback()
