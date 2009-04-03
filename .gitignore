@@ -8,5 +8,6 @@ samples/jio1
 samples/jio2
 samples/jio3
 tests/performance/performance
+tests/performance/random
 *.pyc
 *.pyo
