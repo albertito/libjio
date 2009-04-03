@@ -90,6 +90,33 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	return;
 }
 
+/* fsync()s a directory */
+static int already_warned_about_sync = 0;
+static int fsync_dir(int fd)
+{
+	int rv;
+
+	rv = fsync(fd);
+
+	if (rv != 0 && (errno == EINVAL || errno == EBADF)) {
+		/* it seems to be legal that fsync() on directories is not
+		 * implemented, so if this fails with EINVAL or EBADF, just
+		 * call a global sync(); which is awful (and might still
+		 * return before metadata is done) but it seems to be the
+		 * saner choice; otherwise we just fail */
+		sync();
+		rv = 0;
+
+		if (!already_warned_about_sync) {
+			fprintf(stderr, "libjio warning: falling back on " \
+					"sync() for directory syncing\n");
+			already_warned_about_sync = 1;
+		}
+	}
+
+	return rv;
+}
+
 
 /*
  * transaction functions
@@ -382,17 +409,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	 * point) so we only flush here (both data and metadata) */
 	if (fsync(fd) != 0)
 		goto unlink_exit;
-	if (fsync(ts->fs->jdirfd) != 0) {
-		/* it seems to be legal that fsync() on directories is not
-		 * implemented, so if this fails with EINVAL or EBADF, just
-		 * call a global sync(); which is awful (and might still
-		 * return before metadata is done) but it seems to be the
-		 * saner choice; otherwise we just fail */
-		if (errno == EINVAL || errno == EBADF) {
-			sync();
-		} else {
-			goto unlink_exit;
-		}
+	if (fsync_dir(ts->fs->jdirfd) != 0) {
+		goto unlink_exit;
 	}
 
 	fiu_exit_on("jio/commit/tf_sync");
