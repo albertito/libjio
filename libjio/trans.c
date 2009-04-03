@@ -194,6 +194,14 @@ ssize_t jtrans_commit(struct jtrans *ts)
 			goto rollback_exit;
 
 		written += rv;
+
+		if (have_sync_range && !(ts->flags & J_LINGER)) {
+			rv = sync_range_submit(ts->fs->fd, op->len,
+					op->offset);
+			if (rv != 0)
+				goto rollback_exit;
+		}
+
 		fiu_exit_on("jio/commit/wrote_op");
 	}
 
@@ -211,6 +219,20 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		ts->fs->ltrans = linger;
 		pthread_mutex_unlock(&(ts->fs->ltlock));
 	} else {
+		if (have_sync_range) {
+			for (op = ts->op; op != NULL; op = op->next) {
+				rv = sync_range_wait(ts->fs->fd, op->len,
+						op->offset);
+				if (rv != 0)
+					goto rollback_exit;
+			}
+		} else {
+			if (fdatasync(ts->fs->fd) != 0)
+				goto rollback_exit;
+		}
+
+		/* the transaction has been applied, so we cleanup and remove
+		 * it from the disk */
 		rv = journal_free(jop);
 		if (rv != 0)
 			goto rollback_exit;

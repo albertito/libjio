@@ -39,7 +39,7 @@ endif
 
 
 # objects to build
-OBJS = checksum.o common.o trans.o check.o journal.o unix.o ansi.o
+OBJS = checksum.o common.o compat.o trans.o check.o journal.o unix.o ansi.o
 
 # rules
 default: all
