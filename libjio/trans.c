@@ -22,100 +22,7 @@
 #include "libjio.h"
 #include "common.h"
 #include "compat.h"
-
-
-/*
- * helper functions
- */
-
-/* gets a new transaction id */
-static unsigned int get_tid(struct jfs *fs)
-{
-	unsigned int curid, rv;
-
-	/* lock the whole file */
-	plockf(fs->jfd, F_LOCKW, 0, 0);
-
-	/* read the current max. curid */
-	curid = *(fs->jmap);
-
-	fiu_do_on("jio/get_tid/overflow", curid = -1);
-
-	/* increment it and handle overflows */
-	rv = curid + 1;
-	if (rv == 0)
-		goto exit;
-
-	/* write to the file descriptor */
-	*(fs->jmap) = rv;
-
-exit:
-	plockf(fs->jfd, F_UNLOCK, 0, 0);
-	return rv;
-}
-
-/* frees a transaction id */
-static void free_tid(struct jfs *fs, unsigned int tid)
-{
-	unsigned int curid, i;
-	char name[PATH_MAX];
-
-	/* lock the whole file */
-	plockf(fs->jfd, F_LOCKW, 0, 0);
-
-	/* read the current max. curid */
-	curid = *(fs->jmap);
-
-	/* if we're the max tid, scan the directory looking up for the new
-	 * max; the detailed description can be found in the "doc/" dir */
-	if (tid == curid) {
-		/* look up the new max. */
-		for (i = curid - 1; i > 0; i--) {
-			get_jtfile(fs, i, name);
-			if (access(name, R_OK | W_OK) == 0) {
-				break;
-			} else if (errno != EACCES) {
-				/* Real error, stop looking for a new max. It
-				 * doesn't hurt us because it's ok if the max
-				 * is higher than it could be */
-				break;
-			}
-		}
-
-		/* and save it */
-		*(fs->jmap) = i;
-	}
-
-	plockf(fs->jfd, F_UNLOCK, 0, 0);
-	return;
-}
-
-/* fsync()s a directory */
-static int already_warned_about_sync = 0;
-static int fsync_dir(int fd)
-{
-	int rv;
-
-	rv = fsync(fd);
-
-	if (rv != 0 && (errno == EINVAL || errno == EBADF)) {
-		/* it seems to be legal that fsync() on directories is not
-		 * implemented, so if this fails with EINVAL or EBADF, just
-		 * call a global sync(); which is awful (and might still
-		 * return before metadata is done) but it seems to be the
-		 * saner choice; otherwise we just fail */
-		sync();
-		rv = 0;
-
-		if (!already_warned_about_sync) {
-			fprintf(stderr, "libjio warning: falling back on " \
-					"sync() for directory syncing\n");
-			already_warned_about_sync = 1;
-		}
-	}
-
-	return rv;
-}
+#include "journal.h"
 
 
 /*
@@ -128,7 +35,6 @@ void jtrans_init(struct jfs *fs, struct jtrans *ts)
 	pthread_mutexattr_t attr;
 
 	ts->fs = fs;
-	ts->name = NULL;
 	ts->id = 0;
 	ts->flags = fs->flags;
 	ts->op = NULL;
@@ -147,9 +53,6 @@ void jtrans_free(struct jtrans *ts)
 	struct joper *tmpop;
 
 	ts->fs = NULL;
-
-	if (ts->name)
-		free(ts->name);
 
 	while (ts->op != NULL) {
 		tmpop = ts->op->next;
@@ -243,14 +146,10 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 /* commit a transaction */
 ssize_t jtrans_commit(struct jtrans *ts)
 {
-	int id, fd = -1;
 	ssize_t rv;
-	uint32_t csum;
-	char *name;
-	unsigned char *buf_init, *bufp;
 	struct joper *op;
 	struct jlinger *linger;
-	off_t curpos = 0;
+	jop_t *jop;
 	size_t written = 0;
 
 	pthread_mutex_lock(&(ts->lock));
@@ -263,56 +162,6 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (ts->flags & J_RDONLY)
 		goto exit;
 
-	name = (char *) malloc(PATH_MAX);
-	if (name == NULL)
-		goto exit;
-
-	id = get_tid(ts->fs);
-	if (id == 0)
-		goto exit;
-
-	/* open the transaction file */
-	get_jtfile(ts->fs, id, name);
-	fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
-	if (fd < 0)
-		goto exit;
-
-	fiu_exit_on("jio/commit/created_tf");
-
-	/* and lock it */
-	plockf(fd, F_LOCKW, 0, 0);
-
-	ts->id = id;
-	ts->name = name;
-
-	/* save the header */
-	buf_init = malloc(J_DISKHEADSIZE);
-	if (buf_init == NULL)
-		goto unlink_exit;
-
-	bufp = buf_init;
-
-	memcpy(bufp, (void *) &(ts->id), 4);
-	bufp += 4;
-
-	memcpy(bufp, (void *) &(ts->flags), 4);
-	bufp += 4;
-
-	memcpy(bufp, (void *) &(ts->numops), 4);
-	bufp += 4;
-
-	rv = spwrite(fd, buf_init, J_DISKHEADSIZE, 0);
-	if (rv != J_DISKHEADSIZE) {
-		free(buf_init);
-		goto unlink_exit;
-	}
-
-	fiu_exit_on("jio/commit/tf_header");
-
-	free(buf_init);
-
-	curpos = J_DISKHEADSIZE;
-
 	/* first of all lock all the regions we're going to work with;
 	 * otherwise there could be another transaction trying to write the
 	 * same spots and we could end up with interleaved writes, that could
@@ -323,97 +172,18 @@ ssize_t jtrans_commit(struct jtrans *ts)
 			lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
 			if (lr == -1)
 				/* note it can fail with EDEADLK */
-				goto unlink_exit;
+				goto unlock_exit;
 			op->locked = 1;
 		}
 	}
 
-	/* save each transacion in the file */
-	for (op = ts->op; op != NULL; op = op->next) {
-		/* read the current content only if the transaction is not
-		 * marked as NOROLLBACK, and if the data is not there yet,
-		 * which is the normal case, but for rollbacking we fill it
-		 * ourselves */
-		if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
-			op->pdata = malloc(op->len);
-			if (op->pdata == NULL)
-				goto unlink_exit;
+	jop = journal_new(ts);
+	if (jop == NULL)
+		goto unlock_exit;
 
-			op->plen = op->len;
-
-			rv = spread(ts->fs->fd, op->pdata, op->len,
-					op->offset);
-			if (rv < 0)
-				goto unlink_exit;
-			if (rv < op->len) {
-				/* we are extending the file! */
-				/* ftruncate(ts->fs->fd, op->offset + op->len); */
-				op->plen = rv;
-			}
-		}
-
-		/* save the operation's header */
-		buf_init = malloc(J_DISKOPHEADSIZE);
-		if (buf_init == NULL)
-			goto unlink_exit;
-
-		bufp = buf_init;
-
-		memcpy(bufp, (void *) &(op->len), 4);
-		bufp += 4;
-
-		memcpy(bufp, (void *) &(op->plen), 4);
-		bufp += 4;
-
-		memcpy(bufp, (void *) &(op->offset), 8);
-		bufp += 8;
-
-		rv = spwrite(fd, buf_init, J_DISKOPHEADSIZE, curpos);
-		if (rv != J_DISKOPHEADSIZE) {
-			free(buf_init);
-			goto unlink_exit;
-		}
-
-		fiu_exit_on("jio/commit/tf_ophdr");
-
-		free(buf_init);
-
-		curpos += J_DISKOPHEADSIZE;
-
-		/* and save it to the disk */
-		rv = spwrite(fd, op->buf, op->len, curpos);
-		if (rv != op->len)
-			goto unlink_exit;
-
-		curpos += op->len;
-
-		fiu_exit_on("jio/commit/tf_opdata");
-	}
-
-	fiu_exit_on("jio/commit/tf_data");
-
-	/* compute and save the checksum (curpos is always small, so there's
-	 * no overflow possibility when we convert to size_t) */
-	if (!checksum(fd, curpos, &csum))
+	rv = journal_save(jop);
+	if (rv < 0)
 		goto unlink_exit;
-
-	rv = spwrite(fd, &csum, sizeof(uint32_t), curpos);
-	if (rv != sizeof(uint32_t))
-		goto unlink_exit;
-	curpos += sizeof(uint32_t);
-
-	/* this is a simple but efficient optimization: instead of doing
-	 * everything O_SYNC, we sync at this point only, this way we avoid
-	 * doing a lot of very small writes; in case of a crash the
-	 * transaction file is only useful if it's complete (ie. after this
-	 * point) so we only flush here (both data and metadata) */
-	if (fsync(fd) != 0)
-		goto unlink_exit;
-	if (fsync_dir(ts->fs->jdirfd) != 0) {
-		goto unlink_exit;
-	}
-
-	fiu_exit_on("jio/commit/tf_sync");
 
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
@@ -433,23 +203,19 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		if (linger == NULL)
 			goto rollback_exit;
 
-		linger->id = id;
-		linger->name = strdup(name);
+		linger->jop = jop;
 
 		pthread_mutex_lock(&(ts->fs->ltlock));
 		linger->next = ts->fs->ltrans;
 		ts->fs->ltrans = linger;
 		pthread_mutex_unlock(&(ts->fs->ltlock));
 	} else {
-		if (fdatasync(ts->fs->fd) != 0)
+		rv = journal_free(jop);
+		if (rv != 0)
 			goto rollback_exit;
-
-		/* the transaction has been applied, so we cleanup and remove
-		 * it from the disk */
-		unlink(name);
-		fiu_exit_on("jio/commit/pre_ok_free_tid");
-		free_tid(ts->fs, ts->id);
 	}
+
+	jop = NULL;
 
 	/* mark the transaction as committed, _after_ it was removed */
 	ts->flags = ts->flags | J_COMMITTED;
@@ -481,13 +247,10 @@ rollback_exit:
 	}
 
 unlink_exit:
-	if (!(ts->flags & J_COMMITTED)) {
-		unlink(name);
-		free_tid(ts->fs, ts->id);
-	}
+	if (jop)
+		journal_free(jop);
 
-	close(fd);
-
+unlock_exit:
 	/* always unlock everything at the end; otherwise we could have
 	 * half-overlapping transactions applying simultaneously, and if
 	 * anything goes wrong it would be possible to break consistency */
@@ -719,15 +482,13 @@ int jsync(struct jfs *fs)
 		return rv;
 
 	pthread_mutex_lock(&(fs->ltlock));
+	ltmp = fs->ltrans;
 	while (fs->ltrans != NULL) {
-		free_tid(fs, fs->ltrans->id);
 		fiu_exit_on("jio/jsync/pre_unlink");
-		unlink(fs->ltrans->name);
-		free(fs->ltrans->name);
+		journal_free(fs->ltrans->jop);
 
 		ltmp = fs->ltrans->next;
 		free(fs->ltrans);
-
 		fs->ltrans = ltmp;
 	}
 

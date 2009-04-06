@@ -293,8 +293,6 @@ loop:
 		if (map != NULL)
 			munmap(map, filelen);
 
-		if (curts->name)
-			free(curts->name);
 		while (curts->op != NULL) {
 			tmpop = curts->op->next;
 			if (curts->op->pdata)

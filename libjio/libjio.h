@@ -55,7 +55,6 @@ struct joper {
 /* a transaction */
 struct jtrans {
 	struct jfs *fs;		/* journal file structure to operate on */
-	char *name;		/* name of the transaction file */
 	int id;			/* transaction id */
 	uint32_t flags;		/* transaction flags */
 	unsigned int numops;	/* quantity of operations in the list */
@@ -65,9 +64,9 @@ struct jtrans {
 };
 
 /* lingered transaction */
+struct journal_op;
 struct jlinger {
-	int id;			/* transaction id */
-	char *name;		/* name of the transaction file */
+	struct journal_op *jop;
 	struct jlinger *next;
 };
 
