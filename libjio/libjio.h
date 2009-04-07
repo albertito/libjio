@@ -23,8 +23,9 @@
 #error "You must compile your application with Large File Support"
 #endif
 
-
-/* logical structures */
+/* empty declarations, the API does not expose these */
+struct jlinger;
+struct joper;
 
 /* the main file structure */
 struct jfs {
@@ -40,18 +41,6 @@ struct jfs {
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
 };
 
-/* a single operation */
-struct joper {
-	int locked;		/* is the region is locked? */
-	off_t offset;		/* operation's offset */
-	size_t len;		/* data length */
-	void *buf;		/* data */
-	size_t plen;		/* previous data length */
-	void *pdata;		/* previous data */
-	struct joper *prev;
-	struct joper *next;
-};
-
 /* a transaction */
 struct jtrans {
 	struct jfs *fs;		/* journal file structure to operate on */
@@ -63,13 +52,6 @@ struct jtrans {
 	struct joper *op;	/* list of operations */
 };
 
-/* lingered transaction */
-struct journal_op;
-struct jlinger {
-	struct journal_op *jop;
-	struct jlinger *next;
-};
-
 struct jfsck_result {
 	int total;		/* total transactions files we looked at */
 	int invalid;		/* invalid files in the journal directory */
@@ -78,24 +60,6 @@ struct jfsck_result {
 	int corrupt;		/* corrupt transactions */
 	int apply_error;	/* errors applying the transaction */
 	int reapplied;		/* transactions that were reapplied */
-};
-
-
-/* on-disk structures */
-
-/* header (fixed length, defined below) */
-struct disk_header {
-	uint32_t id;		/* id */
-	uint32_t flags;		/* flags about this transaction */
-	uint32_t numops;	/* number of operations */
-};
-
-/* operation */
-struct disk_operation {
-	uint32_t len;		/* data length */
-	uint32_t plen;		/* previous data length */
-	uint64_t offset;	/* offset relative to the BOF */
-	char *prevdata;		/* previous data for rollback */
 };
 
 

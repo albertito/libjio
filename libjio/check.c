@@ -17,6 +17,7 @@
 
 #include "libjio.h"
 #include "common.h"
+#include "trans.h"
 
 
 /* fill a transaction structure from a mmapped transaction file */

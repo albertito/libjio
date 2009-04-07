@@ -23,6 +23,7 @@
 #include "common.h"
 #include "compat.h"
 #include "journal.h"
+#include "trans.h"
 
 
 /*
