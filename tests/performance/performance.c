@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <string.h>
 #include <libjio.h>
 
 #define FILENAME "test_file"
@@ -53,6 +54,7 @@ static void *worker(void *tno)
 		perror("malloc()");
 		return NULL;
 	}
+	memset(buf, 5, blocksize);
 
 	work_done = 0;
 
