@@ -320,6 +320,55 @@ static PyObject *jf_jmove_journal(jfile_object *fp, PyObject *args)
 	return PyLong_FromLong(rv);
 }
 
+/* jfs_autosync_start() */
+PyDoc_STRVAR(jf_autosync_start__doc,
+"autosync_start(max_sec, max_bytes)\n\
+\n\
+Starts the automatic sync thread (only useful when using lingering\n\
+transactions).\n");
+
+static PyObject *jf_autosync_start(jfile_object *fp, PyObject *args)
+{
+	int rv;
+	unsigned int max_sec, max_bytes;
+
+	if (!PyArg_ParseTuple(args, "II:autosync_start", &max_sec,
+				&max_bytes))
+		return NULL;
+
+	Py_BEGIN_ALLOW_THREADS
+	rv = jfs_autosync_start(fp->fs, max_sec, max_bytes);
+	Py_END_ALLOW_THREADS
+
+	if (rv != 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
+	return PyLong_FromLong(rv);
+}
+
+/* jfs_autosync_stop() */
+PyDoc_STRVAR(jf_autosync_stop__doc,
+"autosync_stop()\n\
+\n\
+Stops the automatic sync thread started by autosync_start()\n");
+
+static PyObject *jf_autosync_stop(jfile_object *fp, PyObject *args)
+{
+	int rv;
+
+	if (!PyArg_ParseTuple(args, ":autosync_stop"))
+		return NULL;
+
+	Py_BEGIN_ALLOW_THREADS
+	rv = jfs_autosync_stop(fp->fs);
+	Py_END_ALLOW_THREADS
+
+	if (rv != 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
+	return PyLong_FromLong(rv);
+}
+
 /* new_trans */
 PyDoc_STRVAR(jf_new_trans__doc,
 "new_trans()\n\
@@ -365,6 +414,10 @@ static PyMethodDef jfile_methods[] = {
 	{ "jsync", (PyCFunction) jf_jsync, METH_VARARGS, jf_jsync__doc },
 	{ "jmove_journal", (PyCFunction) jf_jmove_journal, METH_VARARGS,
 		jf_jmove_journal__doc },
+	{ "autosync_start", (PyCFunction) jf_autosync_start, METH_VARARGS,
+		jf_autosync_start__doc },
+	{ "autosync_stop", (PyCFunction) jf_autosync_stop, METH_VARARGS,
+		jf_autosync_stop__doc },
 	{ "new_trans", (PyCFunction) jf_new_trans, METH_VARARGS,
 		jf_new_trans__doc },
 	{ NULL }

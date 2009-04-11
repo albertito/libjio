@@ -217,6 +217,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		pthread_mutex_lock(&(ts->fs->ltlock));
 		linger->next = ts->fs->ltrans;
 		ts->fs->ltrans = linger;
+		ts->fs->ltrans_len += written;
+		autosync_check(ts->fs);
 		pthread_mutex_unlock(&(ts->fs->ltlock));
 	} else {
 		if (have_sync_range) {
@@ -390,6 +392,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->jdir = NULL;
 	fs->jdirfd = -1;
 	fs->jmap = MAP_FAILED;
+	fs->as_cfg = NULL;
 
 	/* we provide either read-only or read-write access, because when we
 	 * commit a transaction we read the current contents before applying,
@@ -407,6 +410,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	fs->name = strdup(name);
 	fs->flags = jflags;
 	fs->ltrans = NULL;
+	fs->ltrans_len = 0;
 
 	/* Note on fs->lock usage: this lock is used only to protect the file
 	 * pointer. This means that it must only be held while performing
@@ -500,12 +504,11 @@ int jsync(struct jfs *fs)
 	if (fs->fd < 0)
 		return -1;
 
-	rv = fsync(fs->fd);
+	rv = fdatasync(fs->fd);
 	if (rv != 0)
 		return rv;
 
 	pthread_mutex_lock(&(fs->ltlock));
-	ltmp = fs->ltrans;
 	while (fs->ltrans != NULL) {
 		fiu_exit_on("jio/jsync/pre_unlink");
 		journal_free(fs->ltrans->jop);
@@ -515,6 +518,7 @@ int jsync(struct jfs *fs)
 		fs->ltrans = ltmp;
 	}
 
+	fs->ltrans_len = 0;
 	pthread_mutex_unlock(&(fs->ltlock));
 	return 0;
 }
@@ -587,6 +591,9 @@ int jclose(struct jfs *fs)
 	int ret;
 
 	ret = 0;
+
+	if (jfs_autosync_stop(fs))
+		ret = -1;
 
 	if (! (fs->flags & J_RDONLY)) {
 		if (jsync(fs))

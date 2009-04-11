@@ -10,7 +10,7 @@ MANDATORY_LDFLAGS := $(shell getconf LFS_LIBS 2>/dev/null)
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 ALL_LDFLAGS += $(LDFLAGS) $(MANDATORY_LDFLAGS) -fPIC
 
-LIBS = -lpthread
+LIBS = -lpthread -lrt
 
 ifdef DEBUG
 ALL_CFLAGS += -g
@@ -39,7 +39,8 @@ endif
 
 
 # objects to build
-OBJS = checksum.o common.o compat.o trans.o check.o journal.o unix.o ansi.o
+OBJS = autosync.o checksum.o common.o compat.o trans.o check.o journal.o \
+       unix.o ansi.o
 
 # rules
 default: all

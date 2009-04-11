@@ -48,6 +48,10 @@ libjio - A library for Journaled I/O
 
 .BI "int jsync(struct jfs *" fs ");"
 .BI "int jmove_journal(struct jfs *" fs ", const char *" newpath ");"
+.BI "int jfs_autosync_start(struct jfs *" fs ", time_t " max_sec ","
+.BI "           size_t " max_bytes ");"
+.BI "int jfs_autosync_stop(struct jfs *" fs ");"
+
 
 .BI "int jfsck(const char *" name ", const char *" jdir ","
 .BI "           struct jfsck_result *" res ");"
@@ -118,6 +122,19 @@ doubts about how to use them.
 can be used to move the journal directory to a new location. It can be called
 only when nobody else is using the file. It is usually not used, except for
 very special cases.
+
+.B jfs_autosync_start()
+can be used to start a thread which will automatically perform a
+.B jsync()
+after the given number of seconds or the given number of bytes written using
+lingering transactions (whatever comes first). It's very useful when using
+lingering transactions.
+.B jfs_autosync_stop()
+stops the thread started by
+.BR jfs_autosync_start() .
+The thread is also stopped automatically when
+.B jclose()
+is called.
 
 There are two functions that differ from the rest, which are
 .BR jfsck() " and " jfsck_cleanup() .

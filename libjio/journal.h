@@ -11,6 +11,7 @@ struct journal_op {
 	char *name;
 	off_t curpos;
 	struct jtrans *ts;
+	struct jfs *fs;
 };
 
 typedef struct journal_op jop_t;

@@ -26,6 +26,7 @@
 /* empty declarations, the API does not expose these */
 struct jlinger;
 struct joper;
+struct autosync_cfg;
 
 /* the main file structure */
 struct jfs {
@@ -37,8 +38,10 @@ struct jfs {
 	unsigned int *jmap;	/* journal's lock file mmap area */
 	uint32_t flags;		/* journal flags */
 	struct jlinger *ltrans;	/* lingered transactions */
+	size_t ltrans_len;	/* length of all the lingered transactions */
 	pthread_mutex_t ltlock;	/* lingered transactions' lock */
 	pthread_mutex_t lock;	/* a soft lock used in some operations */
+	struct autosync_cfg *as_cfg; /* autosync config */
 };
 
 /* a transaction */
@@ -73,6 +76,10 @@ void jtrans_free(struct jtrans *ts);
 int jsync(struct jfs *fs);
 int jmove_journal(struct jfs *fs, const char *newpath);
 int jclose(struct jfs *fs);
+
+/* autosync */
+int jfs_autosync_start(struct jfs *fs, time_t max_sec, size_t max_bytes);
+int jfs_autosync_stop(struct jfs *fs);
 
 
 /* journal checker */

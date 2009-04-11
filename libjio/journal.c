@@ -122,8 +122,7 @@ static int fsync_dir(int fd)
  */
 
 /* Creates a new transaction in the journal, returns a pointer to an opaque
- * jop_t (that is freed using journal_free), or NULL if there was an error.
- * The transaction cannot be modified until journal_free() is called. */
+ * jop_t (that is freed using journal_free), or NULL if there was an error. */
 struct journal_op *journal_new(struct jtrans *ts)
 {
 	int fd, id;
@@ -156,6 +155,7 @@ struct journal_op *journal_new(struct jtrans *ts)
 	jop->name = name;
 	jop->curpos = 0;
 	jop->ts = ts;
+	jop->fs = ts->fs;
 
 	fiu_exit_on("jio/commit/created_tf");
 
@@ -304,7 +304,7 @@ int journal_free(struct journal_op *jop)
 	unlink(jop->name);
 
 	fiu_exit_on("jio/commit/pre_ok_free_tid");
-	free_tid(jop->ts->fs, jop->ts->id);
+	free_tid(jop->fs, jop->id);
 
 	close(jop->fd);
 

@@ -39,5 +39,7 @@ void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile);
 int checksum(int fd, size_t len, uint32_t *csum);
 uint32_t checksum_map(uint8_t *map, size_t count);
 
+void autosync_check(struct jfs *fs);
+
 #endif
 
