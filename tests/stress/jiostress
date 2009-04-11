@@ -52,8 +52,8 @@ class Stresser:
 		self.nops = nops
 		self.use_fi = use_fi
 
-		self.maxoplen = min(int(self.fsize / 4),
-					5 * 1024 * 1024)
+		self.maxoplen = min(int(self.fsize / 256),
+					64 * 1024)
 
 		self.jf = libjio.open(fname,
 			libjio.O_RDWR | libjio.O_CREAT, 0o600)
