@@ -46,10 +46,11 @@ class ConsistencyError (Exception):
 #
 
 class Stresser:
-	def __init__(self, fname, fsize, nops):
+	def __init__(self, fname, fsize, nops, use_fi):
 		self.fname = fname
 		self.fsize = fsize
 		self.nops = nops
+		self.use_fi = use_fi
 
 		self.maxoplen = min(int(self.fsize / 4),
 					5 * 1024 * 1024)
@@ -57,6 +58,8 @@ class Stresser:
 		self.jf = libjio.open(fname,
 			libjio.O_RDWR | libjio.O_CREAT, 0o600)
 		self.f = open(fname, mode = 'rb')
+
+		self.jf.truncate(fsize)
 
 		# data used for consistency checks
 		self.current_range = (0, 0)
@@ -71,25 +74,27 @@ class Stresser:
 		return r
 
 	def randwrite(self):
+		start, end = randfrange(self.fsize, self.maxoplen)
+
+		# read an extended range so we can check we
+		# only wrote what we were supposed to
+		estart = max(0, start - 32)
+		eend = min(self.fsize, end + 32)
+		self.current_range = (estart, eend)
+		self.prev_data = self.pread(estart, eend)
+
+		nd = getbytes(end - start)
+		self.new_data = self.prev_data[:start - estart] \
+			+ nd + self.prev_data[- (eend - end):]
+		self.jf.pwrite(nd, start)
+		return True
+
+	def randwrite_fork(self):
 		pid = os.fork()
 		if pid == 0:
 			# child
 			try:
-				start, end = randfrange(self.fsize,
-						self.maxoplen)
-
-				# read an extended range so we can check we
-				# only wrote what we were supposed to
-				estart = max(0, start - 32)
-				eend = min(self.fsize, end + 32)
-				self.current_range = (estart, eend)
-				self.prev_data = self.pread(estart, eend)
-
-				nd = getbytes(end - start)
-				self.new_data = \
-					self.prev_data[:start - estart] \
-					+ nd + self.prev_data[- (eend - end):]
-				self.jf.pwrite(nd, start)
+				self.randwrite()
 			except IOError:
 				sys.exit(1)
 			except:
@@ -124,10 +129,12 @@ class Stresser:
 		return r
 
 	def fiu_enable(self):
-		fiu.enable_random('jio/*', probability = 0.02)
+		if self.use_fi:
+			fiu.enable_random('jio/*', probability = 0.02)
 
 	def fiu_disable(self):
-		fiu.disable('jio/*')
+		if self.use_fi:
+			fiu.disable('jio/*')
 
 	def run(self):
 		self.fiu_enable()
@@ -141,7 +148,12 @@ class Stresser:
 				sys.stdout.write(" %d\n" % i)
 				sys.stdout.write("  ")
 			sys.stdout.flush()
-			if not self.randwrite():
+
+			if self.use_fi:
+				r = self.randwrite_fork()
+			else:
+				r = self.randwrite()
+			if not r:
 				nfailures += 1
 				self.fiu_disable()
 				r = self.reopen()
@@ -160,10 +172,13 @@ class Stresser:
 
 def usage():
 	print("""
-Use: jiostress <file name> <file size in Mb> [<number of operations>]
+Use: jiostress <file name> <file size in Mb> [<number of operations>] [--fi]
 
 If the number of operations is not provided, the default (1000) will be
-used.""")
+used.
+
+If the "--fi" option is passed, the test will perform fault injection.
+""")
 
 
 def main():
@@ -171,13 +186,17 @@ def main():
 		fname = sys.argv[1]
 		fsize = int(sys.argv[2]) * 1024 * 1024
 		nops = 1000
-		if len(sys.argv) >= 4:
+		if len(sys.argv) >= 4 and sys.argv[3].isnumeric():
 			nops = int(sys.argv[3])
+
+		use_fi = False
+		if '--fi' in sys.argv:
+			use_fi = True
 	except:
 		usage()
 		sys.exit(1)
 
-	s = Stresser(fname, fsize, nops)
+	s = Stresser(fname, fsize, nops, use_fi)
 	print("Running stress test")
 	nfailures = s.run()
 	print("Stress test completed")
