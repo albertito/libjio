@@ -26,19 +26,11 @@ except ImportError:
 # Auxiliary stuff
 #
 
-randsrc = open('/dev/urandom', mode = 'rb')
-def randbytes(n):
-	"Returns n random bytes"
-	if n < 64:
-		return randsrc.read(n)
-
-	# to avoid reading too much from urandom (which needlessly stresses
-	# the kernel), just get a small random stream and repeat it
-	s = randsrc.read(64)
-	while len(s) < n:
-		s += s + s[::-1]
-
-	return s[:n]
+gbcount = 0
+def getbytes(n):
+	global gbcount
+	gbcount = (gbcount + 1) % 10
+	return bytes(str(gbcount) * n, 'ascii')
 
 def randfrange(maxend, maxsize):
 	start = random.randint(0, maxend - 1)
@@ -93,7 +85,7 @@ class Stresser:
 				self.current_range = (estart, eend)
 				self.prev_data = self.pread(estart, eend)
 
-				nd = randbytes(end - start)
+				nd = getbytes(end - start)
 				self.new_data = \
 					self.prev_data[:start - estart] \
 					+ nd + self.prev_data[- (eend - end):]
