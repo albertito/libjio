@@ -94,8 +94,9 @@ class Stresser:
 				self.prev_data = self.pread(estart, eend)
 
 				nd = randbytes(end - start)
-				self.new_data = self.prev_data[estart:start] \
-					+ nd + self.prev_data[end:eend]
+				self.new_data = \
+					self.prev_data[:start - estart] \
+					+ nd + self.prev_data[- (eend - end):]
 				self.jf.pwrite(nd, start)
 			except IOError:
 				sys.exit(1)
