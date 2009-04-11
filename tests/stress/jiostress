@@ -46,20 +46,28 @@ class ConsistencyError (Exception):
 #
 
 class Stresser:
-	def __init__(self, fname, fsize, nops, use_fi):
+	def __init__(self, fname, fsize, nops, use_fi, use_as):
 		self.fname = fname
 		self.fsize = fsize
 		self.nops = nops
 		self.use_fi = use_fi
+		self.use_as = use_as
 
 		self.maxoplen = min(int(self.fsize / 256),
 					64 * 1024)
 
-		self.jf = libjio.open(fname,
-			libjio.O_RDWR | libjio.O_CREAT, 0o600)
+		jflags = 0
+		if use_as:
+			jflags = libjio.J_LINGER
+
+		self.jf = libjio.open(fname, libjio.O_RDWR | libjio.O_CREAT,
+				0o600, jflags)
 		self.f = open(fname, mode = 'rb')
 
 		self.jf.truncate(fsize)
+
+		if use_as:
+			self.jf.autosync_start(5, 2 * 1024 * 1024)
 
 		# data used for consistency checks
 		self.current_range = (0, 0)
@@ -172,12 +180,17 @@ class Stresser:
 
 def usage():
 	print("""
-Use: jiostress <file name> <file size in Mb> [<number of operations>] [--fi]
+Use: jiostress <file name> <file size in Mb> [<number of operations>]
+	[--fi] [--as]
 
 If the number of operations is not provided, the default (1000) will be
 used.
 
-If the "--fi" option is passed, the test will perform fault injection.
+If the "--fi" option is passed, the test will perform fault injection. This
+option conflicts with "--as".
+
+If the "--as" option is passed, lingering transactions will be used, along
+with the automatic syncing thread. This option conflicts with "--fi".
 """)
 
 
@@ -192,13 +205,22 @@ def main():
 		use_fi = False
 		if '--fi' in sys.argv:
 			use_fi = True
+
+		use_as = False
+		if '--as' in sys.argv:
+			use_as = True
 	except:
 		usage()
 		sys.exit(1)
 
-	s = Stresser(fname, fsize, nops, use_fi)
+	if use_fi and use_as:
+		print("Error: --fi and --as cannot be used together")
+		sys.exit(1)
+
+	s = Stresser(fname, fsize, nops, use_fi, use_as)
 	print("Running stress test")
 	nfailures = s.run()
+	del s
 	print("Stress test completed")
 	print("  %d operations" % nops)
 	print("  %d simulated failures" % nfailures)
