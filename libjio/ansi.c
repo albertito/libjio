@@ -22,12 +22,9 @@
  * To avoid completely useless code duplication, this functions rely on the
  * UNIX wrappers from unix.c.
  *
- * The API is not nice, and you I wouldn't recommend it for any serious I/O;
- * this wrappers are done more as code samples than anything else.
+ * The API is not nice, and I wouldn't recommend it for any serious I/O.
  *
- * TODO: it should be possible to implement something like this at some
- * LD_PRELOAD level without too much harm for most apps.
- * TODO: this is still experimental, it hasn't received too much testing
+ * Note that it is still experimental and it hasn't received too much testing
  * (that's why it's not even documented), so use it at your own risk.
  */
 
