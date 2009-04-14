@@ -121,10 +121,6 @@ FILE *jfsopen(struct jfs *stream, const char *mode);
 #define J_ROLLBACKING	32	/* mark a transaction as rollbacking */
 #define J_RDONLY	64	/* mark a file as read-only */
 
-/* disk constants */
-#define J_DISKHEADSIZE	 12	/* length of disk_header */
-#define J_DISKOPHEADSIZE 16	/* length of disk_operation header */
-
 /* jfsck constants (return values) */
 #define J_ESUCCESS	0	/* success - shouldn't be used */
 #define J_ENOENT	-1	/* no such file */

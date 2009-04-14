@@ -40,6 +40,10 @@ struct disk_operation {
 	char *prevdata;		/* previous data for rollback */
 };
 
+/* disk constants */
+#define J_DISKHEADSIZE	 12	/* length of disk_header */
+#define J_DISKOPHEADSIZE 16	/* length of disk_operation header */
+
 
 #endif
 
