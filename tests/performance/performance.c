@@ -85,6 +85,8 @@ static void *worker(void *tno)
 
 	printf("%lu %zd %zd %f %f\n", tid, mb, blocksize, seconds, mb_per_sec);
 
+	free(buf);
+
 	return NULL;
 }
 
