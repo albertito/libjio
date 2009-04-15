@@ -64,11 +64,10 @@ because they have their own initializer functions, but they are the building
 blocks for the rest of the text, which, once this is understood, should be
 obvious and self-evident.
 
-The first structure we face is *struct jfs*, usually called the file
-structure, and it represents an open file, just like a regular file descriptor
-or a FILE \*.
+The first type we face is *jfs_t*, usually called the file structure, and it
+represents an open file, just like a regular file descriptor or a FILE \*.
 
-Then you find *struct jtrans*, usually called the transaction structure, which
+Then you find *jtrans_t*, usually called the transaction structure, which
 represents a single transaction.
 
 
@@ -105,22 +104,24 @@ Let's put it all together and code a nice "hello world"
 program (return values are ignored for simplicity)::
 
   char buf[] = "Hello world!";
-  struct jfs file;
-  struct jtrans trans;
+  jfs_t *file;
+  jtrans_t *trans;
 
-  jopen(&file, "filename", O_RDWR | O_CREAT, 0600, 0);
+  file = jopen("filename", O_RDWR | O_CREAT, 0600, 0);
 
-  jtrans_init(&file, &trans);
-  jtrans_add(&trans, buf, strlen(buf), 0);
-  jtrans_commit(&trans);
+  trans = jtrans_init(file);
+  jtrans_add(trans, buf, strlen(buf), 0);
+  jtrans_commit(trans);
+  jtrans_free(trans);
 
-  jclose(&file);
+  jclose(file);
 
 As we've seen, we open the file and initialize the structure with *jopen()*
 (with the parameter *jflags* being the last 0), create a new transaction with
 *jtrans_init()*, then add an operation with *jtrans_add()* (the last 0 is the
 offset, in this case the beginning of the file), commit the transaction with
-*jtrans_commit()*, and finally close the file with *jclose()*.
+*jtrans_commit()*, free it with *jtrans_free()*, and finally close the file
+with *jclose()*.
 
 Reading is much easier: the library provides three functions, *jread()*,
 *jpread()* and *jreadv()*, that behave exactly like *read()*, *pread()* and

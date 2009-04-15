@@ -216,13 +216,12 @@ int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 
 	/* verify (and possibly fix) all the transactions */
 	for (i = 1; i <= maxtid; i++) {
-		curts = malloc(sizeof(struct jtrans));
+		curts = jtrans_init(&fs);
 		if (curts == NULL) {
 			ret = J_ENOMEM;
 			goto exit;
 		}
 
-		jtrans_init(&fs, curts);
 		curts->id = i;
 
 		/* open the transaction file, using i as its name, so we are

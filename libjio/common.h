@@ -1,9 +1,6 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
- * Header for internal functions
+ * Header for internal functions and definitions
  */
 
 #ifndef _COMMON_H
@@ -28,6 +25,22 @@
 #define F_UNLOCK	(_F_ULOCK)
 
 #define MAX_TSIZE	(SSIZE_MAX)
+
+/* the main file structure */
+struct jfs {
+	int fd;			/* main file descriptor */
+	char *name;		/* and its name */
+	char *jdir;		/* journal directory */
+	int jdirfd;		/* journal directory file descriptor */
+	int jfd;		/* journal's lock file descriptor */
+	unsigned int *jmap;	/* journal's lock file mmap area */
+	uint32_t flags;		/* journal flags */
+	struct jlinger *ltrans;	/* lingered transactions */
+	size_t ltrans_len;	/* length of all the lingered transactions */
+	pthread_mutex_t ltlock;	/* lingered transactions' lock */
+	pthread_mutex_t lock;	/* a soft lock used in some operations */
+	struct autosync_cfg *as_cfg; /* autosync config */
+};
 
 
 off_t plockf(int fd, int cmd, off_t offset, off_t len);

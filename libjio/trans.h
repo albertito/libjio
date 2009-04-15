@@ -3,6 +3,19 @@
 #define _TRANS_H
 
 
+struct joper;
+
+/* a transaction */
+struct jtrans {
+	struct jfs *fs;		/* journal file structure to operate on */
+	int id;			/* transaction id */
+	uint32_t flags;		/* transaction flags */
+	unsigned int numops;	/* quantity of operations in the list */
+	size_t len;		/* transaction's length */
+	pthread_mutex_t lock;	/* used to modify the operation list */
+	struct joper *op;	/* list of operations */
+};
+
 /* a single operation */
 struct joper {
 	int locked;		/* is the region is locked? */

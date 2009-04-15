@@ -5,13 +5,38 @@ libjio - A library for Journaled I/O
 .nf
 .B #include <libjio.h>
 
-.B struct jfs;
+.BI "jfs_t *jopen(const char *" name ", int " flags ", int " mode ",
+.BI "           int " jflags ");"
+.BI "ssize_t jread(jfs_t *" fs ", void *" buf ", size_t " count ");"
+.BI "ssize_t jpread(jfs_t *" fs ", void *" buf ", size_t " count ","
+.BI "		off_t " offset ");"
+.BI "ssize_t jreadv(jfs_t *" fs ", struct iovec *" vector ","
+.BI "		int " count ");"
+.BI "ssize_t jwrite(jfs_t *" fs ", const void *" buf ", size_t " count ");"
+.BI "ssize_t jpwrite(jfs_t *" fs ", const void *" buf ", size_t " count ","
+.BI "		off_t " offset ");"
+.BI "ssize_t jwritev(jfs_t *" fs ", const struct iovec *" vector ","
+.BI "		int " count ");"
+.BI "int jtruncate(jfs_t *" fs ", off_t " lenght ");"
+.BI "off_t jlseek(jfs_t *" fs ", off_t " offset ", int " whence ");"
+.BI "int jclose(jfs_t *" fs ");"
 
-.BR "struct jtrans " {
-    ...
-    unsigned int flags;
-    ...
-};
+.BI "jtrans_t *jtrans_init(jfs_t *" fs ");"
+.BI "int jtrans_commit(jtrans_t *" ts ");"
+.BI "int jtrans_add(jtrans_t *" ts ", const void *" buf ","
+.BI "		size_t " count ", off_t " offset ");"
+.BI "int jtrans_rollback(jtrans_t *" ts ");"
+.BI "void jtrans_free(jtrans_t *" ts ");"
+
+.BI "int jsync(jfs_t *" fs ");"
+.BI "int jfs_autosync_start(jfs_t *" fs ", time_t " max_sec ","
+.BI "           size_t " max_bytes ");"
+.BI "int jfs_autosync_stop(jfs_t *" fs ");"
+.BI "int jmove_journal(jfs_t *" fs ", const char *" newpath ");"
+
+.BI "int jfsck(const char *" name ", const char *" jdir ","
+.BI "           jfs_tck_result *" res ");"
+.BI "int jfsck_cleanup(const char *" name ", const char *" jdir ");"
 
 .BR "struct jfsck_result" " {"
     int total;            /* total transactions files we looked at */
@@ -22,40 +47,6 @@ libjio - A library for Journaled I/O
     int rollbacked;       /* transactions that were rollbacked */
     ...
 };
-
-.BI "int jopen(struct jfs *" fs ", const char *" name ","
-.BI "		int " flags ", int " mode ", int " jflags ");"
-.BI "ssize_t jread(struct jfs *" fs ", void *" buf ", size_t " count ");"
-.BI "ssize_t jpread(struct jfs *" fs ", void *" buf ", size_t " count ","
-.BI "		off_t " offset ");"
-.BI "ssize_t jreadv(struct jfs *" fs ", struct iovec *" vector ","
-.BI "		int " count ");"
-.BI "ssize_t jwrite(struct jfs *" fs ", const void *" buf ", size_t " count ");"
-.BI "ssize_t jpwrite(struct jfs *" fs ", const void *" buf ", size_t " count ","
-.BI "		off_t " offset ");"
-.BI "ssize_t jwritev(struct jfs *" fs ", const struct iovec *" vector ","
-.BI "		int " count ");"
-.BI "int jtruncate(struct jfs *" fs ", off_t " lenght ");"
-.BI "off_t jlseek(struct jfs *" fs ", off_t " offset ", int " whence ");"
-.BI "int jclose(struct jfs *" fs ");"
-
-.BI "void jtrans_init(struct jfs *" fs " ,struct jtrans *" ts ");"
-.BI "int jtrans_commit(struct jtrans *" ts ");"
-.BI "int jtrans_add(struct jtrans *" ts ", const void * " buf ","
-.BI "		size_t " count ", off_t " offset ");"
-.BI "int jtrans_rollback(struct jtrans *" ts ");"
-.BI "void jtrans_free(struct jtrans *" ts ");"
-
-.BI "int jsync(struct jfs *" fs ");"
-.BI "int jmove_journal(struct jfs *" fs ", const char *" newpath ");"
-.BI "int jfs_autosync_start(struct jfs *" fs ", time_t " max_sec ","
-.BI "           size_t " max_bytes ");"
-.BI "int jfs_autosync_stop(struct jfs *" fs ");"
-
-
-.BI "int jfsck(const char *" name ", const char *" jdir ","
-.BI "           struct jfsck_result *" res ");"
-.BI "int jfsck_cleanup(const char *" name ", const char *" jdir ");"
 
 .SH DESCRIPTION
 
@@ -82,39 +73,33 @@ and friends.
 The basic functions consist of
 .BR jtrans_init() ", " jtrans_add() ", " jtrans_commit() " and "
 .BR jtrans_rollback() .
-They provide a lower-level method for manipulating transactions, which are
-defined in the
-.IR "jtrans structure" .
+They provide a lower-level method for manipulating transactions.
 
-.SS STRUCTURES
+.SS TYPES AND STRUCTURES
 
-Both
-.IR "struct jfs" " and " "struct jtrans"
-are meant to be treated as opaque types, except for the fields documented
-above, which you should treat as read-only.
+.I jfs_t
+represents an open file, and
+.I jtrans_t
+represents a transaction. Both are meant to be treated as opaque types.
 
 .B struct jfsck_result
 holds the results of a
 .B jfsck()
-run, see below for details.
+run. The fields are described in the synopsis section.
 
 .SS COMMON FUNCTIONS
 
-Most functions reference the structures described above, specially
-.IR "struct jfs" " and " "struct jtrans" .
-They represent, respectively, a file to operate on and a single transaction.
 To open a file, you should use
 .BR jopen() ,
 which is just like the normal
 .B open(2)
-call but affects a pointer to a
-.IR struct jfs .
+call but returns an opaque pointer.
 To close a file, use
 .BR jclose() .
 They're exactly like the
 .BR open(2) " and " close(2)
 functions but use a
-.I struct jfs
+.I jfs_t
 instead of a file descriptor; take a look at their manpages if you have any
 doubts about how to use them.
 
@@ -184,7 +169,7 @@ The UNIX-alike API, as explained before, consists of the functions
 They are all exactly like the UNIX equivalent, and behave the same way, with
 the only exception that instead of a file descriptor you need to pass a
 pointer to a
-.IR "struct jfs" .
+.IR "jfs_t" .
 Again, I will not duplicate the manpage for all these functions, just refer to
 the regular UNIX versions to see how to use them, they all have the same
 semantics and behave the same way.
@@ -199,9 +184,10 @@ These are intended to be use when your application requires direct control
 over the transactions.
 
 .BR jtrans_init() " and " jtrans_free()
-just initialize and free a given transaction structure; the former should be
-called prior any use, and the latter when you want to destroy a transaction.
-Note that
+just return a new
+.I jtrans_t
+and free a given one; the former should be called prior any use, and the
+latter when you want to destroy a transaction. Note that
 .B jtrans_free()
 is not a disk operation, but only frees the pointers that were previously
 allocated by the library; all disk operations are performed by the other two
@@ -217,22 +203,20 @@ will be applied in order.
 
 .B jtrans_commit()
 commits the given transaction to disk. After it has returned, data has been
-saved to the disk. It returns the number of bytes written or -1 if there was
-an error. On an error, the
-.B flags
-field of the
-.B jtrans
-structure will have the J_ROLLBACKED set if the transaction was successfuly
-rollbacked. The commit operation is atomic with regards to other read or write
-operations on different processes, as long as they all access it via libjio.
+saved to the disk. The commit operation is atomic with regards to other read
+or write operations on different processes, as long as they all access it via
+libjio. It returns the number of bytes written, -1 if there was an error but
+atomic warantees were preserved, or -2 if there was an error and there is a
+possible break of atomic warantees (which is an indication of a severe
+underlying condition).
 
 .B jtrans_rollback()
 reverses a transaction that was applied with
 .BR jtrans_commit() ,
 and leaves the file as it was before applying it. Be very very careful with
 this function, it's quite dangerous if you don't know for sure that you're
-doing the right thing. It returns the number of bytes written or -1 if there
-was an error.
+doing the right thing. It returns the same values as
+.BR jtrans_commit() .
 
 .SH SEE ALSO
 

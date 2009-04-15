@@ -16,6 +16,8 @@
 #include <pthread.h>
 
 #include "libjio.h"
+#include "common.h"
+#include "trans.h"
 
 
 /*
@@ -32,7 +34,6 @@
 /* fopen wrapper */
 struct jfs *jfopen(const char *path, const char *mode)
 {
-	int fd;
 	int flags;
 	int pos_at_the_beginning;
 	struct jfs *fs;
@@ -59,18 +60,14 @@ struct jfs *jfopen(const char *path, const char *mode)
 		return NULL;
 	}
 
-	fs = malloc(sizeof(struct jfs));
-
-	fd = jopen(fs, path, flags, 0666, 0);
-	if (fd < 0) {
-		free(fs);
+	fs = jopen(path, flags, 0666, 0);
+	if (fs == NULL)
 		return NULL;
-	}
 
 	if (pos_at_the_beginning)
-		lseek(fd, 0, SEEK_SET);
+		lseek(fs->fd, 0, SEEK_SET);
 	else
-		lseek(fd, 0, SEEK_END);
+		lseek(fs->fd, 0, SEEK_END);
 
 	return fs;
 }

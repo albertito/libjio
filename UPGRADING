@@ -6,8 +6,13 @@ You should always clean all your files before upgrading. While I don't expect
 the transaction on-disk format to change, it's a good practise and it doesn't
 take much effort. When it's mandatory, it will be noted.
 
--> 0.26
-  - Applications need to be recompiled due to a change in the jfs structure.
+-> 0.50 (Big API change)
+  - Structures are now opaque types:
+    struct jfs -> jfs_t; jopen() returns a pointer to one, jclose() frees it.
+    struct jtrans -> jtrans_t; jtrans_init() returns a pointer to one,
+      jtrans_free() frees it.
+  - jtrans_commit() returns -1 on recovered errors, -2 on unrecovered errors
+    (which are an indication of a severe underlying condition).
 
 -> 0.25
   - It is no longer necessary to pass O_SYNC to jopen() if lingering

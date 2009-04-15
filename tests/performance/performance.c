@@ -21,7 +21,7 @@
 #define FILENAME "test_file"
 
 /* These are shared among threads, to make the code simpler */
-static struct jfs fs;
+static jfs_t *fs;
 static unsigned long mb;
 static ssize_t blocksize, towrite;
 
@@ -61,7 +61,7 @@ static void *worker(void *tno)
 	gettimeofday(&tv1, NULL);
 
 	while (work_done < towrite) {
-		rv = jpwrite(&fs, buf, blocksize, localoffset + work_done);
+		rv = jpwrite(fs, buf, blocksize, localoffset + work_done);
 		if (rv != blocksize) {
 			perror("jpwrite()");
 			break;
@@ -92,7 +92,7 @@ static void *worker(void *tno)
 
 int main(int argc, char **argv)
 {
-	int rv, nthreads;
+	int nthreads;
 	unsigned long i;
 	pthread_t *threads;
 	struct jfsck_result ckres;
@@ -113,13 +113,13 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	rv = jopen(&fs, FILENAME, O_RDWR | O_CREAT | O_TRUNC, 0600, 0);
-	if (rv < 0) {
+	fs = jopen(FILENAME, O_RDWR | O_CREAT | O_TRUNC, 0600, 0);
+	if (fs == NULL) {
 		perror("jopen()");
 		return 1;
 	}
 
-	jtruncate(&fs, towrite * nthreads);
+	jtruncate(fs, towrite * nthreads);
 
 	for (i = 0; i < nthreads; i++) {
 		pthread_create(threads + i, NULL, &worker, (void *) i);
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 		pthread_join(*(threads + i), NULL);
 	}
 
-	jclose(&fs);
+	jclose(fs);
 	jfsck(FILENAME, NULL, &ckres);
 	if (ckres.total != 0) {
 		fprintf(stderr, "There were %d errors during the test\n",

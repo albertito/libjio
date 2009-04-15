@@ -14,16 +14,19 @@
 
 static int jio(void)
 {
-	int fd, rv;
-	struct jfs fs;
+	int rv;
+	jfs_t *fs;
 
-	fd = jopen(&fs, "test2", O_RDWR | O_CREAT | O_TRUNC, 0660, 0);
-	if (fd < 0)
+	fs = jopen("test2", O_RDWR | O_CREAT | O_TRUNC, 0660, 0);
+	if (fs == NULL)
 		perror("jopen()");
 
-	rv = jwrite(&fs, STR, strlen(STR));
+	rv = jwrite(fs, STR, strlen(STR));
 	if (rv != strlen(STR))
 		perror("jwrite()");
+
+	if (jclose(fs))
+		perror("jclose()");
 
 	return 0;
 }

@@ -39,7 +39,7 @@
 /* jfile */
 typedef struct {
 	PyObject_HEAD
-	struct jfs *fs;
+	jfs_t *fs;
 } jfile_object;
 
 static PyTypeObject jfile_type;
@@ -47,7 +47,7 @@ static PyTypeObject jfile_type;
 /* jtrans */
 typedef struct {
 	PyObject_HEAD
-	struct jtrans *ts;
+	jtrans_t *ts;
 	jfile_object *jfile;
 } jtrans_object;
 
@@ -63,7 +63,6 @@ static void jf_dealloc(jfile_object *fp)
 {
 	if (fp->fs) {
 		jclose(fp->fs);
-		free(fp->fs);
 	}
 	PyObject_Del(fp);
 }
@@ -79,7 +78,7 @@ static PyObject *jf_fileno(jfile_object *fp, PyObject *args)
 	if (!PyArg_ParseTuple(args, ":fileno"))
 		return NULL;
 
-	return PyInt_FromLong(fp->fs->fd);
+	return PyInt_FromLong(jfileno(fp->fs));
 }
 
 /* read */
@@ -386,7 +385,7 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	if (tp == NULL)
 		return NULL;
 
-	tp->ts = malloc(sizeof(struct jtrans));
+	tp->ts = jtrans_init(fp->fs);
 	if(tp->ts == NULL) {
 		return PyErr_NoMemory();
 	}
@@ -394,8 +393,6 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	/* increment the reference count, it's decremented on deletion */
 	tp->jfile = fp;
 	Py_INCREF(fp);
-
-	jtrans_init(fp->fs, tp->ts);
 
 	return (PyObject *) tp;
 }
@@ -449,7 +446,6 @@ static void jt_dealloc(jtrans_object *tp)
 {
 	if (tp->ts != NULL) {
 		jtrans_free(tp->ts);
-		free(tp->ts);
 	}
 	Py_DECREF(tp->jfile);
 	PyObject_Del(tp);
@@ -570,7 +566,6 @@ It's a wrapper to jopen().\n");
 
 static PyObject *jf_open(PyObject *self, PyObject *args)
 {
-	int rv;
 	char *file;
 	int flags, mode, jflags;
 	jfile_object *fp;
@@ -587,19 +582,13 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 	if (fp == NULL)
 		return NULL;
 
-	fp->fs = malloc(sizeof(struct jfs));
+	fp->fs = jopen(file, flags, mode, jflags);
 	if (fp->fs == NULL) {
-		return PyErr_NoMemory();
-	}
-
-	rv = jopen(fp->fs, file, flags, mode, jflags);
-	if (rv < 0) {
-		free(fp->fs);
 		return PyErr_SetFromErrno(PyExc_IOError);
 	}
 
 	if (PyErr_Occurred()) {
-		free(fp->fs);
+		jclose(fp->fs);
 		return NULL;
 	}
 

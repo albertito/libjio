@@ -31,9 +31,14 @@
  */
 
 /* initialize a transaction structure */
-void jtrans_init(struct jfs *fs, struct jtrans *ts)
+struct jtrans *jtrans_init(struct jfs *fs)
 {
 	pthread_mutexattr_t attr;
+	struct jtrans *ts;
+
+	ts = malloc(sizeof(struct jtrans));
+	if (ts == NULL)
+		return NULL;
 
 	ts->fs = fs;
 	ts->id = 0;
@@ -45,6 +50,8 @@ void jtrans_init(struct jfs *fs, struct jtrans *ts)
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
 	pthread_mutex_init( &(ts->lock), &attr);
 	pthread_mutexattr_destroy(&attr);
+
+	return ts;
 }
 
 
@@ -67,6 +74,8 @@ void jtrans_free(struct jtrans *ts)
 		ts->op = tmpop;
 	}
 	pthread_mutex_destroy(&(ts->lock));
+
+	free(ts);
 }
 
 
@@ -259,8 +268,7 @@ rollback_exit:
 	 * never appear), so we remove the transaction file (see unlink_exit).
 	 *
 	 * Transactions that were successfuly recovered by rolling them back
-	 * will have J_ROLLBACKED in their flags, so the caller can verify if
-	 * the failure was recovered or not. */
+	 * will have J_ROLLBACKED in their flags */
 	if (!(ts->flags & J_COMMITTED) && !(ts->flags & J_ROLLBACKING)) {
 		rv = ts->flags;
 		ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
@@ -294,20 +302,22 @@ exit:
 	/* return the length only if it was properly committed */
 	if (ts->flags & J_COMMITTED)
 		return written;
-	else
+	else if (ts->flags & J_ROLLBACKED)
 		return -1;
+	else
+		return -2;
 }
 
 /* rollback a transaction */
 ssize_t jtrans_rollback(struct jtrans *ts)
 {
 	ssize_t rv;
-	struct jtrans newts;
+	struct jtrans *newts;
 	struct joper *op, *curop, *lop;
 
-	jtrans_init(ts->fs, &newts);
-	newts.flags = ts->flags;
-	newts.numops = ts->numops;
+	newts = jtrans_init(ts->fs);
+	newts->flags = ts->flags;
+	newts->numops = ts->numops;
 
 	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
 		rv = -1;
@@ -348,12 +358,12 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		curop->locked = 0;
 
 		/* add the new transaction to the list */
-		if (newts.op == NULL) {
-			newts.op = curop;
+		if (newts->op == NULL) {
+			newts->op = curop;
 			curop->prev = NULL;
 			curop->next = NULL;
 		} else {
-			for (lop = newts.op; lop->next != NULL; lop = lop->next)
+			for (lop = newts->op; lop->next != NULL; lop = lop->next)
 				;
 			lop->next = curop;
 			curop->prev = lop;
@@ -361,15 +371,15 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		}
 	}
 
-	rv = jtrans_commit(&newts);
+	rv = jtrans_commit(newts);
 
 exit:
 	/* free the transaction */
-	for (curop = newts.op; curop != NULL; curop = curop->next) {
+	for (curop = newts->op; curop != NULL; curop = curop->next) {
 		curop->buf = NULL;
 		curop->pdata = NULL;
 	}
-	jtrans_free(&newts);
+	jtrans_free(newts);
 
 	return rv;
 }
@@ -379,13 +389,18 @@ exit:
  */
 
 /* open a file */
-int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
+struct jfs *jopen(const char *name, int flags, int mode, int jflags)
 {
 	int jfd, rv;
 	unsigned int t;
 	char jdir[PATH_MAX], jlockfile[PATH_MAX];
 	struct stat sinfo;
 	pthread_mutexattr_t attr;
+	struct jfs *fs;
+
+	fs = malloc(sizeof(struct jfs));
+	if (fs == NULL)
+		return NULL;
 
 	fs->fd = -1;
 	fs->jfd = -1;
@@ -437,7 +452,7 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 
 	/* nothing else to do for read-only access */
 	if (jflags & J_RDONLY) {
-		return fs->fd;
+		return fs;
 	}
 
 	if (!get_jdir(name, jdir))
@@ -485,14 +500,14 @@ int jopen(struct jfs *fs, const char *name, int flags, int mode, int jflags)
 	if (fs->jmap == MAP_FAILED)
 		goto error_exit;
 
-	return fs->fd;
+	return fs;
 
 error_exit:
 	/* if there was an error, clean up as much as possible so we don't
 	 * leak anything, and return failure; jclose just does this cleaning
 	 * for us */
 	jclose(fs);
-	return -1;
+	return NULL;
 }
 
 /* sync a file (makes sense only if using lingering transactions) */
@@ -614,6 +629,8 @@ int jclose(struct jfs *fs)
 	if (fs->jdir)
 		free(fs->jdir);
 	pthread_mutex_destroy(&(fs->lock));
+
+	free(fs);
 
 	return ret;
 }

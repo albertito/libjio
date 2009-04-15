@@ -13,6 +13,7 @@
 
 #include "libjio.h"
 #include "common.h"
+#include "trans.h"
 
 
 /* read() family wrappers */
@@ -82,15 +83,18 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 {
 	int rv;
 	off_t pos;
-	struct jtrans ts;
+	struct jtrans *ts;
+
+	ts = jtrans_init(fs);
+	if (ts == NULL)
+		return -1;
 
 	pthread_mutex_lock(&(fs->lock));
 
-	jtrans_init(fs, &ts);
 	pos = lseek(fs->fd, 0, SEEK_CUR);
-	jtrans_add(&ts, buf, count, pos);
+	jtrans_add(ts, buf, count, pos);
 
-	rv = jtrans_commit(&ts);
+	rv = jtrans_commit(ts);
 
 	if (rv > 0) {
 		/* if success, advance the file pointer */
@@ -99,7 +103,7 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 
 	pthread_mutex_unlock(&(fs->lock));
 
-	jtrans_free(&ts);
+	jtrans_free(ts);
 
 	return rv;
 }
@@ -108,14 +112,17 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 {
 	int rv;
-	struct jtrans ts;
+	struct jtrans *ts;
 
-	jtrans_init(fs, &ts);
-	jtrans_add(&ts, buf, count, offset);
+	ts = jtrans_init(fs);
+	if (ts == NULL)
+		return -1;
 
-	rv = jtrans_commit(&ts);
+	jtrans_add(ts, buf, count, offset);
 
-	jtrans_free(&ts);
+	rv = jtrans_commit(ts);
+
+	jtrans_free(ts);
 
 	return rv;
 }
@@ -126,22 +133,25 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 	int rv, i;
 	size_t sum;
 	off_t ipos, t;
-	struct jtrans ts;
+	struct jtrans *ts;
+
+	ts = jtrans_init(fs);
+	if (ts == NULL)
+		return -1;
 
 	pthread_mutex_lock(&(fs->lock));
 
-	jtrans_init(fs, &ts);
 	ipos = lseek(fs->fd, 0, SEEK_CUR);
 	t = ipos;
 
 	sum = 0;
 	for (i = 0; i < count; i++) {
-		jtrans_add(&ts, vector[i].iov_base, vector[i].iov_len, t);
+		jtrans_add(ts, vector[i].iov_base, vector[i].iov_len, t);
 		sum += vector[i].iov_len;
 		t += vector[i].iov_len;
 	}
 
-	rv = jtrans_commit(&ts);
+	rv = jtrans_commit(ts);
 
 	if (rv > 0) {
 		/* if success, advance the file pointer */
@@ -150,7 +160,7 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 
 	pthread_mutex_unlock(&(fs->lock));
 
-	jtrans_free(&ts);
+	jtrans_free(ts);
 
 	return rv;
 

@@ -66,7 +66,7 @@ static int (*c_dup2)(int oldfd, int newfd);
 struct fd_entry {
 	int fd;
 	unsigned int *refcount;
-	struct jfs *fs;
+	jfs_t *fs;
 	pthread_mutex_t lock;
 };
 static struct fd_entry fd_table[MAXFD];
@@ -200,7 +200,7 @@ static int __attribute__((constructor)) init(void)
 int open(const char *pathname, int flags, ...)
 {
 	int r, fd;
-	struct jfs *fs;
+	jfs_t *fs;
 	mode_t mode;
 	struct stat st;
 	va_list l;
@@ -239,25 +239,14 @@ int open(const char *pathname, int flags, ...)
 	}
 
 	rec_inc();
-	fs = malloc(sizeof(struct jfs));
+	fs = jopen(pathname, flags, mode, 0);
 	if (fs == NULL) {
-		rec_dec();
-		return -1;
-	}
-	fd = jopen(fs, pathname, flags, mode, 0);
-	if (fd >= MAXFD) {
-		printd("too many open fds: %d\n", fd);
-		jclose(fs);
-		free(fs);
 		rec_dec();
 		return -1;
 	}
 	rec_dec();
 
-	if (fd < 0) {
-		printd("return %d\n", fd);
-		return fd;
-	}
+	fd = jfileno(fs);
 
 	fd_lock(fd);
 	fd_table[fd].fd = fd;
@@ -274,7 +263,7 @@ int open(const char *pathname, int flags, ...)
 int open64(const char *pathname, int flags, ...)
 {
 	int r, fd;
-	struct jfs *fs;
+	jfs_t *fs;
 	mode_t mode;
 	struct stat st;
 	va_list l;
@@ -313,25 +302,14 @@ int open64(const char *pathname, int flags, ...)
 	}
 
 	rec_inc();
-	fs = malloc(sizeof(struct jfs));
+	fs = jopen(pathname, flags, mode, 0);
 	if (fs == NULL) {
-		rec_dec();
-		return -1;
-	}
-	fd = jopen(fs, pathname, flags, mode, 0);
-	if (fd >= MAXFD) {
-		printd("too many open fds: %d\n", fd);
-		jclose(fs);
-		free(fs);
 		rec_dec();
 		return -1;
 	}
 	rec_dec();
 
-	if (fd < 0) {
-		printd("return %d\n", fd);
-		return fd;
-	}
+	fd = jfileno(fs);
 
 	fd_lock(fd);
 	fd_table[fd].fd = fd;
@@ -366,13 +344,10 @@ int unlocked_close(int fd)
 	r = jclose(fd_table[fd].fs);
 	rec_dec();
 
-	if (fd_table[fd].fs != NULL) {
-		fd_table[fd].fd = -1;
-		free(fd_table[fd].refcount);
-		fd_table[fd].refcount = NULL;
-		free(fd_table[fd].fs);
-		fd_table[fd].fs = NULL;
-	}
+	fd_table[fd].fd = -1;
+	free(fd_table[fd].refcount);
+	fd_table[fd].refcount = NULL;
+	fd_table[fd].fs = NULL;
 
 	return r;
 }
@@ -380,7 +355,7 @@ int unlocked_close(int fd)
 int close(int fd)
 {
 	int r;
-	struct jfs *fs;
+	jfs_t *fs;
 
 	if (called) {
 		printd("orig\n");
@@ -519,7 +494,7 @@ int dup2(int oldfd, int newfd)
 	rtype name DEF						\
 	{ 							\
 		rtype r;					\
-		struct jfs *fs;					\
+		jfs_t *fs;					\
 								\
 		if (called) {					\
 			printd("orig\n");			\
