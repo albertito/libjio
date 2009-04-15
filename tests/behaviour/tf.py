@@ -216,7 +216,7 @@ def gen_ret_after(n, notyet, itstime):
 	return newf
 
 
-def autorun(module):
+def autorun(module, specific_test = None):
 	"Runs all the functions in the given module that begin with 'test'."
 	for name in sorted(dir(module)):
 		if not name.startswith('test'):
@@ -227,6 +227,10 @@ def autorun(module):
 			name = name[len('test'):]
 			if name.startswith('_'):
 				name = name[1:]
+
+			if specific_test and name != specific_test:
+				continue
+
 			desc = ''
 			if obj.__doc__:
 				desc = obj.__doc__

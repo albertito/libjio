@@ -5,7 +5,8 @@ import tf
 
 possible_tests = ('normal', 'corruption', 'fi')
 if len(sys.argv) < 2 or sys.argv[1] not in possible_tests + ('all',):
-	print 'Usage: runtests', '|'.join(possible_tests + ('all',))
+	print 'Usage: runtests', '|'.join(possible_tests + ('all',)),
+	print '[test_name]'
 	sys.exit(1)
 
 if sys.argv[1] == 'all':
@@ -13,7 +14,11 @@ if sys.argv[1] == 'all':
 else:
 	mnames = ('t_' + sys.argv[1],)
 
+specific_test = None
+if len(sys.argv) >= 3:
+	specific_test = sys.argv[2]
+
 for mn in mnames:
 	print '--', mn
-	tf.autorun(__import__(mn))
+	tf.autorun(__import__(mn), specific_test)
 
