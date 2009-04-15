@@ -118,6 +118,9 @@ int jfs_autosync_stop(struct jfs *fs)
  * been exceeded. Must be called with fs' ltlock held. */
 void autosync_check(struct jfs *fs)
 {
+	if (fs->as_cfg == NULL)
+		return;
+
 	if (fs->ltrans_len > fs->as_cfg->max_bytes)
 		pthread_cond_signal(&fs->as_cfg->cond);
 }
