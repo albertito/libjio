@@ -1,8 +1,5 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
  * UNIX API wrappers
  */
 
@@ -17,9 +14,11 @@
 #include "trans.h"
 
 
-/* read() family wrappers */
+/*
+ * read() family wrappers
+ */
 
-/* read wrapper */
+/* read() wrapper */
 ssize_t jread(struct jfs *fs, void *buf, size_t count)
 {
 	int rv;
@@ -43,7 +42,7 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 	return rv;
 }
 
-/* pread wrapper */
+/* pread() wrapper */
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 {
 	int rv;
@@ -55,7 +54,7 @@ ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 	return rv;
 }
 
-/* readv wrapper */
+/* readv() wrapper */
 ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count)
 {
 	int rv, i;
@@ -77,9 +76,11 @@ ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count)
 }
 
 
-/* write family wrappers */
+/*
+ * write() family wrappers
+ */
 
-/* write wrapper */
+/* write() wrapper */
 ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 {
 	int rv;
@@ -113,7 +114,7 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 	return rv;
 }
 
-/* pwrite wrapper */
+/* pwrite() wrapper */
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 {
 	int rv;
@@ -132,7 +133,7 @@ ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 	return rv;
 }
 
-/* writev wrapper */
+/* writev() wrapper */
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 {
 	int rv, i;
@@ -175,7 +176,7 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 
 }
 
-/* truncate a file - be careful with this */
+/* Truncate a file. Be careful with this */
 int jtruncate(struct jfs *fs, off_t length)
 {
 	int rv;
@@ -188,7 +189,7 @@ int jtruncate(struct jfs *fs, off_t length)
 	return rv;
 }
 
-/* lseek wrapper */
+/* lseek() wrapper */
 off_t jlseek(struct jfs *fs, off_t offset, int whence)
 {
 	off_t rv;

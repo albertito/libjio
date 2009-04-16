@@ -27,7 +27,7 @@
  * helper functions
  */
 
-/* gets a new transaction id */
+/** Get a new transaction id */
 static unsigned int get_tid(struct jfs *fs)
 {
 	unsigned int curid, rv;
@@ -53,7 +53,7 @@ exit:
 	return rv;
 }
 
-/* frees a transaction id */
+/** Free a transaction id */
 static void free_tid(struct jfs *fs, unsigned int tid)
 {
 	unsigned int curid, i;
@@ -89,8 +89,10 @@ static void free_tid(struct jfs *fs, unsigned int tid)
 	return;
 }
 
-/* fsync()s a directory */
+
 static int already_warned_about_sync = 0;
+
+/** fsync() a directory */
 static int fsync_dir(int fd)
 {
 	int rv;
@@ -121,7 +123,7 @@ static int fsync_dir(int fd)
  * Journal functions
  */
 
-/* Creates a new transaction in the journal, returns a pointer to an opaque
+/** Create a new transaction in the journal. Returns a pointer to an opaque
  * jop_t (that is freed using journal_free), or NULL if there was an error. */
 struct journal_op *journal_new(struct jtrans *ts)
 {
@@ -202,7 +204,7 @@ error:
 	return NULL;
 }
 
-/* Saves the transaction in the journal */
+/** Save the given transaction in the journal */
 int journal_save(struct journal_op *jop)
 {
 	ssize_t rv;
@@ -296,7 +298,7 @@ error:
 	return -1;
 }
 
-/* Frees a journal operation.
+/** Free a journal operation.
  * NOTE: It can't assume the save completed successfuly, so we can call it
  * when journal_save() fails.  */
 int journal_free(struct journal_op *jop)

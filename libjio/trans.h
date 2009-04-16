@@ -5,15 +5,28 @@
 
 struct joper;
 
-/* a transaction */
+/** A transaction */
 struct jtrans {
-	struct jfs *fs;		/* journal file structure to operate on */
-	int id;			/* transaction id */
-	uint32_t flags;		/* transaction flags */
-	unsigned int numops;	/* quantity of operations in the list */
-	size_t len;		/* transaction's length */
-	pthread_mutex_t lock;	/* used to modify the operation list */
-	struct joper *op;	/* list of operations */
+	/** Journal file structure to operate on */
+	struct jfs *fs;
+
+	/** Transaction id */
+	int id;
+
+	/** Transaction flags */
+	uint32_t flags;
+
+	/** Number of operations in the list */
+	unsigned int numops;
+
+	/** Transaction's length */
+	size_t len;
+
+	/** Lock that protects the list of operations */
+	pthread_mutex_t lock;
+
+	/** List of operations */
+	struct joper *op;
 };
 
 /* a single operation */

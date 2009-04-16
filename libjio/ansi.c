@@ -1,8 +1,5 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
  * ANSI C API wrappers
  */
 
@@ -31,7 +28,7 @@
  */
 
 
-/* fopen wrapper */
+/* fopen() wrapper */
 struct jfs *jfopen(const char *path, const char *mode)
 {
 	int flags;
@@ -72,7 +69,7 @@ struct jfs *jfopen(const char *path, const char *mode)
 	return fs;
 }
 
-/* fclose wrapper */
+/* fclose() wrapper */
 int jfclose(struct jfs *stream)
 {
 	int rv;
@@ -85,7 +82,7 @@ int jfclose(struct jfs *stream)
 		return EOF;
 }
 
-/* freopen wrapper */
+/* freopen() wrapper */
 struct jfs *jfreopen(const char *path, const char *mode, struct jfs *stream)
 {
 	if (stream)
@@ -95,7 +92,7 @@ struct jfs *jfreopen(const char *path, const char *mode, struct jfs *stream)
 	return stream;
 }
 
-/* fread wrapper */
+/* fread() wrapper */
 size_t jfread(void *ptr, size_t size, size_t nmemb, struct jfs *stream)
 {
 	int rv;
@@ -107,7 +104,7 @@ size_t jfread(void *ptr, size_t size, size_t nmemb, struct jfs *stream)
 	return rv / size;
 }
 
-/* fwrite wrapper */
+/* fwrite() wrapper */
 size_t jfwrite(const void *ptr, size_t size, size_t nmemb, struct jfs *stream)
 {
 	int rv;
@@ -119,13 +116,13 @@ size_t jfwrite(const void *ptr, size_t size, size_t nmemb, struct jfs *stream)
 	return rv / size;
 }
 
-/* fileno wrapper */
+/* fileno() wrapper */
 int jfileno(struct jfs *stream)
 {
 	return stream->fd;
 }
 
-/* feof wrapper */
+/* feof() wrapper */
 int jfeof(struct jfs *stream)
 {
 	/* ANSI expects that when an EOF is reached in any operation (like
@@ -151,14 +148,14 @@ int jfeof(struct jfs *stream)
 		return 0;
 }
 
-/* clearerr wrapper */
+/* clearerr() wrapper */
 void jclearerr(struct jfs *stream)
 {
 	/* As we do not carry any kind of error state (like explained in
 	 * jfeof()), this function has no effect. */
 }
 
-/* ferror wrapper */
+/* ferror() wrapper */
 int jferror(struct jfs *stream)
 {
 	/* The same as the above; however not returning this might have some
@@ -166,7 +163,7 @@ int jferror(struct jfs *stream)
 	return 0;
 }
 
-/* fseek wrapper */
+/* fseek() wrapper */
 int jfseek(struct jfs *stream, long offset, int whence)
 {
 	off_t pos;
@@ -182,14 +179,14 @@ int jfseek(struct jfs *stream, long offset, int whence)
 	return 0;
 }
 
-/* ftell wrapper */
+/* ftell() wrapper */
 long jftell(struct jfs *stream)
 {
 	/* forced conversion to long to meet the prototype */
 	return (long) lseek(stream->fd, 0, SEEK_CUR);
 }
 
-/* rewind wrapper */
+/* rewind() wrapper */
 void jrewind(struct jfs *stream)
 {
 	lseek(stream->fd, 0, SEEK_SET);
@@ -197,7 +194,7 @@ void jrewind(struct jfs *stream)
 
 /* convert a struct jfs to a FILE so you can use it with other functions that
  * require a FILE pointer; be aware that you're bypassing the journaling layer
- * and it can cause severe corruption if you're not extremely careful */
+ * and it can cause corruption if you're not extremely careful */
 FILE *jfsopen(struct jfs *stream, const char *mode)
 {
 	return fdopen(stream->fd, mode);

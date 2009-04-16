@@ -1,8 +1,5 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
  * Common functions
  */
 
@@ -19,7 +16,7 @@
 #include "common.h"
 
 
-/* like lockf, but lock always from the beginning of the file */
+/** Like lockf(), but lock always from the given offset */
 off_t plockf(int fd, int cmd, off_t offset, off_t len)
 {
 	struct flock fl;
@@ -50,8 +47,8 @@ off_t plockf(int fd, int cmd, off_t offset, off_t len)
 	return fcntl(fd, op, &fl);
 }
 
-/* like pread but either fails, or return a complete read; if we return less
- * than count is because EOF was reached */
+/** Like pread() but either fails, or return a complete read. If it returns
+ * less than count it's because EOF was reached */
 ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 {
 	int rv, c;
@@ -78,7 +75,7 @@ ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 	return count;
 }
 
-/* like spread() but for pwrite() */
+/** Like spread() but for pwrite() */
 ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 {
 	int rv, c;
@@ -102,7 +99,7 @@ ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 	return count;
 }
 
-/* build the journal directory name out of the filename */
+/** Store in jdir the default journal directory path of the given filename */
 int get_jdir(const char *filename, char *jdir)
 {
 	char *base, *baset;
@@ -128,8 +125,8 @@ int get_jdir(const char *filename, char *jdir)
 	return 1;
 }
 
-/* build the filename of a given transaction; assumes jtfile can hold at least
- * PATH_MAX bytes */
+/** Build the filename of a given transaction. Assumes jtfile can hold at
+ * least PATH_MAX bytes. */
 void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile)
 {
 	snprintf(jtfile, PATH_MAX, "%s/%u", fs->jdir, tid);

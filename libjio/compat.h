@@ -1,5 +1,5 @@
 
-/* Header to provide fallbacks for compatibility purposes. */
+/* Header to provide fallbacks for compatibility purposes */
 
 #ifndef _COMPAT_H
 #define _COMPAT_H

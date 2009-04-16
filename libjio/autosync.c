@@ -1,4 +1,8 @@
 
+/*
+ * Autosync API
+ */
+
 #include <pthread.h>	/* pthread_* */
 #include <errno.h>	/* ETIMEDOUT */
 #include <signal.h>	/* sig_atomic_t */
@@ -8,22 +12,31 @@
 #include "common.h"
 #include "libjio.h"
 
+/** Configuration of an autosync thread */
 struct autosync_cfg {
+	/** File structure to jsync() */
 	struct jfs *fs;
+
+	/** Thread id */
 	pthread_t tid;
 
+	/** Max number of seconds between each jsync() */
 	time_t max_sec;
+
+	/** Max number of bytes written between each jsync() */
 	size_t max_bytes;
 
-	/* When the thread must die, we set this to 1 */
+	/** When the thread must die, we set this to 1 */
 	sig_atomic_t must_die;
 
-	/* Condition variable to wake up the thread */
+	/** Condition variable to wake up the thread */
 	pthread_cond_t cond;
+
+	/** Mutex to use for the condition variable */
 	pthread_mutex_t mutex;
 };
 
-/* Thread that performes the automatic syncing */
+/** Thread that performs the automatic syncing */
 static void *autosync_thread(void *arg)
 {
 	int rv;
@@ -114,8 +127,8 @@ int jfs_autosync_stop(struct jfs *fs)
 	return rv;
 }
 
-/* Used internally to notify the autosync thread that the number of bytes has
- * been exceeded. Must be called with fs' ltlock held. */
+/** Notify the autosync thread that it should check the number of bytes
+ * written. Must be called with fs' ltlock held. */
 void autosync_check(struct jfs *fs)
 {
 	if (fs->as_cfg == NULL)

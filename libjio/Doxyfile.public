@@ -1,0 +1,8 @@
+@INCLUDE = Doxyfile.base
+PROJECT_NAME = "libjio (public)"
+OUTPUT_DIRECTORY = doc.public
+EXTRACT_ALL = YES
+EXTRACT_STATIC = NO
+INTERNAL_DOCS = NO
+FILE_PATTERNS = libjio.h
+

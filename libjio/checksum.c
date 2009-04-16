@@ -1,8 +1,5 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
  * Checksum functions
  * Based on RFC 1071, "Computing the Internet Checksum"
  */
@@ -13,6 +10,8 @@
 #include "common.h"
 
 
+/** Reads the contents of the given fd, up to len bytes, and stores the
+ * checksum in csum. Returns 1 on success, 0 on error. */
 int checksum(int fd, size_t len, uint32_t *csum)
 {
 	uint8_t *map;
@@ -27,6 +26,8 @@ int checksum(int fd, size_t len, uint32_t *csum)
 	return 1;
 }
 
+/** Calculates the checksum of the given buffer, up to count bytes. Returns
+ * the checksum. */
 uint32_t checksum_map(uint8_t *map, size_t count)
 {
 	uint32_t sum = 0;

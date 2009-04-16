@@ -20,7 +20,7 @@
 #include "trans.h"
 
 
-/* fill a transaction structure from a mmapped transaction file */
+/** Fill a transaction structure from a mmapped transaction file */
 static off_t fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 {
 	int i;
@@ -95,7 +95,7 @@ error:
 	return 0;
 }
 
-/* check the journal and rollback incomplete transactions */
+/* Check the journal and fix the incomplete transactions */
 int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
 {
 	int tfd, rv, i, ret;
@@ -324,7 +324,7 @@ exit:
 
 }
 
-/* remove all the files in the journal directory (if any) */
+/* Remove all the files in the journal directory (if any) */
 int jfsck_cleanup(const char *name, const char *jdir)
 {
 	char path[PATH_MAX], tfile[PATH_MAX*3];

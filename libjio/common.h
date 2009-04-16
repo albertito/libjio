@@ -26,21 +26,46 @@
 
 #define MAX_TSIZE	(SSIZE_MAX)
 
-/* the main file structure */
+/** The main file structure */
 struct jfs {
-	int fd;			/* main file descriptor */
-	char *name;		/* and its name */
-	char *jdir;		/* journal directory */
-	int jdirfd;		/* journal directory file descriptor */
-	int jfd;		/* journal's lock file descriptor */
-	unsigned int *jmap;	/* journal's lock file mmap area */
-	uint32_t flags;		/* journal flags */
-	uint32_t open_flags;	/* open() flags */
-	struct jlinger *ltrans;	/* lingered transactions */
-	size_t ltrans_len;	/* length of all the lingered transactions */
-	pthread_mutex_t ltlock;	/* lingered transactions' lock */
-	pthread_mutex_t lock;	/* a soft lock used in some operations */
-	struct autosync_cfg *as_cfg; /* autosync config */
+	/** Real file fd */
+	int fd;
+
+	/** Real file path */
+	char *name;
+
+	/** Journal directory path */
+	char *jdir;
+
+	/** Journal directory file descriptor */
+	int jdirfd;
+
+	/** Journal's lock file descriptor */
+	int jfd;
+
+	/** Journal's lock file mmap */
+	unsigned int *jmap;
+
+	/** Journal flags */
+	uint32_t flags;
+
+	/** Flags passed to the real open() */
+	uint32_t open_flags;
+
+	/** Lingering transactions (linked list) */
+	struct jlinger *ltrans;
+
+	/** Length of all the lingered transactions */
+	size_t ltrans_len;
+
+	/** Lingering transactions' lock */
+	pthread_mutex_t ltlock;
+
+	/** A soft lock used in some operations */
+	pthread_mutex_t lock;
+
+	/** Autosync config */
+	struct autosync_cfg *as_cfg;
 };
 
 

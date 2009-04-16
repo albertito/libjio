@@ -1,9 +1,6 @@
 
 /*
- * libjio - A library for Journaled I/O
- * Alberto Bertogli (albertito@blitiri.com.ar)
- *
- * Core transaction API and recovery functions
+ * Core transaction API
  */
 
 #include <sys/types.h>
@@ -27,10 +24,10 @@
 
 
 /*
- * transaction functions
+ * Transaction functions
  */
 
-/* initialize a transaction structure */
+/* Initialize a transaction structure */
 struct jtrans *jtrans_init(struct jfs *fs)
 {
 	pthread_mutexattr_t attr;
@@ -54,8 +51,7 @@ struct jtrans *jtrans_init(struct jfs *fs)
 	return ts;
 }
 
-
-/* free the contents of a transaction structure */
+/* Free the contents of a transaction structure */
 void jtrans_free(struct jtrans *ts)
 {
 	struct joper *tmpop;
@@ -78,7 +74,7 @@ void jtrans_free(struct jtrans *ts)
 	free(ts);
 }
 
-
+/* Add an operation to a transaction */
 int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 {
 	struct joper *jop, *tmpop;
@@ -153,7 +149,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	return 1;
 }
 
-/* commit a transaction */
+/* Commit a transaction */
 ssize_t jtrans_commit(struct jtrans *ts)
 {
 	ssize_t rv;
@@ -308,7 +304,7 @@ exit:
 		return -2;
 }
 
-/* rollback a transaction */
+/* Rollback a transaction */
 ssize_t jtrans_rollback(struct jtrans *ts)
 {
 	ssize_t rv;
@@ -384,11 +380,12 @@ exit:
 	return rv;
 }
 
+
 /*
- * basic operations
+ * Basic operations
  */
 
-/* open a file */
+/* Open a file */
 struct jfs *jopen(const char *name, int flags, int mode, int jflags)
 {
 	int jfd, rv;
@@ -511,7 +508,7 @@ error_exit:
 	return NULL;
 }
 
-/* sync a file (makes sense only if using lingering transactions) */
+/* Sync a file */
 int jsync(struct jfs *fs)
 {
 	int rv;
@@ -539,7 +536,7 @@ int jsync(struct jfs *fs)
 	return 0;
 }
 
-/* change the location of the journal directory */
+/* Change the location of the journal directory */
 int jmove_journal(struct jfs *fs, const char *newpath)
 {
 	int ret;
@@ -601,7 +598,7 @@ exit:
 	return ret;
 }
 
-/* close a file */
+/* Close a file opened with jopen() */
 int jclose(struct jfs *fs)
 {
 	int ret;

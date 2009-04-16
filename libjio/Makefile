@@ -82,11 +82,15 @@ install: all
 .c.o:
 	$(NICE_CC) $(ALL_CFLAGS) -c $< -o $@
 
+doxygen:
+	doxygen Doxyfile.internal
+	doxygen Doxyfile.public
 
 clean:
 	rm -f $(OBJS) libjio.a libjio.so libjio.pc jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
+	rm -rf doc.internal/ doc.public/
 
 
-.PHONY: default all install clean
+.PHONY: default all install clean doxygen
 
