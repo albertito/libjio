@@ -424,6 +424,7 @@ struct jfs *jopen(const char *name, int flags, int mode, int jflags)
 
 	fs->name = strdup(name);
 	fs->flags = jflags;
+	fs->open_flags = flags;
 	fs->ltrans = NULL;
 	fs->ltrans_len = 0;
 

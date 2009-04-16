@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "libjio.h"
@@ -91,7 +92,11 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 
 	pthread_mutex_lock(&(fs->lock));
 
-	pos = lseek(fs->fd, 0, SEEK_CUR);
+	if (fs->open_flags & O_APPEND)
+		pos = lseek(fs->fd, 0, SEEK_END);
+	else
+		pos = lseek(fs->fd, 0, SEEK_CUR);
+
 	jtrans_add(ts, buf, count, pos);
 
 	rv = jtrans_commit(ts);
@@ -141,7 +146,11 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 
 	pthread_mutex_lock(&(fs->lock));
 
-	ipos = lseek(fs->fd, 0, SEEK_CUR);
+	if (fs->open_flags & O_APPEND)
+		ipos = lseek(fs->fd, 0, SEEK_END);
+	else
+		ipos = lseek(fs->fd, 0, SEEK_CUR);
+
 	t = ipos;
 
 	sum = 0;

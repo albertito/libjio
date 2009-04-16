@@ -35,6 +35,7 @@ struct jfs {
 	int jfd;		/* journal's lock file descriptor */
 	unsigned int *jmap;	/* journal's lock file mmap area */
 	uint32_t flags;		/* journal flags */
+	uint32_t open_flags;	/* open() flags */
 	struct jlinger *ltrans;	/* lingered transactions */
 	size_t ltrans_len;	/* length of all the lingered transactions */
 	pthread_mutex_t ltlock;	/* lingered transactions' lock */

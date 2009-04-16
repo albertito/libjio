@@ -48,12 +48,12 @@ struct jfs *jfopen(const char *path, const char *mode)
 		else
 			flags = O_RDONLY;
 	} else if (mode[0] == 'a') {
-		/* in this case, make no distinction between "a" and "a+"
-		 * because the file is _always_ open for reading anyways */
-		pos_at_the_beginning = 0;
-		flags = O_RDWR | O_CREAT;
+		if (strlen(mode) > 1 && strchr(mode, '+'))
+			pos_at_the_beginning = 1;
+		else
+			pos_at_the_beginning = 0;
+		flags = O_RDWR | O_CREAT | O_APPEND;
 	} else if (mode[0] == 'w') {
-		/* the same as before */
 		pos_at_the_beginning = 1;
 		flags = O_RDWR | O_CREAT | O_TRUNC;
 	} else {
