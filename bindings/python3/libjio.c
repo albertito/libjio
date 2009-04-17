@@ -462,7 +462,7 @@ static PyObject *jt_add(jtrans_object *tp, PyObject *args)
 		return NULL;
 
 	rv = jtrans_add(tp->ts, buf, len, offset);
-	if (rv == 0)
+	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
 	return PyLong_FromLong(rv);

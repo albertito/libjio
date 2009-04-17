@@ -129,7 +129,7 @@ jtrans_t *jtrans_init(jfs_t *fs);
  * @param buf buffer to write
  * @param count how many bytes from the buffer to write
  * @param offset offset to write at
- * @returns 1 on success, 0 on error
+ * @returns 0 on success, -1 on error
  */
 int jtrans_add(jtrans_t *ts, const void *buf, size_t count, off_t offset);
 

@@ -84,12 +84,12 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	/* fail for read-only accesses */
 	if (ts->flags & J_RDONLY) {
 		pthread_mutex_unlock(&(ts->lock));
-		return 0;
+		return -1;
 	}
 
 	if ((long long) ts->len + count > MAX_TSIZE) {
 		pthread_mutex_unlock(&(ts->lock));
-		return 0;
+		return -1;
 	}
 
 	/* find the last operation in the transaction and create a new one at
@@ -98,7 +98,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		ts->op = malloc(sizeof(struct joper));
 		if (ts->op == NULL) {
 			pthread_mutex_unlock(&(ts->lock));
-			return 0;
+			return -1;
 		}
 		jop = ts->op;
 		jop->prev = NULL;
@@ -108,7 +108,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		tmpop->next = malloc(sizeof(struct joper));
 		if (tmpop->next == NULL) {
 			pthread_mutex_unlock(&(ts->lock));
-			return 0;
+			return -1;
 		}
 		tmpop->next->prev = tmpop;
 		jop = tmpop->next;
@@ -124,7 +124,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		}
 		free(jop);
 		pthread_mutex_unlock(&(ts->lock));
-		return 0;
+		return -1;
 	}
 
 	ts->numops++;
@@ -146,7 +146,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		posix_fadvise(ts->fs->fd, offset, count, POSIX_FADV_WILLNEED);
 	}
 
-	return 1;
+	return 0;
 }
 
 /* Commit a transaction */
