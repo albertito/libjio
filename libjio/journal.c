@@ -321,6 +321,9 @@ int journal_free(struct journal_op *jop)
 		}
 	}
 
+	if (fsync_dir(jop->fs->jdirfd) != 0)
+		goto exit;
+
 	fiu_exit_on("jio/commit/pre_ok_free_tid");
 	free_tid(jop->fs, jop->id);
 
