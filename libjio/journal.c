@@ -303,11 +303,30 @@ error:
  * when journal_save() fails.  */
 int journal_free(struct journal_op *jop)
 {
-	unlink(jop->name);
+	int rv;
+
+	rv = -1;
+
+	if (unlink(jop->name)) {
+		/* we do not want to leave a possibly complete transaction
+		 * file around when the transaction was not commited and the
+		 * unlink failed, so we attempt to truncate it, and if that
+		 * fails we corrupt the checksum as a last resort */
+		if (ftruncate(jop->fd, 0) != 0) {
+			if (pwrite(jop->fd, "\0\0\0\0", 4, jop->curpos - 4)
+					!= 4)
+				goto exit;
+			if (fdatasync(jop->fd) != 0)
+				goto exit;
+		}
+	}
 
 	fiu_exit_on("jio/commit/pre_ok_free_tid");
 	free_tid(jop->fs, jop->id);
 
+	rv = 0;
+
+exit:
 	close(jop->fd);
 
 	if (jop->name)
@@ -315,7 +334,7 @@ int journal_free(struct journal_op *jop)
 
 	free(jop);
 
-	return 0;
+	return rv;
 }
 
 
