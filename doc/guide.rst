@@ -263,12 +263,10 @@ The Single Unix Specification standard proposes a simple and practical way to
 get the flags you need to pass your C compiler to tell you want to compile
 your application with LFS: use a program called "getconf" which should be
 called like "getconf LFS_CFLAGS", and it outputs the appropiate parameters.
-Sadly, not all platforms implement it, so it's also wise to pass
-"-D_FILE_OFFSET_BITS=64" just in case.
 
 In the end, the command line would be something like::
 
-  gcc `getconf LFS_CFLAGS` -D_FILE_OFFSET_BITS=64 app.c -ljio -o app
+  gcc `getconf LFS_CFLAGS` app.c -ljio -o app
 
 If you want more detailed information or examples, you can check out how the
 library and sample applications get built.
