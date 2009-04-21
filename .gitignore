@@ -11,6 +11,6 @@ tests/performance/performance
 tests/performance/random
 *.pyc
 *.pyo
-libjio/doc.internal
-libjio/doc.public
+libjio/doxygen/doc.internal
+libjio/doxygen/doc.public
 
