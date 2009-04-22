@@ -1,6 +1,6 @@
 
 /*
- * Python 3 bindings for libjio
+ * Python (2 and 3) bindings for libjio
  * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
@@ -111,7 +111,11 @@ static PyObject *jf_read(jfile_object *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
+#ifdef PYTHON3
 		r = PyBytes_FromStringAndSize((char *) buf, rv);
+#elif PYTHON2
+		r = PyString_FromStringAndSize((char *) buf, rv);
+#endif
 	}
 
 	free(buf);
@@ -148,7 +152,11 @@ static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
+#ifdef PYTHON3
 		r = PyBytes_FromStringAndSize((char *) buf, rv);
+#elif PYTHON2
+		r = PyString_FromStringAndSize((char *) buf, rv);
+#endif
 	}
 
 	free(buf);
@@ -382,7 +390,11 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	if (!PyArg_ParseTuple(args, ":new_trans"))
 		return NULL;
 
+#ifdef PYTHON3
 	tp = (jtrans_object *) jtrans_type.tp_alloc(&jtrans_type, 0);
+#elif PYTHON2
+	tp = PyObject_New(jtrans_object, &jtrans_type);
+#endif
 	if (tp == NULL)
 		return NULL;
 
@@ -420,6 +432,7 @@ static PyMethodDef jfile_methods[] = {
 	{ NULL }
 };
 
+#ifdef PYTHON3
 static PyTypeObject jfile_type = {
 	PyObject_HEAD_INIT(NULL)
 	.tp_name = "libjio.jfile",
@@ -427,6 +440,25 @@ static PyTypeObject jfile_type = {
 	.tp_dealloc = (destructor) jf_dealloc,
 	.tp_methods = jfile_methods,
 };
+
+#elif PYTHON2
+static PyObject *jf_getattr(jfile_object *fp, char *name)
+{
+	return Py_FindMethod(jfile_methods, (PyObject *)fp, name);
+}
+
+static PyTypeObject jfile_type = {
+	PyObject_HEAD_INIT(NULL)
+	0,
+	"libjio.jfile",
+	sizeof(jfile_object),
+	0,
+	(destructor)jf_dealloc,
+	0,
+	(getattrfunc)jf_getattr,
+};
+
+#endif
 
 
 /*
@@ -524,6 +556,7 @@ static PyMethodDef jtrans_methods[] = {
 	{ NULL }
 };
 
+#ifdef PYTHON3
 static PyTypeObject jtrans_type = {
 	PyObject_HEAD_INIT(NULL)
 	.tp_name = "libjio.jtrans",
@@ -531,6 +564,25 @@ static PyTypeObject jtrans_type = {
 	.tp_dealloc = (destructor) jt_dealloc,
 	.tp_methods = jtrans_methods,
 };
+
+#elif PYTHON2
+static PyObject *jt_getattr(jtrans_object *tp, char *name)
+{
+	return Py_FindMethod(jtrans_methods, (PyObject *)tp, name);
+}
+
+static PyTypeObject jtrans_type = {
+	PyObject_HEAD_INIT(NULL)
+	0,
+	"libjio.jtrans",
+	sizeof(jtrans_object),
+	0,
+	(destructor)jt_dealloc,
+	0,
+	(getattrfunc)jt_getattr,
+};
+
+#endif
 
 
 /*
@@ -560,7 +612,12 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 				&jflags))
 		return NULL;
 
+#ifdef PYTHON3
 	fp = (jfile_object *) jfile_type.tp_alloc(&jfile_type, 0);
+#elif PYTHON2
+	fp = PyObject_New(jfile_object, &jfile_type);
+#endif
+
 	if (fp == NULL)
 		return NULL;
 
@@ -670,24 +727,10 @@ static PyMethodDef module_methods[] = {
 	"on it.\n" \
 	"Please read the documentation for more information.\n"
 
-static PyModuleDef libjio_module = {
-	PyModuleDef_HEAD_INIT,
-	.m_name = "libjio",
-	.m_doc = module_doc,
-	.m_size = -1,
-	.m_methods = module_methods,
-};
 
-PyMODINIT_FUNC PyInit_libjio(void)
+/* fills the module with the objects and constants */
+static void populate_module(PyObject *m)
 {
-	PyObject *m;
-
-	if (PyType_Ready(&jfile_type) < 0 ||
-			PyType_Ready(&jtrans_type) < 0)
-		return NULL;
-
-	m = PyModule_Create(&libjio_module);
-
 	Py_INCREF(&jfile_type);
 	PyModule_AddObject(m, "jfile", (PyObject *) &jfile_type);
 
@@ -724,7 +767,46 @@ PyMODINIT_FUNC PyInit_libjio(void)
 	PyModule_AddIntConstant(m, "SEEK_SET", SEEK_SET);
 	PyModule_AddIntConstant(m, "SEEK_CUR", SEEK_CUR);
 	PyModule_AddIntConstant(m, "SEEK_END", SEEK_END);
+}
+
+
+#ifdef PYTHON3
+static PyModuleDef libjio_module = {
+	PyModuleDef_HEAD_INIT,
+	.m_name = "libjio",
+	.m_doc = module_doc,
+	.m_size = -1,
+	.m_methods = module_methods,
+};
+
+PyMODINIT_FUNC PyInit_libjio(void)
+{
+	PyObject *m;
+
+	if (PyType_Ready(&jfile_type) < 0 ||
+			PyType_Ready(&jtrans_type) < 0)
+		return NULL;
+
+	m = PyModule_Create(&libjio_module);
+
+	populate_module(m);
 
 	return m;
 }
+
+#elif PYTHON2
+PyMODINIT_FUNC initlibjio(void)
+{
+	PyObject* m;
+
+	jfile_type.ob_type = &PyType_Type;
+	jtrans_type.ob_type = &PyType_Type;
+
+	m = Py_InitModule3("libjio", module_methods, module_doc);
+
+	populate_module(m);
+}
+
+#endif
+
 

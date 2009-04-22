@@ -12,16 +12,16 @@ install:
 
 
 python2:
-	cd bindings/python2 && python setup.py build
+	cd bindings/python && python setup.py build
 
 python2_install: python2
-	cd bindings/python2 && python setup.py install
+	cd bindings/python && python setup.py install
 
 python3:
-	cd bindings/python3 && python3 setup.py build
+	cd bindings/python && python3 setup.py build
 
 python3_install: python3
-	cd bindings/python3 && python3 setup.py install
+	cd bindings/python && python3 setup.py install
 
 
 preload:
@@ -34,8 +34,7 @@ preload_install: preload
 clean:
 	$(MAKE) -C libjio/ clean
 	$(MAKE) -C bindings/preload clean
-	rm -rf bindings/python2/build/
-	rm -rf bindings/python3/build/
+	rm -rf bindings/python/build/
 
 
 .PHONY: default all libjio install \
