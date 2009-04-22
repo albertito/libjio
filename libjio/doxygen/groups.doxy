@@ -1,0 +1,13 @@
+
+/**
+@addtogroup basic Basic API
+This is the basic, lower-level API.
+
+@addtogroup check Check API
+This is the integrity-checking API.
+
+@addtogroup unix UNIX-alike API
+This is the UNIX-alike API, built on top of the @ref basic "basic API".
+
+*/
+

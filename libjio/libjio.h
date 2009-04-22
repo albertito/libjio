@@ -38,7 +38,9 @@ typedef struct jtrans jtrans_t;
  * Public types
  */
 
-/** The result of a jfsck() run */
+/** The result of a jfsck() run
+ * @ingroup check
+ */
 struct jfsck_result {
 	/** Total transactions files processed */
 	int total;
@@ -82,8 +84,8 @@ struct jfsck_result {
  * @returns a new jfs_t that identifies the open file on success, or NULL on
  *	error
  * @see jclose(), open()
- *
- * */
+ * @ingroup basic
+ */
 jfs_t *jopen(const char *name, int flags, int mode, int jflags);
 
 /** Close a file opened with jopen().
@@ -96,6 +98,7 @@ jfs_t *jopen(const char *name, int flags, int mode, int jflags);
  * @param fs open file
  * @returns 0 on success, -1 on error
  * @see jopen(), jfs_autosync_start()
+ * @ingroup basic
  */
 int jclose(jfs_t *fs);
 
@@ -103,6 +106,7 @@ int jclose(jfs_t *fs);
  *
  * @param fs open file
  * @returns 0 on success, -1 on error
+ * @ingroup basic
  */
 int jsync(jfs_t *fs);
 
@@ -111,6 +115,7 @@ int jsync(jfs_t *fs);
  * @param fs open file the transaction will apply to
  * @returns a new transaction (must be freed using jtrans_free())
  * @see jtrans_free()
+ * @ingroup basic
  */
 jtrans_t *jtrans_init(jfs_t *fs);
 
@@ -130,6 +135,7 @@ jtrans_t *jtrans_init(jfs_t *fs);
  * @param count how many bytes from the buffer to write
  * @param offset offset to write at
  * @returns 0 on success, -1 on error
+ * @ingroup basic
  */
 int jtrans_add(jtrans_t *ts, const void *buf, size_t count, off_t offset);
 
@@ -147,6 +153,7 @@ int jtrans_add(jtrans_t *ts, const void *buf, size_t count, off_t offset);
  *	but atomic warranties were preserved, or -2 if there was an error and
  *	there is a possible break of atomic warranties (which is an indication
  *	of a severe underlying condition).
+ * @ingroup basic
  */
 ssize_t jtrans_commit(jtrans_t *ts);
 
@@ -160,6 +167,7 @@ ssize_t jtrans_commit(jtrans_t *ts);
  * @param ts transaction
  * @returns the same as jtrans_commit()
  * @see jtrans_commit()
+ * @ingroup basic
  */
 ssize_t jtrans_rollback(jtrans_t *ts);
 
@@ -167,6 +175,7 @@ ssize_t jtrans_rollback(jtrans_t *ts);
  *
  * @param ts transaction to free
  * @see jtrans_init()
+ * @ingroup basic
  */
 void jtrans_free(jtrans_t *ts);
 
@@ -179,6 +188,7 @@ void jtrans_free(jtrans_t *ts);
  * @param newpath path to the new journal directory, which will be created if
  * 	it doesn't exist
  * @returns 0 on success, -1 on error
+ * @ingroup basic
  */
 int jmove_journal(jfs_t *fs, const char *newpath);
 
@@ -198,6 +208,7 @@ int jmove_journal(jfs_t *fs, const char *newpath);
  * @param max_bytes maximum number of bytes that should be written between
  *	each call to jsync()
  * @returns 0 on success, -1 on error
+ * @ingroup basic
  */
 int jfs_autosync_start(jfs_t *fs, time_t max_sec, size_t max_bytes);
 
@@ -205,8 +216,10 @@ int jfs_autosync_start(jfs_t *fs, time_t max_sec, size_t max_bytes);
  * 
  * @param fs open file
  * @returns 0 on success, -1 on error
+ * @ingroup basic
  */
 int jfs_autosync_stop(jfs_t *fs);
+
 
 /*
  * Journal checker
@@ -222,6 +235,7 @@ int jfs_autosync_stop(jfs_t *fs);
  * 	values: J_ENOENT if there was no such file with the given name,
  * 	J_ENOJOURNAL if there was no journal at the given jdir, J_ENOMEM if
  * 	memory could not be allocated.
+ * @ingroup check
  */
 int jfsck(const char *name, const char *jdir, struct jfsck_result *res);
 
@@ -241,6 +255,7 @@ int jfsck_cleanup(const char *name, const char *jdir);
  * @param count maximum number of bytes to read
  * @returns number of bytes read on success, or -1 on error
  * @see read(2)
+ * @ingroup unix
  */
 ssize_t jread(jfs_t *fs, void *buf, size_t count);
 
@@ -252,6 +267,7 @@ ssize_t jread(jfs_t *fs, void *buf, size_t count);
  * @param offset offset to read at
  * @returns number of bytes read on success, or -1 on error
  * @see pread(2)
+ * @ingroup unix
  */
 ssize_t jpread(jfs_t *fs, void *buf, size_t count, off_t offset);
 
@@ -262,6 +278,7 @@ ssize_t jpread(jfs_t *fs, void *buf, size_t count, off_t offset);
  * @param count maximum number of bytes to read
  * @returns number of bytes read on success, or -1 on error
  * @see readv(2)
+ * @ingroup unix
  */
 ssize_t jreadv(jfs_t *fs, const struct iovec *vector, int count);
 
@@ -272,6 +289,7 @@ ssize_t jreadv(jfs_t *fs, const struct iovec *vector, int count);
  * @param count maximum number of bytes to write
  * @returns number of bytes written on success, or -1 on error
  * @see write(2)
+ * @ingroup unix
  */
 ssize_t jwrite(jfs_t *fs, const void *buf, size_t count);
 
@@ -283,6 +301,7 @@ ssize_t jwrite(jfs_t *fs, const void *buf, size_t count);
  * @param offset offset to write at
  * @returns number of bytes written on success, or -1 on error
  * @see pwrite(2)
+ * @ingroup unix
  */
 ssize_t jpwrite(jfs_t *fs, const void *buf, size_t count, off_t offset);
 
@@ -293,6 +312,7 @@ ssize_t jpwrite(jfs_t *fs, const void *buf, size_t count, off_t offset);
  * @param count maximum number of bytes to write
  * @returns number of bytes written on success, or -1 on error
  * @see writev(2)
+ * @ingroup unix
  */
 ssize_t jwritev(jfs_t *fs, const struct iovec *vector, int count);
 
@@ -302,6 +322,7 @@ ssize_t jwritev(jfs_t *fs, const struct iovec *vector, int count);
  * @param length lenght to truncate to
  * @returns 0 on success, -1 on error
  * @see ftruncate(2)
+ * @ingroup unix
  */
 int jtruncate(jfs_t *fs, off_t length);
 
@@ -314,6 +335,7 @@ int jtruncate(jfs_t *fs, off_t length);
  *	SEEK_END to count from the end.
  * @returns the new offset counted from the beginning of the file, or -1 on
  *	error.
+ * @ingroup unix
  */
 off_t jlseek(jfs_t *fs, off_t offset, int whence);
 
