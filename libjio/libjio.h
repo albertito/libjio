@@ -400,34 +400,69 @@ void jrewind(jfs_t *stream);
 FILE *jfsopen(jfs_t *stream, const char *mode);
 
 
-
 /*
- * Miscelaneous flags
+ * jopen() flags.
+ *
+ * Internally used also for jtrans_t flags.
  */
 
-/** Don't lock the file before operating on it */
+/** Don't lock the file before operating on it.
+ *
+ * @see jopen()
+ * @ingroup basic */
 #define J_NOLOCK	1
 
-/** No need to read rollback information */
+/** No need to read rollback information.
+ *
+ * @see jopen()
+ * @ingroup basic */
 #define J_NOROLLBACK	2
 
-/** Use lingering transactions */
+/** Use lingering transactions.
+ *
+ * @see jopen()
+ * @ingroup basic */
 #define J_LINGER	4
 
-/** Marks a transaction as committed */
-#define J_COMMITTED	8
+/* Range 8-256 is reserved for future public use */
 
-/** Marks a transaction as rollbacked */
-#define J_ROLLBACKED	16
+/** Marks a file as read-only.
+ *
+ * For internal use only, automatically set when O_RDONLY is passed to
+ * jopen().
+ *
+ * @internal */
+#define J_RDONLY	512
 
-/** Marks a transaction as rollbacking */
-#define J_ROLLBACKING	32
 
-/** Marks a file as read-only */
-#define J_RDONLY	64
+/*
+ * jtrans_t flags.
+ *
+ * For internal use only, but must be in the same space as the jopen() flags.
+ */
 
-/** Do not perform a journal cleanup. Used in jfsck(). */
-#define J_NOCLEANUP	128
+/** Marks a transaction as committed.
+ * @internal */
+#define J_COMMITTED	1024
+
+/** Marks a transaction as rollbacked.
+ * @internal */
+#define J_ROLLBACKED	2048
+
+/** Marks a transaction as rollbacking.
+ * @internal */
+#define J_ROLLBACKING	4096
+
+
+/*
+ * jfsck() flags
+ */
+
+/** Do not perform a journal cleanup. Used in jfsck().
+ *
+ * @see jfsck()
+ * @ingroup check */
+#define J_NOCLEANUP	1
 
 #endif
 
