@@ -84,7 +84,7 @@ functions), and adds a new parameter *jflags* that can be used to modify some
 subtle library behaviour we'll see later, and is normally not used.
 
 We have a happy file structure open now, and the next thing to do would be to
-create a transaction. This is what *jtrans_init()* is for: it takes a file
+create a transaction. This is what *jtrans_new()* is for: it takes a file
 structure and a transaction structure and initializes the latter, leaving it
 ready to use.
 
@@ -109,7 +109,7 @@ program (return values are ignored for simplicity)::
 
   file = jopen("filename", O_RDWR | O_CREAT, 0600, 0);
 
-  trans = jtrans_init(file);
+  trans = jtrans_new(file);
   jtrans_add(trans, buf, strlen(buf), 0);
   jtrans_commit(trans);
   jtrans_free(trans);
@@ -118,7 +118,7 @@ program (return values are ignored for simplicity)::
 
 As we've seen, we open the file and initialize the structure with *jopen()*
 (with the parameter *jflags* being the last 0), create a new transaction with
-*jtrans_init()*, then add an operation with *jtrans_add()* (the last 0 is the
+*jtrans_new()*, then add an operation with *jtrans_add()* (the last 0 is the
 offset, in this case the beginning of the file), commit the transaction with
 *jtrans_commit()*, free it with *jtrans_free()*, and finally close the file
 with *jclose()*.

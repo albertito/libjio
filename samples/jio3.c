@@ -19,9 +19,9 @@ int main(int argc, char **argv)
 	if (fs == NULL)
 		perror("jopen()");
 
-	ts = jtrans_init(fs);
+	ts = jtrans_new(fs);
 	if (ts == NULL)
-		perror("jtrans_init()");
+		perror("jtrans_new()");
 
 #define str1 "1ROLLBACKTEST1!\n"
 	jtrans_add(ts, str1, strlen(str1), 0);

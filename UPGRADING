@@ -9,8 +9,9 @@ take much effort. When it's mandatory, it will be noted.
 -> 0.50 (Big API change)
   - Structures are now opaque types:
     struct jfs -> jfs_t; jopen() returns a pointer to one, jclose() frees it.
-    struct jtrans -> jtrans_t; jtrans_init() returns a pointer to one,
+    struct jtrans -> jtrans_t; jtrans_new() returns a pointer to one,
       jtrans_free() frees it.
+  - Renamed jtrans_init() to jtrans_new().
   - jtrans_commit() returns -1 on recovered errors, -2 on unrecovered errors
     (which are an indication of a severe underlying condition).
   - jtrans_add() returns 0 on success and -1 on errors (it used to return 1 on

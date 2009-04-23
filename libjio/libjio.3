@@ -21,7 +21,7 @@ libjio - A library for Journaled I/O
 .BI "off_t jlseek(jfs_t *" fs ", off_t " offset ", int " whence ");"
 .BI "int jclose(jfs_t *" fs ");"
 
-.BI "jtrans_t *jtrans_init(jfs_t *" fs ");"
+.BI "jtrans_t *jtrans_new(jfs_t *" fs ");"
 .BI "int jtrans_commit(jtrans_t *" ts ");"
 .BI "int jtrans_add(jtrans_t *" ts ", const void *" buf ","
 .BI "		size_t " count ", off_t " offset ");"
@@ -79,7 +79,7 @@ interfaces to
 and friends.
 
 The basic functions consist of
-.BR jtrans_init() ", " jtrans_add() ", " jtrans_commit() " and "
+.BR jtrans_new() ", " jtrans_add() ", " jtrans_commit() " and "
 .BR jtrans_rollback() .
 They provide a lower-level method for manipulating transactions.
 
@@ -172,13 +172,13 @@ semantics and behave the same way.
 .SS BASIC FUNCTIONS
 
 The basic functions are the ones which manipulate transactions directly:
-.BR jtrans_init() ", " jtrans_add() ", " jtrans_commit() ", " jtrans_rollback()
+.BR jtrans_new() ", " jtrans_add() ", " jtrans_commit() ", " jtrans_rollback()
 and
 .BR jtrans_free() .
 These are intended to be use when your application requires direct control
 over the transactions.
 
-.BR jtrans_init() " and " jtrans_free()
+.BR jtrans_new() " and " jtrans_free()
 just return a new
 .I jtrans_t
 and free a given one; the former should be called prior any use, and the

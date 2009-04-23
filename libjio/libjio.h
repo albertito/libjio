@@ -142,7 +142,7 @@ int jsync(jfs_t *fs);
  * @see jtrans_free()
  * @ingroup basic
  */
-jtrans_t *jtrans_init(jfs_t *fs);
+jtrans_t *jtrans_new(jfs_t *fs);
 
 /** Add an operation to a transaction.
  *
@@ -199,7 +199,7 @@ ssize_t jtrans_rollback(jtrans_t *ts);
 /** Free a transaction structure.
  *
  * @param ts transaction to free
- * @see jtrans_init()
+ * @see jtrans_new()
  * @ingroup basic
  */
 void jtrans_free(jtrans_t *ts);

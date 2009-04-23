@@ -28,7 +28,7 @@
  */
 
 /* Initialize a transaction structure */
-struct jtrans *jtrans_init(struct jfs *fs)
+struct jtrans *jtrans_new(struct jfs *fs)
 {
 	pthread_mutexattr_t attr;
 	struct jtrans *ts;
@@ -311,7 +311,7 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 	struct jtrans *newts;
 	struct joper *op, *curop, *lop;
 
-	newts = jtrans_init(ts->fs);
+	newts = jtrans_new(ts->fs);
 	newts->flags = ts->flags;
 	newts->numops = ts->numops;
 

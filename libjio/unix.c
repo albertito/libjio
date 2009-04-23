@@ -87,7 +87,7 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 	off_t pos;
 	struct jtrans *ts;
 
-	ts = jtrans_init(fs);
+	ts = jtrans_new(fs);
 	if (ts == NULL)
 		return -1;
 
@@ -120,7 +120,7 @@ ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 	int rv;
 	struct jtrans *ts;
 
-	ts = jtrans_init(fs);
+	ts = jtrans_new(fs);
 	if (ts == NULL)
 		return -1;
 
@@ -141,7 +141,7 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 	off_t ipos, t;
 	struct jtrans *ts;
 
-	ts = jtrans_init(fs);
+	ts = jtrans_new(fs);
 	if (ts == NULL)
 		return -1;
 

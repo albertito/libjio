@@ -380,7 +380,7 @@ PyDoc_STRVAR(jf_new_trans__doc,
 "new_trans()\n\
 \n\
 Returns an object representing a new empty transaction.\n\
-It's a wrapper to jtrans_init().\n");
+It's a wrapper to jtrans_new().\n");
 
 static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 {
@@ -397,7 +397,7 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	if (tp == NULL)
 		return NULL;
 
-	tp->ts = jtrans_init(fp->fs);
+	tp->ts = jtrans_new(fp->fs);
 	if(tp->ts == NULL) {
 		return PyErr_NoMemory();
 	}
