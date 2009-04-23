@@ -98,7 +98,9 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 	else
 		pos = lseek(fs->fd, 0, SEEK_CUR);
 
-	jtrans_add(ts, buf, count, pos);
+	rv = jtrans_add(ts, buf, count, pos);
+	if (rv < 0)
+		goto exit;
 
 	rv = jtrans_commit(ts);
 
@@ -106,6 +108,8 @@ ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 		/* if success, advance the file pointer */
 		lseek(fs->fd, rv, SEEK_CUR);
 	}
+
+exit:
 
 	pthread_mutex_unlock(&(fs->lock));
 
@@ -124,10 +128,13 @@ ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 	if (ts == NULL)
 		return -1;
 
-	jtrans_add(ts, buf, count, offset);
+	rv = jtrans_add(ts, buf, count, offset);
+	if (rv < 0)
+		goto exit;
 
 	rv = jtrans_commit(ts);
 
+exit:
 	jtrans_free(ts);
 
 	return rv;
@@ -156,7 +163,10 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 
 	sum = 0;
 	for (i = 0; i < count; i++) {
-		jtrans_add(ts, vector[i].iov_base, vector[i].iov_len, t);
+		rv = jtrans_add(ts, vector[i].iov_base, vector[i].iov_len, t);
+		if (rv < 0)
+			goto exit;
+
 		sum += vector[i].iov_len;
 		t += vector[i].iov_len;
 	}
@@ -168,6 +178,7 @@ ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 		lseek(fs->fd, rv, SEEK_CUR);
 	}
 
+exit:
 	pthread_mutex_unlock(&(fs->lock));
 
 	jtrans_free(ts);
