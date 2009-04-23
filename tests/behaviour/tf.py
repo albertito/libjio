@@ -136,8 +136,6 @@ def fsck_verify(n, **kwargs):
 			raise AssertionError, k + ' does not match: ' + \
 					str(res)
 
-	libjio.jfsck_cleanup(n)
-
 def cleanup(path):
 	"""Unlinks the path and its temporary libjio directory. The libjio
 	directory must only have the 'lock' file in it."""

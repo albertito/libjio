@@ -385,6 +385,7 @@ int close(int fd)
 int unlink(const char *pathname)
 {
 	int r;
+	struct jfsck_result res;
 
 	if (called) {
 		printd("orig\n");
@@ -394,7 +395,7 @@ int unlink(const char *pathname)
 	printd("libjio\n");
 
 	rec_inc();
-	jfsck_cleanup(pathname, NULL);
+	r = jfsck(pathname, NULL, &res, 0);
 	rec_dec();
 
 	r = (*c_unlink)(pathname);

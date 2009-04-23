@@ -34,9 +34,8 @@ libjio - A library for Journaled I/O
 .BI "int jfs_autosync_stop(jfs_t *" fs ");"
 .BI "int jmove_journal(jfs_t *" fs ", const char *" newpath ");"
 
-.BI "int jfsck(const char *" name ", const char *" jdir ","
-.BI "           jfs_tck_result *" res ");"
-.BI "int jfsck_cleanup(const char *" name ", const char *" jdir ");"
+.BI "enum jfsck_return jfsck(const char *" name ", const char *" jdir ","
+.BI "           jfsck_result *" res ", unsigned int " flags ");"
 
 .BR "struct jfsck_result" " {"
     int total;            /* total transactions files we looked at */
@@ -47,6 +46,15 @@ libjio - A library for Journaled I/O
     int rollbacked;       /* transactions that were rollbacked */
     ...
 };
+
+.BR "enum jfsck_return" " {"
+    J_ESUCCESS = 0,	/* Success */
+    J_ENOENT = -1,	/* No such file or directory */
+    J_ENOJOURNAL = -2,	/* No journal associated with the given file */
+    J_ENOMEM = -3,	/* Not enough free memory */
+    J_ECLEANUP = -4,	/* Error cleaning the journal directory */
+};
+
 
 .SH DESCRIPTION
 
@@ -62,7 +70,7 @@ completion and < 0 upon failure, unless otherwise noted.
 The common functions provide functionality common to the other two:
 .BR jopen() " and " jclose()
 to open and close files in order to use them with the library, and
-.BR "jfsck() " and " jfsck_cleanup()"
+.B jfsck()
 to provide integrity checking.
 
 The UNIX-alike API mimics the traditional UNIX API by providing similar
@@ -121,17 +129,17 @@ The thread is also stopped automatically when
 .B jclose()
 is called.
 
-There are two functions that differ from the rest, which are
-.BR jfsck() " and " jfsck_cleanup() .
-Both take as the first two parameters the path to the file to check and the
-path to the journal directory (usually NULL for the default, unless you've
-changed it manually using
-.BR jmove_journal() ).
+.B jfsck()
+takes as the first two parameters the path to the file to check and the path
+to the journal directory (usually NULL for the default, unless you've changed
+it manually using
+.BR jmove_journal() ),
+and optionally a flags parameter, which can be 0 for the default behaviour, or
+J_NOCLEANUP to indicate that the journal should not be cleaned up after
+successful recovery.
 
-The first one,
-.BR jfsck() ,
-is used to perform journal checking and recovery in case of a crash. It must
-be performed when nobody else is using the file (like in the case of a
+It is used to perform journal checking and recovery in case of a crash. It
+must be performed when nobody else is using the file (like in the case of a
 filesystem which can't be mounted), and it returns 0 if success or an error
 code != 0 in case of a failure. If it succeeded, it will fill jfsck_result
 summarizing the outcome of the operation. The error codes can be either
@@ -140,25 +148,12 @@ summarizing the outcome of the operation. The error codes can be either
 .I J_ENOJOURNAL
 (no journal associated with that file) or
 .I J_ENOMEM
-(not enough free memory). There is also a program named
+(not enough free memory), and
+.I J_ECLEANUP
+(error cleaning the journal directory). There is also a program named
 .I jiofsck
 which is just a simple human frontend to this function.
 
-The second,
-.BR jfsck_cleanup() ,
-is intended to be used after
-.B jfsck()
-by programs wanting to remove all the stall transaction files and leave the
-journal directory ready to use. After calling
-.BR jfsck() ,
-those transaction files will no longer be needed, so by cleaning up the
-directory you make sure you're starting over with a clean journal. It returns
-0 if there was an error, or 1 if it succeeded. The aforementioned
-.I jiofsck
-can also optionally invoke this function after performing the regular checks.
-Calling it after
-.B jfsck()
-is highly recommended.
 
 .SS UNIX-alike API
 

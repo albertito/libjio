@@ -130,7 +130,6 @@ class Stresser:
 		self.jf = None
 		r = libjio.jfsck(self.fname)
 		self.verify()
-		libjio.jfsck_cleanup(self.fname)
 
 		self.jf = libjio.open(self.fname,
 			libjio.O_RDWR | libjio.O_CREAT, 0o600)
@@ -227,7 +226,6 @@ def main():
 
 	r = libjio.jfsck(fname)
 	assert r['total'] == 0
-	libjio.jfsck_cleanup(fname)
 	print("Final check completed")
 	#os.unlink(fname)
 

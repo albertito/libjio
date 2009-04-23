@@ -140,12 +140,10 @@ checks the integrity of a file and makes sure that everything is consistent.
 
 It must be called "offline", that is when you are not actively committing and
 rollbacking; it is normally done before calling *jopen()* and is **very, very
-important**. Another good practise is to call *jfsck_cleanup()* after calling
-*jfsck()*, to make sure we're starting up with a fresh clean journal. After
-both calls, it is safe to assume that the file is and ready to use.
+important**.
 
 You can also do this manually with an utility named jiofsck, which can be used
-from the shell to perform the checking and cleanup.
+from the shell to perform the checking.
 
 
 Rollback

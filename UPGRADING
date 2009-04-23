@@ -15,6 +15,9 @@ take much effort. When it's mandatory, it will be noted.
     (which are an indication of a severe underlying condition).
   - jtrans_add() returns 0 on success and -1 on errors (it used to return 1 on
     success and 0 on errors).
+  - jfsck() now has an additional "flags" parameter, which should be set to 0
+    to select the default behaviour.
+  - jfsck_cleanup() was removed, and now jfsck() cleans up by default.
 
 -> 0.25
   - It is no longer necessary to pass O_SYNC to jopen() if lingering

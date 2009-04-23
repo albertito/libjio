@@ -30,9 +30,13 @@ Examples:\n\
 
 int main(int argc, char **argv)
 {
-	int i, rv, do_cleanup;
+	int i, do_cleanup;
+	unsigned int flags;
 	char *file, *jdir;
 	struct jfsck_result res;
+	enum jfsck_return rv;
+
+
 
 	file = jdir = NULL;
 	do_cleanup = 0;
@@ -54,9 +58,13 @@ int main(int argc, char **argv)
 
 	memset(&res, 0, sizeof(res));
 
+	flags = 0;
+	if (!do_cleanup)
+		flags |= J_NOCLEANUP;
+
 	printf("Checking journal: ");
 	fflush(stdout);
-	rv = jfsck(file, jdir, &res);
+	rv = jfsck(file, jdir, &res, flags);
 
 	if (rv == J_ENOENT) {
 		printf("No such file or directory\n");
@@ -68,17 +76,6 @@ int main(int argc, char **argv)
 	}
 
 	printf("done\n");
-
-	if (do_cleanup) {
-		printf("Cleaning journal: ");
-		fflush(stdout);
-		if (!jfsck_cleanup(file, jdir)) {
-			printf("Error cleaning journal\n");
-			return 1;
-		}
-
-		printf("done\n");
-	}
 
 	printf("Journal checking results\n");
 	printf("------------------------\n\n");

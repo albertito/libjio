@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 	}
 
 	jclose(fs);
-	jfsck(FILENAME, NULL, &ckres);
+	jfsck(FILENAME, NULL, &ckres, 0);
 	if (ckres.total != 0) {
 		fprintf(stderr, "There were %d errors during the test\n",
 				ckres.total);
@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	jfsck_cleanup(FILENAME, NULL);
 	return 0;
 }
 

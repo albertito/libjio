@@ -27,9 +27,8 @@
  * several operations that get added by its add() method. It gets committed
  * with commit(), and rolled back with rollback().
  *
- * There rest of the module's functions are related to file checking, called
- * jfsck() and jfsck_cleanup(), which are just wrappers to the real C
- * functions.
+ * There rest of the module's functions are related to file checking, at the
+ * moment only jfsck(), which is just a wrapper to the real C functions.
  */
 
 /*
@@ -636,23 +635,26 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 
 /* jfsck */
 PyDoc_STRVAR(jf_jfsck__doc,
-"jfsck(name[, jdir])\n\
+"jfsck(name[, jdir] [, flags])\n\
 \n\
 Checks the integrity of the file with the given name, using (optionally) jdir\n\
-as the journal directory; returns a dictionary with all the different values\n\
-of the check (equivalent to the 'struct jfsck_result'). If the path is\n\
-incorrect, or there is no journal associated with it, an IOError will be\n\
-raised.\n\
+as the journal directory and the given flags; returns a dictionary with all\n\
+the different values of the check (equivalent to the 'struct jfsck_result').\n\
+If the path is incorrect, or there is no journal associated with it, an\n\
+IOError will be raised.\n\
 It's a wrapper to jfsck().\n");
 
-static PyObject *jf_jfsck(PyObject *self, PyObject *args)
+static PyObject *jf_jfsck(PyObject *self, PyObject *args, PyObject *kw)
 {
 	int rv;
+	unsigned int flags;
 	char *name, *jdir = NULL;
 	struct jfsck_result res;
 	PyObject *dict;
+	char *keywords[] = { "name", "jdir", "flags", NULL };
 
-	if (!PyArg_ParseTuple(args, "s|s:jfsck", &name, &jdir))
+	if (!PyArg_ParseTupleAndKeywords(args, kw, "s|sI:jfsck",
+				keywords, &name, &jdir, &flags))
 		return NULL;
 
 	dict = PyDict_New();
@@ -660,7 +662,7 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 		return PyErr_NoMemory();
 
 	Py_BEGIN_ALLOW_THREADS
-	rv = jfsck(name, jdir, &res);
+	rv = jfsck(name, jdir, &res, flags);
 	Py_END_ALLOW_THREADS
 
 	if (rv == J_ENOMEM) {
@@ -683,40 +685,10 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args)
 	return dict;
 }
 
-/* jfsck_cleanup */
-PyDoc_STRVAR(jf_jfsck_cleanup__doc,
-"jfsck_cleanup(name[, jdir])\n\
-\n\
-Clean the journal directory for the given file using (optionally) jdir as the\n\
-journal directory, and leave it ready to use.\n\
-It's a wrapper to jfsck_cleanup().\n");
-
-static PyObject *jf_jfsck_cleanup(PyObject *self, PyObject *args)
-{
-	long rv;
-	char *name, *jdir = NULL;
-
-	if (!PyArg_ParseTuple(args, "s|s:jfsck_cleanup", &name, &jdir))
-		return NULL;
-
-	Py_BEGIN_ALLOW_THREADS
-	rv = jfsck_cleanup(name, jdir);
-	Py_END_ALLOW_THREADS
-
-	if (rv != 1) {
-		PyErr_SetObject(PyExc_IOError, PyLong_FromLong(rv));
-		return NULL;
-	}
-
-	return PyLong_FromLong(rv);
-}
-
-
 static PyMethodDef module_methods[] = {
 	{ "open", jf_open, METH_VARARGS, jf_open__doc },
-	{ "jfsck", jf_jfsck, METH_VARARGS, jf_jfsck__doc },
-	{ "jfsck_cleanup", jf_jfsck_cleanup, METH_VARARGS,
-		jf_jfsck_cleanup__doc },
+	{ "jfsck", (PyCFunction) jf_jfsck, METH_VARARGS | METH_KEYWORDS,
+		jf_jfsck__doc },
 	{ NULL, NULL, 0, NULL },
 };
 

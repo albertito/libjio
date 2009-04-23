@@ -163,11 +163,6 @@ from the commit procedure, we only apply the transaction after saving it in
 the journal, so there is really nothing left to be done. So if the transaction
 is complete, we only need to rollback.
 
-In any case, after making the recovery you can simply remove the journal
-entirely and let the library create a new one, and you can be sure that
-transaction atomicity was preserved. You can use jfsck_cleanup() for that
-purpose.
-
 
 UNIX-alike API
 --------------

@@ -95,8 +95,66 @@ error:
 	return 0;
 }
 
+/** Remove all the files in the journal directory (if any).
+ *
+ * @param name path to the file
+ * @param jdir path to the journal directory, use NULL for the default
+ * @returns 0 on success, < 0 on error
+ */
+static int jfsck_cleanup(const char *name, const char *jdir)
+{
+	char path[PATH_MAX], tfile[PATH_MAX*3];
+	DIR *dir;
+	struct dirent *dent;
+
+	if (jdir == NULL) {
+		if (!get_jdir(name, path))
+			return -1;
+	} else {
+		strcpy(path, jdir);
+	}
+
+	dir = opendir(path);
+	if (dir == NULL && errno == ENOENT)
+		/* it doesn't exist, so it's clean */
+		return 0;
+	else if (dir == NULL)
+		return -1;
+
+	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+		/* we only care about transactions (named as numbers > 0) and
+		 * the lockfile (named "lock"); ignore everything else */
+		if (strcmp(dent->d_name, "lock") && atoi(dent->d_name) <= 0)
+			continue;
+
+		/* build the full path to the transaction file */
+		memset(tfile, 0, PATH_MAX * 3);
+		strcat(tfile, path);
+		strcat(tfile, "/");
+		strcat(tfile, dent->d_name);
+
+		if (strlen(tfile) > PATH_MAX) {
+			closedir(dir);
+			return -1;
+		}
+
+		if (unlink(tfile) != 0) {
+			closedir(dir);
+			return -1;
+		}
+	}
+	if (closedir(dir) != 0)
+		return -1;
+
+	if (rmdir(path) != 0)
+		return -1;
+
+	return 0;
+}
+
 /* Check the journal and fix the incomplete transactions */
-int jfsck(const char *name, const char *jdir, struct jfsck_result *res)
+enum jfsck_return jfsck(const char *name, const char *jdir,
+		struct jfsck_result *res, unsigned int flags)
 {
 	int tfd, rv, i, ret;
 	unsigned int maxtid;
@@ -306,6 +364,12 @@ loop:
 		res->total++;
 	}
 
+	if ( !(flags & J_NOCLEANUP) ) {
+		if (jfsck_cleanup(name, jdir) < 0) {
+			ret = J_ECLEANUP;
+		}
+	}
+
 exit:
 	if (fs.fd >= 0)
 		close(fs.fd);
@@ -322,57 +386,5 @@ exit:
 
 	return ret;
 
-}
-
-/* Remove all the files in the journal directory (if any) */
-int jfsck_cleanup(const char *name, const char *jdir)
-{
-	char path[PATH_MAX], tfile[PATH_MAX*3];
-	DIR *dir;
-	struct dirent *dent;
-
-	if (jdir == NULL) {
-		if (!get_jdir(name, path))
-			return 0;
-	} else {
-		strcpy(path, jdir);
-	}
-
-	dir = opendir(path);
-	if (dir == NULL && errno == ENOENT)
-		/* it doesn't exist, so it's clean */
-		return 1;
-	else if (dir == NULL)
-		return 0;
-
-	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
-		/* we only care about transactions (named as numbers > 0) and
-		 * the lockfile (named "lock"); ignore everything else */
-		if (strcmp(dent->d_name, "lock") && atoi(dent->d_name) <= 0)
-			continue;
-
-		/* build the full path to the transaction file */
-		memset(tfile, 0, PATH_MAX * 3);
-		strcat(tfile, path);
-		strcat(tfile, "/");
-		strcat(tfile, dent->d_name);
-
-		if (strlen(tfile) > PATH_MAX) {
-			closedir(dir);
-			return 0;
-		}
-
-		if (unlink(tfile) != 0) {
-			closedir(dir);
-			return 0;
-		}
-	}
-	if (closedir(dir) != 0)
-		return 0;
-
-	if (rmdir(path) != 0)
-		return 0;
-
-	return 1;
 }
 

@@ -27,10 +27,10 @@
  * Opaque types, the API does not expose these
  */
 
-/** An open file, similar to a file descriptor */
+/** An open file, similar to a file descriptor. */
 typedef struct jfs jfs_t;
 
-/** A single transaction */
+/** A single transaction. */
 typedef struct jtrans jtrans_t;
 
 
@@ -38,7 +38,9 @@ typedef struct jtrans jtrans_t;
  * Public types
  */
 
-/** The result of a jfsck() run
+/** The result of a jfsck() run.
+ *
+ * @see jfsck()
  * @ingroup check
  */
 struct jfsck_result {
@@ -63,6 +65,29 @@ struct jfsck_result {
 	/** Number of transactions successfully reapplied */
 	int reapplied;
 };
+
+/** jfsck() return values.
+ *
+ * @see jfsck()
+ * @ingroup check
+ */
+enum jfsck_return {
+	/** Success */
+	J_ESUCCESS = 0,
+
+	/** No such file or directory */
+	J_ENOENT = -1,
+
+	/** No journal associated with the given file */
+	J_ENOJOURNAL = -2,
+
+	/** Not enough free memory */
+	J_ENOMEM = -3,
+
+	/** Error cleaning the journal directory */
+	J_ECLEANUP = -4,
+};
+
 
 
 /*
@@ -227,21 +252,25 @@ int jfs_autosync_stop(jfs_t *fs);
 
 /** Check and repair the given path.
  *
+ * The file MUST NOT be in use by any other thread or process. This
+ * requirement will be lifted in future releases.
+ *
  * @param name path to the file to check
  * @param jdir journal directory of the given file, use NULL for the default
  * @param res structure where to store the result
- * @see struct jfsck_result, jfsck_cleanup()
- * @return 0 on success, < 0 on error, with the following possible negative
- * 	values: J_ENOENT if there was no such file with the given name,
- * 	J_ENOJOURNAL if there was no journal at the given jdir, J_ENOMEM if
- * 	memory could not be allocated.
+ * @param flags flags that change the checking behaviour, currently only
+ *	J_NOCLEANUP is supported, which avoids cleaning up the journal
+ *	directory after a successful recovery
+ * @see struct jfsck_result
+ * @returns 0 on success, < 0 on error, with the following possible negative
+ * 	values from enum jfsck_return: J_ENOENT if there was no such file with
+ * 	the given name, J_ENOJOURNAL if there was no journal at the given
+ * 	jdir, J_ENOMEM if memory could not be allocated, J_ECLEANUP if there
+ * 	was an error cleaning the journal.
  * @ingroup check
  */
-int jfsck(const char *name, const char *jdir, struct jfsck_result *res);
-
-/** Remove all the files in the journal directory, and clean it up.
- * TODO: this should be merged with jfsck() and removed */
-int jfsck_cleanup(const char *name, const char *jdir);
+enum jfsck_return jfsck(const char *name, const char *jdir,
+		struct jfsck_result *res, unsigned int flags);
 
 
 /*
@@ -373,7 +402,7 @@ FILE *jfsopen(jfs_t *stream, const char *mode);
 
 
 /*
- * jopen() and jtrans_create() flags
+ * Miscelaneous flags
  */
 
 /** Don't lock the file before operating on it */
@@ -397,23 +426,8 @@ FILE *jfsopen(jfs_t *stream, const char *mode);
 /** Marks a file as read-only */
 #define J_RDONLY	64
 
-
-/*
- * jfsck() constants (return values)
- */
-
-/** Success, shouldn't be used */
-#define J_ESUCCESS	0
-
-/** No such file or directory */
-#define J_ENOENT	-1
-
-/** No journal associated with the given file */
-#define J_ENOJOURNAL	-2
-
-/** Not enough free memory */
-#define J_ENOMEM	-3
-
+/** Do not perform a journal cleanup. Used in jfsck(). */
+#define J_NOCLEANUP	128
 
 #endif
 

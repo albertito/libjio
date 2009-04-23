@@ -17,7 +17,7 @@ internal:
 	$(NICE_DOXYGEN) Doxyfile.internal
 
 clean:
-	rm -r doc.internal doc.public
+	rm -rf doc.internal doc.public
 
 
 .PHONY: all clean default doxygen internal public
