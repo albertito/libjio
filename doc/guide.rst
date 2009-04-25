@@ -5,23 +5,21 @@ libjio Programmer's Guide
 Introduction
 ------------
 
-This small document attempts serve as a guide to the programmer who wants to
-make use of the library. It's not a replacement for the man page or reading
-the code; but it's a good starting point for everyone who wants to get
-involved with it.
+This small document attempts to serve as a guide to the programmer who wants
+to use the library. It's not a replacement for the man page or reading the
+code; but it's a good starting point for everyone who wants to get involved
+with it.
 
 The library is not complex to use at all, and the interfaces were designed to
 be as intuitive as possible, so the text is structured as a guide to present
 the reader all the common structures and functions the way they're normally
 used.
 
+
 Definitions
 -----------
 
-This is a library which provides a journaled, transaction-oriented I/O API.
-You've probably read this a hundred times already in the documents, and if you
-haven't wondered yet what on earth does, this mean you should be reading
-something else!
+This is a library which provides a transaction-oriented I/O API.
 
 We say this is a transaction-oriented API because we make transactions the
 center of our operations, and journaled because we use a journal (which takes
@@ -30,78 +28,63 @@ crash at any point.
 
 In this document, we think of a transaction as a list of *(buffer, length,
 offset)* to be applied to a file. That triplet is called an *operation*, so we
-can say that a transaction represent an ordered group of operations on the
+can say that a transaction represents an ordered group of operations on the
 same file.
 
-The act of *committing* a transaction means writing all the elements of the
-list; and rollbacking means to undo a previous commit, and leave the data just
-as it was before doing the commit. While all this definitions may seem obvious
-to some people, it requires special attention because there are a lot of
-different definitions, and it's not that common to see "transaction" applied
-to file I/O, because it's a term used mostly on database stuff.
+The act of *committing* a transaction means writing all the elements of that
+list; and *rolling back* means to undo a previous commit, and leave the data
+just as it was before doing the commit.
 
 The library provides several guarantees, the most relevant and useful being
 that at any point of time, even if the machine crash horribly, a transaction
 will be either fully applied or not applied at all.
 
-To achieve this, the library uses what is called a journal, a very vague (and
-fashionable) term we use to describe a set of auxiliary files that get created
+To achieve this, the library uses what is called a journal, a very vague and
+fashionable term we use to describe a set of auxiliary files that get created
 to store temporary data at several stages. The proper definition and how we
 use them is outside the scope of this document, and you as a programmer
 shouldn't need to deal with it. In case you're curious, it's described in a
 bit more detail in another text which talks about how the library works
-internally. Now let's get real.
+internally.
 
 
 The data types
 --------------
 
-To understand any library, it's essential to be confident in the knowledge of
-their data structures and how they relate each other. libjio has two basic
-structures which have a very strong relationship, and represent the essential
-objects it deals with. Note that you normally don't manipulate them directly,
-because they have their own initializer functions, but they are the building
-blocks for the rest of the text, which, once this is understood, should be
-obvious and self-evident.
+libjio has two basic opaque types which have a very strong relationship, and
+represent the essential objects it deals with. Note that you don't manipulate
+them directly, but use them through the API.
 
-The first type we face is *jfs_t*, usually called the file structure, and it
-represents an open file, just like a regular file descriptor or a FILE \*.
+The first is *jfs_t*, usually called the file structure, and it represents an
+open file, just like a regular file descriptor or a *FILE **.
 
-Then you find *jtrans_t*, usually called the transaction structure, which
+Then second is *jtrans_t*, usually called the transaction structure, which
 represents a single transaction.
 
 
 Basic operation
 ---------------
 
-Now that we've described our data types, let's see how we can operate with the
-library.
-
 First of all, as with regular I/O, you need to open your files. This is done
-with *jopen()*, which looks a lot like *open()* but takes a file structure
+with *jopen()*, which looks a lot like *open()* but returns a file structure
 instead of a file descriptor (this will be very common among all the
 functions), and adds a new parameter *jflags* that can be used to modify some
-subtle library behaviour we'll see later, and is normally not used.
+library behaviour we'll see later, and is normally not used.
 
-We have a happy file structure open now, and the next thing to do would be to
-create a transaction. This is what *jtrans_new()* is for: it takes a file
-structure and a transaction structure and initializes the latter, leaving it
-ready to use.
+Now that you have opened a file, the next thing to do would be to create a
+transaction. This is what *jtrans_new()* is for: it takes a file structure and
+returns a new transaction structure.
 
-Now that we have our transaction, let's add a write operation to it; to do
-this we use *jtrans_add()*. We could keep on adding operations to the
-transaction by keep on calling jtrans_add() as many times as we want.
-Operations within a transaction may overlap, and will be applied in order.
+To add an operation to the transaction, use *jtrans_add()*. You can add as
+many operations as you want. Operations within a transaction may overlap, and
+will be applied in order.
 
-Finally, we decide to apply our transaction to the file, that is, write all
-the operations we've added. And this is the easiest part: we call
-*jtrans_commit()*, and that's it!
+Finally, to apply our transaction to the file, use *jtrans_commit()*.
 
-When we're done using the file, we call *jclose()*, just like we would call
-*close()*.
+When you're done using the file, call *jclose()*.
 
-Let's put it all together and code a nice "hello world"
-program (return values are ignored for simplicity)::
+Let's put it all together and code a nice "hello world" program (return values
+are ignored for simplicity)::
 
   char buf[] = "Hello world!";
   jfs_t *file;
@@ -116,7 +99,7 @@ program (return values are ignored for simplicity)::
 
   jclose(file);
 
-As we've seen, we open the file and initialize the structure with *jopen()*
+As we've seen, you open the file and initialize the structure with *jopen()*
 (with the parameter *jflags* being the last 0), create a new transaction with
 *jtrans_new()*, then add an operation with *jtrans_add()* (the last 0 is the
 offset, in this case the beginning of the file), commit the transaction with
@@ -126,7 +109,7 @@ with *jclose()*.
 Reading is much easier: the library provides three functions, *jread()*,
 *jpread()* and *jreadv()*, that behave exactly like *read()*, *pread()* and
 *readv()*, except that they play safe with libjio's writing code. You should
-use these to read from files you're writing with libjio.
+use these to read from files when using libjio.
 
 
 Integrity checking and recovery
@@ -134,7 +117,7 @@ Integrity checking and recovery
 
 An essential part of the library is taking care of recovering from crashes and
 be able to assure a file is consistent. When you're working with the file,
-this is taking care of; but what when you first open it? To answer that
+this is taking care of; but what about when you first open it? To answer that
 question, the library provides you with a function named *jfsck()*, which
 checks the integrity of a file and makes sure that everything is consistent.
 
@@ -149,10 +132,10 @@ from the shell to perform the checking.
 Rollback
 --------
 
-There is a very nice and important feature in transactions, that allow them to
-be "undone", which means that you can undo a transaction and leave the file
+There is a very nice and important feature in transactions, that allows them
+to be "undone", which means that you can undo a transaction and leave the file
 just as it was the moment before applying it. The action of undoing it is
-called to rollback, and the function is called jtrans_rollback(), which takes
+called *rollback*, and the function is called *jtrans_rollback()*, which takes
 the transaction as the only parameter.
 
 Be aware that rollbacking a transaction can be dangerous if you're not careful
@@ -171,7 +154,7 @@ and so on) which make each operation a transaction. This can be useful if you
 don't need to have the full power of the transactions but only to provide
 guarantees between the different functions. They are a lot like the normal
 UNIX functions, but instead of getting a file descriptor as their first
-parameter, they get a file structure. You can check out the manual page to see
+parameter they get a file structure. You can check out the manual page to see
 the details, but they work just like their UNIX version, only that they
 preserve atomicity and thread-safety within each call.
 
@@ -192,17 +175,14 @@ The library is completely safe to use in multithreaded applications; however,
 there are some very basic and intuitive locking rules you have to bear in
 mind.
 
-Most is fully threadsafe so you don't need to worry about concurrency; in
-fact, a lot of effort has been put in making parallel operation safe and fast.
+You need to care only when closing and checking for integrity. In
+practise, that means that you shouldn't call *jclose()* in the middle of an
+I/O operation, just like you do when using the normal UNIX calls. In the case
+of *jfsck()*, you shouldn't invoke it for the same file more than once at the
+time, or when the file is open by any other process (this requirement will be
+lifted in future releases).
 
-You need to care only when opening, closing and checking for integrity. In
-practise, that means that you shouldn't call *jopen()*, *jclose()* in parallel
-with the same jfs structure, or in the middle of an I/O operation, just like
-you do when using the normal UNIX calls. In the case of *jfsck()*, you
-shouldn't invoke it for the same file more than once at the time; while it
-will cope with that situation, it's not recommended.
-
-All other operations (commiting a transaction, rollbacking it, adding
+All other operations (commiting a transaction, rolling it back, adding
 operations, etc.) and all the wrappers are safe and don't require any special
 considerations.
 
@@ -214,7 +194,8 @@ If you need to increase performance, you can use lingering transactions. In
 this mode, transactions take up more disk space but allows you to do the
 synchronous write only once, making commits much faster. To use them, just add
 *J_LINGER* to the *jflags* parameter in *jopen()*. You should call *jsync()*
-frequently to avoid using up too much space.
+frequently to avoid using up too much space, or start an asynchronous thread
+that calls *jsync()* automatically using *jfs_autosync_start()*.
 
 
 Disk layout
@@ -253,9 +234,9 @@ uses the same data types as the library. For instance, on 32-bit platforms
 (like x86), when using LFS, offsets are usually 64 bits, as opposed to the
 usual 32.
 
-The library is always built with LFS; however, link it against an application
-without LFS support could lead to serious problems because this kind of size
-differences and ABI compatibility.
+The library is always built with LFS; however, linking it against an
+application without LFS support could lead to serious problems because this
+kind of size differences and ABI compatibility.
 
 The Single Unix Specification standard proposes a simple and practical way to
 get the flags you need to pass your C compiler to tell you want to compile
@@ -274,9 +255,9 @@ Where to go from here
 ---------------------
 
 If you're still interested in learning more, you can find some small and clean
-samples are in the "samples" directory (full.c is a simple and complete one),
-other more advanced examples can be found in the web page, as well as
+samples are in the *samples* directory (*full.c* is a simple and complete
+one), other more advanced examples can be found in the web page, as well as
 modifications to well known software to make use of the library. For more
 information about the inner workings of the library, you can read the "libjio"
-document, and the source code.
+document, the internal API reference, and the source code.
 
