@@ -4,6 +4,9 @@
 #ifndef _COMPAT_H
 #define _COMPAT_H
 
+#include <sys/types.h>		/* off_t, size_t */
+
+
 /* sync_file_range() is linux-specific, so we provide an internal similar API,
  * with a constant to be able to check for its presence; the implementation is
  * in compat.c */

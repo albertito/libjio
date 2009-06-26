@@ -11,6 +11,7 @@
 #endif
 
 #include <fcntl.h>		/* sync_range_submit(), if possible */
+#include <sys/types.h>		/* off_t, size_t */
 #include "compat.h"
 
 
