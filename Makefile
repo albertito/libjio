@@ -11,13 +11,13 @@ install:
 	$(MAKE) -C libjio/ install
 
 
-python2:
+python2: libjio
 	cd bindings/python && python setup.py build
 
 python2_install: python2
 	cd bindings/python && python setup.py install
 
-python3:
+python3: libjio
 	cd bindings/python && python3 setup.py build
 
 python3_install: python3

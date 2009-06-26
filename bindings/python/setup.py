@@ -10,7 +10,13 @@ elif sys.version_info[0] == 3:
 libjio = Extension("libjio",
 		libraries = ['jio'],
 		sources = ['libjio.c'],
-		define_macros = [ver_define] )
+		define_macros = [ver_define],
+
+		# these two allow us to build without having libjio installed,
+		# assuming we're in the libjio source tree
+		include_dirs = ['../../libjio/'],
+		library_dirs=['../../libjio/']
+	)
 
 setup(
 	name = 'libjio',
