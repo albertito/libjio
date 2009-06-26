@@ -196,10 +196,8 @@ unlink_error:
 	close(fd);
 
 error:
-	if (name)
-		free(name);
-	if (jop)
-		free(jop);
+	free(name);
+	free(jop);
 
 	return NULL;
 }
