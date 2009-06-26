@@ -10,7 +10,10 @@ MANDATORY_LDFLAGS := $(shell getconf LFS_LIBS 2>/dev/null)
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 ALL_LDFLAGS += $(LDFLAGS) $(MANDATORY_LDFLAGS) -fPIC
 
-LIBS = -lpthread -lrt
+# some platforms do not have librt, we only use it if available
+NEED_LIBRT := $(shell ld -o rtcheck.so -shared -lrt 2>/dev/null && echo -lrt; \
+	rm -f rtcheck.so)
+LIBS = -lpthread $(NEED_LIBRT)
 
 ifdef DEBUG
 ALL_CFLAGS += -g
