@@ -10,14 +10,17 @@
 #define _REMOVE_GNU_SOURCE
 #endif
 
-#include <fcntl.h>		/* sync_range_submit(), if possible */
-#include <sys/types.h>		/* off_t, size_t */
+/* Must be down here because otherwise we might try to #include things twice:
+ * once with _GNU_SOURCE and one without it */
 #include "compat.h"
 
 
 /*
  * sync_file_range() support through an internal similar API
  */
+
+#include <fcntl.h>		/* sync_range_submit(), if possible */
+#include <sys/types.h>		/* off_t, size_t */
 
 #ifdef SYNC_FILE_RANGE_WRITE
 const int have_sync_range = 1;
@@ -54,7 +57,33 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes)
 
 #endif /* defined SYNC_FILE_RANGE_WRITE */
 
+/* It is no longer needed */
 #ifdef _REMOVE_GNU_SOURCE
 #undef _GNU_SOURCE
 #endif
+
+
+/*
+ * Support for platforms where clock_gettime() is not available.
+ */
+
+#ifdef LACK_CLOCK_GETTIME
+#warning "No clock_gettime() available, falling back to gettimeofday()"
+
+#include <sys/time.h>		/* gettimeofday() */
+
+int clock_gettime(int clk_id, struct timespec *tp)
+{
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+
+	tp->tv_sec = tv.tv_sec;
+	tp->tv_nsec = tv.tv_usec / 1000.0;
+
+	return 0;
+}
+
+#endif /* defined LACK_CLOCK_GETTIME */
+
 

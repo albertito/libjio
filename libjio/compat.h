@@ -26,5 +26,15 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes);
 #define posix_fadvise(fd, offset, len, advise)
 #endif
 
+/* Some platforms do not have clock_gettime() so we define an alternative for
+ * them, in compat.c. We should check for _POSIX_TIMERS, but some platforms do
+ * not have it yet they do have clock_gettime() (DragonflyBSD), so we just
+ * check for CLOCK_REALTIME. */
+#include <time.h>
+#ifndef CLOCK_REALTIME
+#define LACK_CLOCK_GETTIME 1
+#define CLOCK_REALTIME 0
+#endif
+
 #endif
 
