@@ -26,6 +26,16 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes);
 #define posix_fadvise(fd, offset, len, advise)
 #endif
 
+
+/* fdatasync() is super standard, but some BSDs (FreeBSD, DragonflyBSD at
+ * least) do not have it. Since there is no reliable way to test for it, we
+ * have to resort to OS detection. */
+#if ! ( (defined __linux__) || (defined (__SVR4) && defined (__sun)) )
+#define LACK_FDATASYNC 1
+int fdatasync(int fd);
+#endif
+
+
 /* Some platforms do not have clock_gettime() so we define an alternative for
  * them, in compat.c. We should check for _POSIX_TIMERS, but some platforms do
  * not have it yet they do have clock_gettime() (DragonflyBSD), so we just

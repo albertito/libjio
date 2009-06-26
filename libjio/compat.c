@@ -86,4 +86,14 @@ int clock_gettime(int clk_id, struct timespec *tp)
 
 #endif /* defined LACK_CLOCK_GETTIME */
 
+#ifdef LACK_FDATASYNC
+#warning "Assuming no fdatasync(), falling back to fsync()"
+
+#include <unistd.h>		/* fsync() */
+
+int fdatasync(int fd)
+{
+	return fsync(fd);
+}
+#endif /* defined LACK_FDATASYNC */
 
