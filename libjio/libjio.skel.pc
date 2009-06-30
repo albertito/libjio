@@ -6,7 +6,7 @@ includedir=${prefix}/include
 Name: libjio
 Description: A library for Journaled I/O
 URL: http://blitiri.com.ar/p/libjio/
-Version: 0.23
+Version: 0.51
 Libs: -L${libdir} -ljio
 Cflags: -I${includedir} ++CFLAGS++
 
