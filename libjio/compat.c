@@ -42,7 +42,7 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes)
 
 #else
 
-#warning "No sync_file_range()"
+#warning "Using fdatasync() instead of sync_file_range()"
 const int have_sync_range = 0;
 
 int sync_range_submit(int fd, off_t offset, size_t nbytes)
@@ -63,12 +63,19 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes)
 #endif
 
 
+/* When posix_fadvise() is not available, we just show a message since there
+ * is no alternative implementation */
+#ifdef LACK_POSIX_FADVISE
+#warning "Not using posix_fadvise()"
+#endif
+
+
 /*
  * Support for platforms where clock_gettime() is not available.
  */
 
 #ifdef LACK_CLOCK_GETTIME
-#warning "No clock_gettime() available, falling back to gettimeofday()"
+#warning "Using gettimeofday() instead of clock_gettime()"
 
 #include <sys/time.h>		/* gettimeofday() */
 
@@ -87,7 +94,7 @@ int clock_gettime(int clk_id, struct timespec *tp)
 #endif /* defined LACK_CLOCK_GETTIME */
 
 #ifdef LACK_FDATASYNC
-#warning "Assuming no fdatasync(), falling back to fsync()"
+#warning "Using fsync() instead of fdatasync()"
 
 #include <unistd.h>		/* fsync() */
 
