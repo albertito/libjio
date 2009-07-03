@@ -328,9 +328,7 @@ int journal_free(struct journal_op *jop)
 exit:
 	close(jop->fd);
 
-	if (jop->name)
-		free(jop->name);
-
+	free(jop->name);
 	free(jop);
 
 	return rv;
