@@ -179,10 +179,8 @@ struct journal_op *journal_new(struct jtrans *ts)
 	bufp += 4;
 
 	rv = spwrite(fd, buf_init, J_DISKHEADSIZE, 0);
-	if (rv != J_DISKHEADSIZE) {
-		free(buf_init);
+	if (rv != J_DISKHEADSIZE)
 		goto unlink_error;
-	}
 
 	jop->curpos = J_DISKHEADSIZE;
 
