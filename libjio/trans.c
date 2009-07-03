@@ -152,7 +152,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 /* Commit a transaction */
 ssize_t jtrans_commit(struct jtrans *ts)
 {
-	ssize_t rv;
+	ssize_t r, retval = -1;
 	struct joper *op;
 	struct jlinger *linger;
 	jop_t *jop;
@@ -187,23 +187,25 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (jop == NULL)
 		goto unlock_exit;
 
-	rv = journal_save(jop);
-	if (rv < 0)
-		goto unlink_exit;
+	r = journal_save(jop);
+	if (r < 0) {
+		journal_free(jop);
+		goto unlock_exit;
+	}
 
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
 	for (op = ts->op; op != NULL; op = op->next) {
-		rv = spwrite(ts->fs->fd, op->buf, op->len, op->offset);
-		if (rv != op->len)
+		r = spwrite(ts->fs->fd, op->buf, op->len, op->offset);
+		if (r != op->len)
 			goto rollback_exit;
 
-		written += rv;
+		written += r;
 
 		if (have_sync_range && !(ts->flags & J_LINGER)) {
-			rv = sync_range_submit(ts->fs->fd, op->len,
+			r = sync_range_submit(ts->fs->fd, op->len,
 					op->offset);
-			if (rv != 0)
+			if (r != 0)
 				goto rollback_exit;
 		}
 
@@ -225,31 +227,26 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		ts->fs->ltrans_len += written;
 		autosync_check(ts->fs);
 		pthread_mutex_unlock(&(ts->fs->ltlock));
+
+		/* Leave the journal_free() up to jsync() */
+		jop = NULL;
 	} else {
 		if (have_sync_range) {
 			for (op = ts->op; op != NULL; op = op->next) {
-				rv = sync_range_wait(ts->fs->fd, op->len,
+				r = sync_range_wait(ts->fs->fd, op->len,
 						op->offset);
-				if (rv != 0)
+				if (r != 0)
 					goto rollback_exit;
 			}
 		} else {
 			if (fdatasync(ts->fs->fd) != 0)
 				goto rollback_exit;
 		}
-
-		/* the transaction has been applied, so we cleanup and remove
-		 * it from the disk */
-		rv = journal_free(jop);
-		if (rv != 0)
-			goto rollback_exit;
 	}
 
-	jop = NULL;
-
-	/* mark the transaction as committed, _after_ it was removed */
+	/* mark the transaction as committed */
 	ts->flags = ts->flags | J_COMMITTED;
-
+	retval = written;
 
 rollback_exit:
 	/* If the transaction failed we try to recover by rolling it back.
@@ -258,26 +255,36 @@ rollback_exit:
 	 * too! There's nothing much we can do in that case, the caller should
 	 * take care of it by itself.
 	 *
-	 * The transaction file might be OK at this point, so the data could
-	 * be recovered by a posterior jfsck(); however, that's not what the
-	 * user expects (after all, if we return failure, new data should
-	 * never appear), so we remove the transaction file (see unlink_exit).
-	 *
 	 * Transactions that were successfuly recovered by rolling them back
-	 * will have J_ROLLBACKED in their flags */
+	 * will have J_ROLLBACKED in their flags. */
 	if (!(ts->flags & J_COMMITTED) && !(ts->flags & J_ROLLBACKING)) {
-		rv = ts->flags;
+		r = ts->flags;
 		ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
 		if (jtrans_rollback(ts) >= 0) {
-			ts->flags = rv | J_ROLLBACKED;
+			ts->flags = r | J_ROLLBACKED;
+			retval = -1;
 		} else {
-			ts->flags = rv;
+			ts->flags = r;
+			retval = -2;
 		}
 	}
 
-unlink_exit:
-	if (jop)
-		journal_free(jop);
+	/* If the journal operation is no longer needed, we remove it from the
+	 * disk.
+	 *
+	 * Extreme conditions (filesystem just got read-only, for example) can
+	 * cause journal_free() to fail, but there's not much left to do at
+	 * that point, and the caller will have to be careful and stop its
+	 * operations. In that case, we will return -1, but the transaction
+	 * will be marked as J_COMMITTED to indicate that the data was
+	 * effectively written to disk. */
+	if (jop) {
+		r = journal_free(jop);
+		if (r != 0)
+			retval = -2;
+
+		jop = NULL;
+	}
 
 unlock_exit:
 	/* always unlock everything at the end; otherwise we could have
@@ -295,13 +302,7 @@ unlock_exit:
 exit:
 	pthread_mutex_unlock(&(ts->lock));
 
-	/* return the length only if it was properly committed */
-	if (ts->flags & J_COMMITTED)
-		return written;
-	else if (ts->flags & J_ROLLBACKED)
-		return -1;
-	else
-		return -2;
+	return retval;
 }
 
 /* Rollback a transaction */
