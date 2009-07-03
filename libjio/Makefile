@@ -17,10 +17,12 @@ LIBS = -lpthread $(NEED_LIBRT)
 
 ifdef DEBUG
 ALL_CFLAGS += -g
+ALL_LDFLAGS += -g
 endif
 
 ifdef PROFILE
 ALL_CFLAGS += -g -pg -fprofile-arcs -ftest-coverage
+ALL_LDFLAGS += -g -pg -fprofile-arcs -ftest-coverage -lgcov
 endif
 
 ifdef FI
