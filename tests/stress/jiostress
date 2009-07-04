@@ -102,10 +102,14 @@ class Stresser:
 		if pid == 0:
 			# child
 			try:
+				self.fiu_enable()
 				self.randwrite()
+				self.fiu_disable()
 			except IOError:
+				self.fiu_disable()
 				sys.exit(1)
 			except:
+				self.fiu_disable()
 				traceback.print_exc()
 				sys.exit(1)
 			sys.exit(0)
@@ -137,14 +141,19 @@ class Stresser:
 
 	def fiu_enable(self):
 		if self.use_fi:
-			fiu.enable_random('jio/*', probability = 0.02)
+			fiu.enable_random('jio/*', probability = 0.001)
+			fiu.enable_random('linux/*', probability = 0.01)
+			fiu.enable_random('posix/*', probability = 0.01)
+			fiu.enable_random('libc/mm/*', probability = 0.0005)
 
 	def fiu_disable(self):
 		if self.use_fi:
+			fiu.disable('libc/mm/*')
+			fiu.disable('posix/*')
 			fiu.disable('jio/*')
+			fiu.disable('linux/*')
 
 	def run(self):
-		self.fiu_enable()
 		nfailures = 0
 		sys.stdout.write("  ")
 		for i in range(1, self.nops + 1):
@@ -162,14 +171,11 @@ class Stresser:
 				r = self.randwrite()
 			if not r:
 				nfailures += 1
-				self.fiu_disable()
 				r = self.reopen()
-				assert r['total'] <= 1
-				self.fiu_enable()
+				assert r['total'] <= 2
 			self.verify()
 		sys.stdout.write("\n")
 		sys.stdout.flush()
-		self.fiu_disable()
 		return nfailures
 
 
