@@ -86,4 +86,20 @@ def test_c04():
 	assert content(n) == ''
 	cleanup(n)
 
+def test_c05():
+	"truncate trans (tiny)"
+	c = gencontent()
+
+	def f1(f, jf):
+		fiu.enable("jio/commit/tf_sync")
+		jf.write(c)
+
+	n = run_with_tmp(f1)
+	assert content(n) == ''
+	tp = transpath(n, 1)
+	open(tp, 'r+').truncate(2)
+	fsck_verify(n, broken = 1)
+	assert content(n) == ''
+	cleanup(n)
+
 

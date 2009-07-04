@@ -170,4 +170,67 @@ def test_n10():
 	fsck_verify(n)
 	cleanup(n)
 
+def test_n11():
+	"jfsck a nonexisting file"
+	try:
+		libjio.jfsck('this file does not exist')
+	except IOError:
+		return
+	raise
+
+def test_n12():
+	"jfsck with a nonexisting dir"
+	f, jf = bitmp()
+	try:
+		libjio.jfsck(f.name, 'this directory does not exist')
+	except IOError:
+		cleanup(f.name)
+		return
+	raise
+
+def test_n13():
+	"move journal to a nonexisting dir"
+	import os
+
+	f, jf = bitmp()
+	n = f.name
+	p = tmppath()
+
+	jf.write('x')
+	jf.jmove_journal(p)
+	jf.write('y')
+	del jf
+
+	assert libjio.jfsck(n, p)['total'] == 0
+	os.unlink(n)
+
+def test_n14():
+	"autosync"
+	f, jf = bitmp(jflags = libjio.J_LINGER)
+	n = f.name
+
+	jf.autosync_start(1, 10)
+	jf.write('x' * 200)
+	jf.write('x' * 200)
+	jf.autosync_stop()
+	del jf
+
+	fsck_verify(n)
+	cleanup(n)
+
+def test_n15():
+	"jpread/jpwrite"
+	c = gencontent()
+
+	f, jf = bitmp(jflags = libjio.J_LINGER)
+	n = f.name
+
+	jf.pwrite(c, 2000)
+	assert content(n) == '\0' * 2000 + c
+	assert jf.pread(len(c), 2000) == c
+	del jf
+
+	fsck_verify(n)
+	cleanup(n)
+
 
