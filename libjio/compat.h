@@ -45,6 +45,7 @@ int fdatasync(int fd);
 #ifndef CLOCK_REALTIME
 #define LACK_CLOCK_GETTIME 1
 #define CLOCK_REALTIME 0
+int clock_gettime(int clk_id, struct timespec *tp);
 #endif
 
 #endif

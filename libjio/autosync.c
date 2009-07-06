@@ -11,6 +11,8 @@
 
 #include "common.h"
 #include "libjio.h"
+#include "compat.h"
+
 
 /** Configuration of an autosync thread */
 struct autosync_cfg {
