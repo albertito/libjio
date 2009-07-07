@@ -4,12 +4,28 @@
 #ifndef _COMPAT_H
 #define _COMPAT_H
 
-#include <sys/types.h>		/* off_t, size_t */
-
 
 /* sync_file_range() is linux-specific, so we provide an internal similar API,
  * with a constant to be able to check for its presence; the implementation is
- * in compat.c */
+ * in compat.c.
+ *
+ * To get its constants we need to temporarily define _GNU_SOURCE, which is
+ * not the nicest thing, but is not worth defining globally. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#define _REMOVE_GNU_SOURCE
+#endif
+#include <fcntl.h>		/* SYNC_FILE_RANGE_WRITE, if available */
+#ifdef _REMOVE_GNU_SOURCE
+#undef _REMOVE_GNU_SOURCE
+#undef _GNU_SOURCE
+#endif
+
+#ifndef SYNC_FILE_RANGE_WRITE
+#define LACK_SYNC_FILE_RANGE 1
+#endif
+
+#include <sys/types.h>		/* off_t, size_t */
 extern const int have_sync_range;
 int sync_range_submit(int fd, off_t offset, size_t nbytes);
 int sync_range_wait(int fd, off_t offset, size_t nbytes);
