@@ -385,8 +385,9 @@ It's a wrapper to jtrans_new().\n");
 static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 {
 	jtrans_object *tp;
+	unsigned int flags = 0;
 
-	if (!PyArg_ParseTuple(args, ":new_trans"))
+	if (!PyArg_ParseTuple(args, "|I:new_trans", &flags))
 		return NULL;
 
 #ifdef PYTHON3
@@ -397,7 +398,7 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	if (tp == NULL)
 		return NULL;
 
-	tp->ts = jtrans_new(fp->fs);
+	tp->ts = jtrans_new(fp->fs, flags);
 	if(tp->ts == NULL) {
 		return PyErr_NoMemory();
 	}

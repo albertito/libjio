@@ -137,12 +137,16 @@ int jsync(jfs_t *fs);
 
 /** Create a new transaction.
  *
+ * Note that the final flags to use in the transaction will be the result of
+ * ORing the flags parameter with fs' flags.
+ *
  * @param fs open file the transaction will apply to
+ * @param flags transaction flags
  * @returns a new transaction (must be freed using jtrans_free())
  * @see jtrans_free()
  * @ingroup basic
  */
-jtrans_t *jtrans_new(jfs_t *fs);
+jtrans_t *jtrans_new(jfs_t *fs, unsigned int flags);
 
 /** Add an operation to a transaction.
  *

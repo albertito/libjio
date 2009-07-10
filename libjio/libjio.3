@@ -21,7 +21,7 @@ libjio - A library for Journaled I/O
 .BI "off_t jlseek(jfs_t *" fs ", off_t " offset ", int " whence ");"
 .BI "int jclose(jfs_t *" fs ");"
 
-.BI "jtrans_t *jtrans_new(jfs_t *" fs ");"
+.BI "jtrans_t *jtrans_new(jfs_t *" fs ", unsigned int " flags ");"
 .BI "int jtrans_commit(jtrans_t *" ts ");"
 .BI "int jtrans_add(jtrans_t *" ts ", const void *" buf ","
 .BI "		size_t " count ", off_t " offset ");"

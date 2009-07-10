@@ -92,7 +92,7 @@ are ignored for simplicity)::
 
   file = jopen("filename", O_RDWR | O_CREAT, 0600, 0);
 
-  trans = jtrans_new(file);
+  trans = jtrans_new(file, 0);
   jtrans_add(trans, buf, strlen(buf), 0);
   jtrans_commit(trans);
   jtrans_free(trans);

@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 	if (fs == NULL)
 		perror("jopen()");
 
-	ts = jtrans_new(fs);
+	ts = jtrans_new(fs, 0);
 	if (ts == NULL)
 		perror("jtrans_new()");
 

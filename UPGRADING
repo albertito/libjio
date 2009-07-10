@@ -6,10 +6,11 @@ You should always clean all your files before upgrading. While I don't expect
 the transaction on-disk format to change, it's a good practise and it doesn't
 take much effort. When it's mandatory, it will be noted.
 
--> 0.51 (On-disk format change)
+-> 0.51
   - The way transactions are stored on disk has changed. It is mandatory that
     you jfsck all your files before upgrading. Hopefully this will be the last
     backwards-incompatible format change before 1.0.
+  - jtrans_new() now takes an additional flags parameter.
 
 -> 0.50 (Big API change)
   - Structures are now opaque types:

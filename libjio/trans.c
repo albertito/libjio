@@ -28,7 +28,7 @@
  */
 
 /* Initialize a transaction structure */
-struct jtrans *jtrans_new(struct jfs *fs)
+struct jtrans *jtrans_new(struct jfs *fs, unsigned int flags)
 {
 	pthread_mutexattr_t attr;
 	struct jtrans *ts;
@@ -39,7 +39,7 @@ struct jtrans *jtrans_new(struct jfs *fs)
 
 	ts->fs = fs;
 	ts->id = 0;
-	ts->flags = fs->flags;
+	ts->flags = fs->flags | flags;
 	ts->op = NULL;
 	ts->numops = 0;
 	ts->len = 0;
@@ -318,7 +318,7 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 	struct jtrans *newts;
 	struct joper *op, *curop, *lop;
 
-	newts = jtrans_new(ts->fs);
+	newts = jtrans_new(ts->fs, 0);
 	newts->flags = ts->flags;
 	newts->numops = ts->numops;
 
