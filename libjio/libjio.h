@@ -111,7 +111,7 @@ enum jfsck_return {
  * @see jclose(), open()
  * @ingroup basic
  */
-jfs_t *jopen(const char *name, int flags, int mode, int jflags);
+jfs_t *jopen(const char *name, int flags, int mode, unsigned int jflags);
 
 /** Close a file opened with jopen().
  *

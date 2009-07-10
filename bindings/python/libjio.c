@@ -601,14 +601,16 @@ It's a wrapper to jopen().\n");
 static PyObject *jf_open(PyObject *self, PyObject *args)
 {
 	char *file;
-	int flags, mode, jflags;
+	int flags = O_RDONLY;
+	int mode = 0600;
+	unsigned int jflags = 0;
 	jfile_object *fp;
 
 	flags = O_RDWR;
 	mode = 0600;
 	jflags = 0;
 
-	if (!PyArg_ParseTuple(args, "s|iii:open", &file, &flags, &mode,
+	if (!PyArg_ParseTuple(args, "s|iiI:open", &file, &flags, &mode,
 				&jflags))
 		return NULL;
 

@@ -11,6 +11,7 @@ take much effort. When it's mandatory, it will be noted.
     you jfsck all your files before upgrading. Hopefully this will be the last
     backwards-incompatible format change before 1.0.
   - jtrans_new() now takes an additional flags parameter.
+  - jopen() jflags parameter is now unsigned.
 
 -> 0.50 (Big API change)
   - Structures are now opaque types:

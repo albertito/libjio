@@ -393,7 +393,7 @@ exit:
  */
 
 /* Open a file */
-struct jfs *jopen(const char *name, int flags, int mode, int jflags)
+struct jfs *jopen(const char *name, int flags, int mode, unsigned int jflags)
 {
 	int jfd, rv;
 	unsigned int t;
