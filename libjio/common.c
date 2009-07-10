@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <arpa/inet.h>		/* htonl() and friends */
 
 #include "libjio.h"
 #include "common.h"
@@ -130,6 +131,59 @@ int get_jdir(const char *filename, char *jdir)
 void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile)
 {
 	snprintf(jtfile, PATH_MAX, "%s/%u", fs->jdir, tid);
+}
+
+
+/* The ntohll() and htonll() functions are not standard, so we define them
+ * using an UGLY trick because there is no standard way to check for
+ * endianness at runtime. */
+
+/** Convert a 64-bit value between network byte order and host byte order. */
+uint64_t ntohll(uint64_t x)
+{
+	static int endianness = 0;
+
+	/* determine the endianness by checking how htonl() behaves; use -1
+	 * for little endian and 1 for big endian */
+	if (endianness == 0) {
+		if (htonl(1) == 1)
+			endianness = 1;
+		else
+			endianness = -1;
+	}
+
+	if (endianness == 1) {
+		/* big endian */
+		return x;
+	}
+
+	/* little endian */
+	return ( ntohl( (x >> 32) & 0xFFFFFFFF ) | \
+			( (uint64_t) ntohl(x & 0xFFFFFFFF) ) << 32 );
+}
+
+/** Convert a 64-bit value between host byte order and network byte order. */
+uint64_t htonll(uint64_t x)
+{
+	static int endianness = 0;
+
+	/* determine the endianness by checking how htonl() behaves; use -1
+	 * for little endian and 1 for big endian */
+	if (endianness == 0) {
+		if (htonl(1) == 1)
+			endianness = 1;
+		else
+			endianness = -1;
+	}
+
+	if (endianness == 1) {
+		/* big endian */
+		return x;
+	}
+
+	/* little endian */
+	return ( htonl( (x >> 32) & 0xFFFFFFFF ) | \
+			( (uint64_t) htonl(x & 0xFFFFFFFF) ) << 32 );
 }
 
 

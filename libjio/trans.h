@@ -49,27 +49,5 @@ struct jlinger {
 };
 
 
-/* on-disk structures */
-
-/* header (fixed length, defined below) */
-struct disk_header {
-	uint32_t id;		/* id */
-	uint32_t flags;		/* flags about this transaction */
-	uint32_t numops;	/* number of operations */
-};
-
-/* operation */
-struct disk_operation {
-	uint32_t len;		/* data length */
-	uint32_t plen;		/* previous data length */
-	uint64_t offset;	/* offset relative to the BOF */
-	char *prevdata;		/* previous data for rollback */
-};
-
-/* disk constants */
-#define J_DISKHEADSIZE	 12	/* length of disk_header */
-#define J_DISKOPHEADSIZE 16	/* length of disk_operation header */
-
-
 #endif
 

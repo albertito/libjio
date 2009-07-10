@@ -8,13 +8,13 @@
 #include <fcntl.h>		/* open() */
 #include <unistd.h>		/* f[data]sync(), close() */
 #include <stdlib.h>		/* malloc() and friends */
-#include <limits.h>		/* MAX_PATH */
+#include <limits.h>		/* PATH_MAX */
 #include <string.h>		/* memcpy() */
-#include <libgen.h>		/* basename(), dirname() */
 #include <stdio.h>		/* fprintf() */
-#include <dirent.h>		/* readdir() and friends */
 #include <errno.h>		/* errno */
-#include <sys/mman.h>		/* mmap() */
+#include <stdint.h>		/* uintX_t */
+#include <arpa/inet.h>		/* htonl() and friends */
+#include <netinet/in.h>		/* htonl() and friends (on some platforms) */
 
 #include "libjio.h"
 #include "common.h"
@@ -24,7 +24,87 @@
 
 
 /*
- * helper functions
+ * On-disk structures
+ *
+ * Each transaction will be stored on disk as a single file, composed of a
+ * header, operation information, and a trailer. The operation information is
+ * composed of repeated operation headers followed by their corresponding
+ * data, one for each operation. A special operation header containing all 0s
+ * marks the end of the operations.
+ * 
+ * Visually, something like this:
+ * 
+ *  +--------+---------+----------+---------+----------+-----+-----+---------+
+ *  | header | op1 hdr | op1 data | op2 hdr | op2 data | ... | eoo | trailer |
+ *  +--------+---------+----------+---------+----------+-----+-----+---------+
+ *             \                                             /
+ *              +--------------- operations ----------------+ 
+ *
+ * The details of each part can be seen on the following structures. All
+ * integers are stored in network byte order.
+ */
+
+/** Transaction file header */
+struct on_disk_hdr {
+	uint16_t ver;
+	uint16_t flags;
+	uint32_t trans_id;
+} __attribute__((packed));
+
+/** Transaction file operation header */
+struct on_disk_ophdr {
+	uint32_t len;
+	uint64_t offset;
+} __attribute__((packed));
+
+/** Transaction file trailer */
+struct on_disk_trailer {
+	uint32_t numops;
+	uint32_t checksum;
+} __attribute__((packed));
+
+
+/* Convert structs to/from host to network (disk) endian */
+
+static void hdr_hton(struct on_disk_hdr *hdr)
+{
+	hdr->ver = htons(hdr->ver);
+	hdr->flags = htons(hdr->flags);
+	hdr->trans_id = htonl(hdr->trans_id);
+}
+
+static void hdr_ntoh(struct on_disk_hdr *hdr)
+{
+	hdr->ver = ntohs(hdr->ver);
+	hdr->flags = ntohs(hdr->flags);
+	hdr->trans_id = ntohl(hdr->trans_id);
+}
+
+static void ophdr_hton(struct on_disk_ophdr *ophdr)
+{
+	ophdr->len = htonl(ophdr->len);
+	ophdr->offset = htonll(ophdr->offset);
+}
+
+static void ophdr_ntoh(struct on_disk_ophdr *ophdr)
+{
+	ophdr->len = ntohl(ophdr->len);
+	ophdr->offset = ntohll(ophdr->offset);
+}
+
+static void trailer_hton(struct on_disk_trailer *trailer) {
+	trailer->numops = htonl(trailer->numops);
+	trailer->checksum = htonl(trailer->checksum);
+}
+
+static void trailer_ntoh(struct on_disk_trailer *trailer) {
+	trailer->numops = ntohl(trailer->numops);
+	trailer->checksum = ntohl(trailer->checksum);
+}
+
+
+/*
+ * Helper functions
  */
 
 /** Get a new transaction id */
@@ -130,9 +210,8 @@ struct journal_op *journal_new(struct jtrans *ts)
 	int fd, id;
 	ssize_t rv;
 	char *name = NULL;
-	unsigned char buf_init[J_DISKHEADSIZE];
-	unsigned char *bufp;
-	struct journal_op *jop = NULL;
+	struct journal_op *jop;
+	struct on_disk_hdr hdr;
 
 	jop = malloc(sizeof(struct journal_op));
 	if (jop == NULL)
@@ -156,6 +235,7 @@ struct journal_op *journal_new(struct jtrans *ts)
 	jop->fd = fd;
 	jop->name = name;
 	jop->curpos = 0;
+	jop->csum = 0;
 	jop->ts = ts;
 	jop->fs = ts->fs;
 
@@ -167,22 +247,18 @@ struct journal_op *journal_new(struct jtrans *ts)
 	ts->id = id;
 
 	/* save the header */
-	bufp = buf_init;
+	hdr.ver = 1;
+	hdr.trans_id = id;
+	hdr.flags = ts->flags;
 
-	memcpy(bufp, (void *) &(ts->id), 4);
-	bufp += 4;
-
-	memcpy(bufp, (void *) &(ts->flags), 4);
-	bufp += 4;
-
-	memcpy(bufp, (void *) &(ts->numops), 4);
-	bufp += 4;
-
-	rv = spwrite(fd, buf_init, J_DISKHEADSIZE, 0);
-	if (rv != J_DISKHEADSIZE)
+	hdr_hton(&hdr);
+	rv = spwrite(fd, &hdr, sizeof(hdr), 0);
+	if (rv != sizeof(hdr))
 		goto unlink_error;
 
-	jop->curpos = J_DISKHEADSIZE;
+	jop->curpos = sizeof(hdr);
+	jop->csum = checksum_buf(jop->csum, (unsigned char *) &hdr,
+			sizeof(hdr));
 
 	fiu_exit_on("jio/commit/tf_header");
 
@@ -200,81 +276,105 @@ error:
 	return NULL;
 }
 
+/** Saves a single joper in the journal file */
+static int save_joper(struct journal_op *jop, const struct jtrans *ts,
+		struct joper *op)
+{
+	ssize_t rv;
+	struct on_disk_ophdr ophdr;
+
+	/* read the current content only if the transaction is not
+	 * marked as NOROLLBACK, and if the data is not there yet,
+	 * which is the normal case, but for rollbacking we fill it
+	 * ourselves */
+	if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
+		op->pdata = malloc(op->len);
+		if (op->pdata == NULL)
+			goto error;
+
+		op->plen = op->len;
+
+		rv = spread(ts->fs->fd, op->pdata, op->len,
+				op->offset);
+		if (rv < 0)
+			goto error;
+		if (rv < op->len) {
+			/* we are extending the file! */
+			/* ftruncate(ts->fs->fd, op->offset + op->len); */
+			op->plen = rv;
+		}
+	}
+
+	/* save the operation's header */
+	ophdr.len = op->len;
+	ophdr.offset = op->offset;
+
+	ophdr_hton(&ophdr);
+	rv = spwrite(jop->fd, &ophdr, sizeof(ophdr), jop->curpos);
+	if (rv != sizeof(ophdr))
+		goto error;
+
+	fiu_exit_on("jio/commit/tf_ophdr");
+
+	jop->curpos += sizeof(ophdr);
+	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
+			sizeof(ophdr));
+
+	/* and save it to the disk */
+	rv = spwrite(jop->fd, op->buf, op->len, jop->curpos);
+	if (rv != op->len)
+		goto error;
+
+	jop->curpos += op->len;
+	jop->csum = checksum_buf(jop->csum, op->buf, op->len);
+
+	return 0;
+
+error:
+	return -1;
+}
+
 /** Save the given transaction in the journal */
 int journal_save(struct journal_op *jop)
 {
 	ssize_t rv;
-	uint32_t csum;
 	struct joper *op;
-	unsigned char hdr[J_DISKOPHEADSIZE];
-	unsigned char *hdrp;
 	const struct jtrans *ts = jop->ts;
+	struct on_disk_ophdr ophdr;
+	struct on_disk_trailer trailer;
 
 	/* save each transacion in the file */
 	for (op = ts->op; op != NULL; op = op->next) {
-		/* read the current content only if the transaction is not
-		 * marked as NOROLLBACK, and if the data is not there yet,
-		 * which is the normal case, but for rollbacking we fill it
-		 * ourselves */
-		if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
-			op->pdata = malloc(op->len);
-			if (op->pdata == NULL)
-				goto error;
-
-			op->plen = op->len;
-
-			rv = spread(ts->fs->fd, op->pdata, op->len,
-					op->offset);
-			if (rv < 0)
-				goto error;
-			if (rv < op->len) {
-				/* we are extending the file! */
-				/* ftruncate(ts->fs->fd, op->offset + op->len); */
-				op->plen = rv;
-			}
-		}
-
-		/* save the operation's header */
-		hdrp = hdr;
-
-		memcpy(hdrp, (void *) &(op->len), 4);
-		hdrp += 4;
-
-		memcpy(hdrp, (void *) &(op->plen), 4);
-		hdrp += 4;
-
-		memcpy(hdrp, (void *) &(op->offset), 8);
-		hdrp += 8;
-
-		rv = spwrite(jop->fd, hdr, J_DISKOPHEADSIZE, jop->curpos);
-		if (rv != J_DISKOPHEADSIZE)
+		rv = save_joper(jop, ts, op);
+		if (rv != 0)
 			goto error;
-
-		fiu_exit_on("jio/commit/tf_ophdr");
-
-		jop->curpos += J_DISKOPHEADSIZE;
-
-		/* and save it to the disk */
-		rv = spwrite(jop->fd, op->buf, op->len, jop->curpos);
-		if (rv != op->len)
-			goto error;
-
-		jop->curpos += op->len;
 
 		fiu_exit_on("jio/commit/tf_opdata");
 	}
 
 	fiu_exit_on("jio/commit/tf_data");
 
-	/* compute and save the checksum (curpos is always small, so there's
-	 * no overflow possibility when we convert to size_t) */
-	if (!checksum(jop->fd, jop->curpos, &csum))
+	/* write the the empty ophdr to mark there are no more operations, and
+	 * then the trailer */
+	ophdr.len = 0;
+	ophdr.offset = 0;
+
+	ophdr_hton(&ophdr);
+	rv = spwrite(jop->fd, &ophdr, sizeof(ophdr), jop->curpos);
+	if (rv != sizeof(ophdr))
 		goto error;
 
-	rv = spwrite(jop->fd, &csum, sizeof(uint32_t), jop->curpos);
-	if (rv != sizeof(uint32_t))
+	jop->curpos += sizeof(ophdr);
+	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
+			sizeof(ophdr));
+
+	trailer.checksum = jop->csum;
+	trailer.numops = ts->numops;
+
+	trailer_hton(&trailer);
+	rv = spwrite(jop->fd, &trailer, sizeof(trailer), jop->curpos);
+	if (rv != sizeof(trailer))
 		goto error;
-	jop->curpos += sizeof(uint32_t);
 
 	/* this is a simple but efficient optimization: instead of doing
 	 * everything O_SYNC, we sync at this point only, this way we avoid
@@ -334,4 +434,109 @@ exit:
 	return rv;
 }
 
+
+/** Fill a transaction structure from a mmapped transaction file. Useful for
+ * checking purposes.
+ * @returns 0 on success, -1 if the file was broken, -2 if the checksums didn't
+ *	match
+ */
+int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
+{
+	int rv, numops;
+	unsigned char *p;
+	struct joper *op, *tmp;
+	struct on_disk_hdr hdr;
+	struct on_disk_ophdr ophdr;
+	struct on_disk_trailer trailer;
+
+	rv = -1;
+
+	if (len < sizeof(hdr) + sizeof(ophdr) + sizeof(trailer))
+		return -1;
+
+	p = map;
+
+	memcpy(&hdr, p, sizeof(hdr));
+	p += sizeof(hdr);
+
+	hdr_ntoh(&hdr);
+	if (hdr.ver != 1)
+		return -1;
+
+	ts->id = hdr.trans_id;
+	ts->flags = hdr.flags;
+
+	numops = 0;
+	for (;;) {
+		if (p + sizeof(ophdr) > map + len)
+			goto error;
+
+		memcpy(&ophdr, p,  sizeof(ophdr));
+		p += sizeof(ophdr);
+
+		ophdr_ntoh(&ophdr);
+
+		if (ophdr.len == 0 && ophdr.offset == 0) {
+			/* This header marks the end of the operations */
+			break;
+		}
+
+		if (p + ophdr.len > map + len)
+			goto error;
+
+		op = malloc(sizeof(struct joper));
+		if (op == NULL)
+			goto error;
+
+		op->len = ophdr.len;
+		op->offset = ophdr.offset;
+
+		op->buf = (void *) p;
+		p += op->len;
+
+		op->pdata = NULL;
+
+		if (ts->op == NULL) {
+			ts->op = op;
+			op->prev = NULL;
+			op->next = NULL;
+		} else {
+			for (tmp = ts->op; tmp->next != NULL; tmp = tmp->next)
+				;
+			tmp->next = op;
+			op->prev = tmp;
+			op->next = NULL;
+		}
+
+		numops++;
+	}
+
+	if (p + sizeof(trailer) > map + len)
+		goto error;
+
+	memcpy(&trailer, p, sizeof(trailer));
+	p += sizeof(trailer);
+
+	trailer_ntoh(&trailer);
+
+	if (trailer.numops != numops)
+		goto error;
+
+	ts->numops = numops;
+
+	if (checksum_buf(0, map, len - sizeof(trailer)) != trailer.checksum) {
+		rv = -2;
+		goto error;
+	}
+
+	return 0;
+
+error:
+	while (ts->op != NULL) {
+		tmp = ts->op->next;
+		free(ts->op);
+		ts->op = tmp;
+	}
+	return rv;
+}
 

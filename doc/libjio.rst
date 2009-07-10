@@ -59,20 +59,20 @@ careful when doing strange things with files while working on them.
 The transaction file
 ~~~~~~~~~~~~~~~~~~~~
 
-The transaction file is composed of two main parts: the header and the
-payload.
+The transaction file is composed of three main parts: the header, the
+operations, and the trailer.
 
 The header holds basic information about the transaction itself, including the
-ID, some flags, and the amount of operations it includes. Then the payload has
-all the operations one after the other, divided in two parts: the first one
-includes static information about the operation (the length of the data, the
-offset of the file where it should be applied, etc.) and the data itself,
-which is saved by the library prior applying the commit, so transactions can
-be rollbacked.
+version, the transaction ID, and its flags.
 
-At the end of the transaction file, a checksum is stored, to detect journal
-corruption.
+Then the operation part has all the operations one after the other, prepending
+the operation data with a per-operation header that includes the length of the
+data and the offset of the file where it should be applied, and then the data
+itself.
 
+Finally, the trailer contains the number of operations included in it and a
+checksum of the whole file. Both fields are used to detect broken or corrupted
+transactions.
 
 The commit procedure
 --------------------

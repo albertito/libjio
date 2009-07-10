@@ -17,83 +17,9 @@
 
 #include "libjio.h"
 #include "common.h"
+#include "journal.h"
 #include "trans.h"
 
-
-/** Fill a transaction structure from a mmapped transaction file */
-static off_t fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
-{
-	int i;
-	unsigned char *p;
-	struct joper *op, *tmp;
-	off_t translen;
-
-	if (len < J_DISKHEADSIZE)
-		return 0;
-
-	p = map;
-
-	ts->id = *( (uint32_t *) p);
-	p += 4;
-
-	ts->flags = *( (uint32_t *) p);
-	p += 4;
-
-	ts->numops = *( (uint32_t *) p);
-	p += 4;
-
-	translen = J_DISKHEADSIZE;
-
-	for (i = 0; i < ts->numops; i++) {
-		if (p + J_DISKOPHEADSIZE > map + len)
-			goto error;
-
-		op = malloc(sizeof(struct joper));
-		if (op == NULL)
-			goto error;
-
-		op->len = *( (uint32_t *) p);
-		p += 4;
-
-		op->plen = *( (uint32_t *) p);
-		p += 4;
-
-		op->offset = *( (uint64_t *) p);
-		p += 8;
-
-		if (p + op->len > map + len)
-			goto error;
-
-		op->buf = (void *) p;
-		p += op->len;
-
-		op->pdata = NULL;
-
-		if (ts->op == NULL) {
-			ts->op = op;
-			op->prev = NULL;
-			op->next = NULL;
-		} else {
-			for (tmp = ts->op; tmp->next != NULL; tmp = tmp->next)
-				;
-			tmp->next = op;
-			op->prev = tmp;
-			op->next = NULL;
-		}
-
-		translen += J_DISKOPHEADSIZE + op->len;
-	}
-
-	return translen;
-
-error:
-	while (ts->op != NULL) {
-		tmp = ts->op->next;
-		free(ts->op);
-		ts->op = tmp;
-	}
-	return 0;
-}
 
 /** Remove all the files in the journal directory (if any).
  *
@@ -158,7 +84,6 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 {
 	int tfd, rv, i, ret;
 	unsigned int maxtid;
-	uint32_t csum1, csum2;
 	char jlockfile[PATH_MAX], tname[PATH_MAX];
 	struct stat sinfo;
 	struct jfs fs;
@@ -167,7 +92,7 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	DIR *dir;
 	struct dirent *dent;
 	unsigned char *map;
-	off_t filelen, translen, lr;
+	off_t filelen, lr;
 
 	tfd = -1;
 	filelen = 0;
@@ -310,23 +235,12 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 			map = NULL;
 			goto loop;
 		}
-		translen = fill_trans(map, filelen, curts);
-		if (translen == 0) {
+
+		rv = fill_trans(map, filelen, curts);
+		if (rv == -1) {
 			res->broken++;
 			goto loop;
-		}
-
-		/* see if there's enough room for the checksum after the
-		 * transaction information */
-		if (filelen != translen + sizeof(uint32_t)) {
-			res->broken++;
-			goto loop;
-		}
-
-		/* verify the checksum */
-		csum1 = checksum_map(map, filelen - (sizeof(uint32_t)));
-		csum2 = * (uint32_t *) (map + filelen - (sizeof(uint32_t)));
-		if (csum1 != csum2) {
+		} else if (rv == -2) {
 			res->corrupt++;
 			goto loop;
 		}

@@ -87,6 +87,12 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		return -1;
 	}
 
+	/* fail for 0 length transactions */
+	if (count == 0) {
+		pthread_mutex_unlock(&(ts->lock));
+		return 1;
+	}
+
 	if ((long long) ts->len + count > MAX_TSIZE) {
 		pthread_mutex_unlock(&(ts->lock));
 		return -1;

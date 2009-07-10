@@ -74,9 +74,11 @@ ssize_t spread(int fd, void *buf, size_t count, off_t offset);
 ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset);
 int get_jdir(const char *filename, char *jdir);
 void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile);
+uint64_t ntohll(uint64_t x);
+uint64_t htonll(uint64_t x);
 
-int checksum(int fd, size_t len, uint32_t *csum);
-uint32_t checksum_map(uint8_t *map, size_t count);
+int checksum_fd(int fd, size_t len, uint32_t *csum);
+uint32_t checksum_buf(uint32_t sum, const unsigned char *buf, size_t count);
 
 void autosync_check(struct jfs *fs);
 

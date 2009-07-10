@@ -17,9 +17,10 @@ import struct
 import libjio
 
 
-# Useful constants, must match libjio.h
-DHS = 12	# disk header size
-DOHS = 16	# disk op header size
+# Useful constants, must match journal.h
+DHS = 8		# disk header size
+DOHS = 12	# disk op header size
+DTS = 8		# disk trailer size
 
 
 def tmppath():
@@ -159,9 +160,11 @@ class attrdict (dict):
 
 class TransFile (object):
 	def __init__(self, path = ''):
+		self.ver = 0
 		self.id = -1
 		self.flags = 0
 		self.numops = -1
+		self.checksum = -1
 		self.ops = []
 		self.path = path
 		if path:
@@ -171,30 +174,39 @@ class TransFile (object):
 		fd = open(self.path)
 
 		# header
-		hdrfmt = "III"
-		self.id, self.flags, self.numops = struct.unpack(hdrfmt,
+		hdrfmt = "!HHI"
+		self.ver, self.flags, self.id = struct.unpack(hdrfmt,
 				fd.read(struct.calcsize(hdrfmt)))
 
 		# operations (header only)
-		opfmt = "IIQ"
+		opfmt = "!IQ"
 		self.ops = []
-		for i in range(self.numops):
-			tlen, plen, offset = struct.unpack(opfmt,
+		while True:
+			tlen, offset = struct.unpack(opfmt,
 					fd.read(struct.calcsize(opfmt)))
+			if tlen == offset == 0:
+				break
 			payload = fd.read(tlen)
 			assert len(payload) == tlen
-			self.ops.append(attrdict(tlen = tlen, plen = plen,
-				offset = offset, payload = payload))
+			self.ops.append(attrdict(tlen = tlen, offset = offset,
+				payload = payload))
+
+		# trailer
+		trailerfmt = "!II"
+		self.numops, self.checksum = struct.unpack(trailerfmt,
+				fd.read(struct.calcsize(trailerfmt)))
 
 	def save(self):
 		# the lack of integrity checking in this function is
 		# intentional, so we can write broken transactions and see how
 		# jfsck() copes with them
 		fd = open(self.path, 'w')
-		fd.write(struct.pack("III", self.id, self.flags, self.numops))
+		fd.write(struct.pack("!HHI", 1, self.flags, self.id))
 		for o in self.ops:
-			fd.write(struct.pack("IIQs", o.tlen, o.plen, o.offset,
+			fd.write(struct.pack("!IQs", o.tlen, o.offset,
 				o.payload))
+		fd.write(struct.pack("!IQ", 0, 0))
+		fd.write(struct.pack("!II", self.numops, self.checksum))
 
 	def __repr__(self):
 		return '<TransFile %s: id:%d f:%s n:%d ops:%s>' % \

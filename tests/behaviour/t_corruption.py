@@ -27,8 +27,11 @@ def test_c01():
 	n = run_with_tmp(f1)
 	assert content(n) == ''
 	tc = open(transpath(n, 1)).read()
-	# flip just one bit of the first byte
-	tc = chr((ord(tc[0]) & 0xFE) | (~ ord(tc[0]) & 0x1) & 0xFF) + tc[1:]
+	# flip just one bit in the middle byte
+	pos = len(tc) / 2
+	tc = tc[:pos] + \
+		chr((ord(tc[pos]) & 0xFE) | (~ ord(tc[pos]) & 0x1) & 0xFF) + \
+		tc[pos + 1:]
 	open(transpath(n, 1), 'w').write(tc)
 	fsck_verify(n, corrupt = 1)
 	assert content(n) == ''
