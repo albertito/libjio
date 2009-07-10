@@ -67,7 +67,7 @@ class Stresser:
 		self.jf.truncate(fsize)
 
 		if use_as:
-			self.jf.autosync_start(5, 2 * 1024 * 1024)
+			self.jf.autosync_start(5, 10 * 1024 * 1024)
 
 		# data used for consistency checks
 		self.current_range = (0, 0)
