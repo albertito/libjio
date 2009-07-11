@@ -2,8 +2,7 @@
 #ifndef _TRANS_H
 #define _TRANS_H
 
-
-struct joper;
+struct operation;
 
 /** A transaction */
 struct jtrans {
@@ -26,19 +25,19 @@ struct jtrans {
 	pthread_mutex_t lock;
 
 	/** List of operations */
-	struct joper *op;
+	struct operation *op;
 };
 
 /* a single operation */
-struct joper {
+struct operation {
 	int locked;		/* is the region is locked? */
 	off_t offset;		/* operation's offset */
 	size_t len;		/* data length */
 	void *buf;		/* data */
 	size_t plen;		/* previous data length */
 	void *pdata;		/* previous data */
-	struct joper *prev;
-	struct joper *next;
+	struct operation *prev;
+	struct operation *next;
 };
 
 /* lingered transaction */

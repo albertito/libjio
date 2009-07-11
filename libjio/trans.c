@@ -54,7 +54,7 @@ struct jtrans *jtrans_new(struct jfs *fs, unsigned int flags)
 /* Free the contents of a transaction structure */
 void jtrans_free(struct jtrans *ts)
 {
-	struct joper *tmpop;
+	struct operation *tmpop;
 
 	ts->fs = NULL;
 
@@ -77,7 +77,7 @@ void jtrans_free(struct jtrans *ts)
 /* Add an operation to a transaction */
 int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 {
-	struct joper *jop, *tmpop;
+	struct operation *op, *tmpop;
 
 	pthread_mutex_lock(&(ts->lock));
 
@@ -101,7 +101,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	/* find the last operation in the transaction and create a new one at
 	 * the end */
 	if (ts->op == NULL) {
-		ts->op = malloc(sizeof(struct joper));
+		ts->op = malloc(sizeof(struct operation));
 		if (ts->op == NULL) {
 			pthread_mutex_unlock(&(ts->lock));
 			return -1;
@@ -111,7 +111,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 	} else {
 		for (tmpop = ts->op; tmpop->next != NULL; tmpop = tmpop->next)
 			;
-		tmpop->next = malloc(sizeof(struct joper));
+		tmpop->next = malloc(sizeof(struct operation));
 		if (tmpop->next == NULL) {
 			pthread_mutex_unlock(&(ts->lock));
 			return -1;
@@ -159,7 +159,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 ssize_t jtrans_commit(struct jtrans *ts)
 {
 	ssize_t r, retval = -1;
-	struct joper *op;
+	struct operation *op;
 	struct jlinger *linger;
 	jop_t *jop;
 	size_t written = 0;
@@ -316,7 +316,7 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 {
 	ssize_t rv;
 	struct jtrans *newts;
-	struct joper *op, *curop, *lop;
+	struct operation *op, *curop, *lop;
 
 	newts = jtrans_new(ts->fs, 0);
 	newts->flags = ts->flags;
@@ -347,7 +347,7 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		}
 
 		/* manually add the operation to the new transaction */
-		curop = malloc(sizeof(struct joper));
+		curop = malloc(sizeof(struct operation));
 		if (curop == NULL) {
 			rv = -1;
 			goto exit;

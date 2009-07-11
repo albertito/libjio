@@ -88,7 +88,7 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
-	struct joper *tmpop;
+	struct operation *tmpop;
 	DIR *dir;
 	struct dirent *dent;
 	unsigned char *map;
