@@ -205,7 +205,7 @@ static int fsync_dir(int fd)
 
 /** Create a new transaction in the journal. Returns a pointer to an opaque
  * jop_t (that is freed using journal_free), or NULL if there was an error. */
-struct journal_op *journal_new(struct jtrans *ts)
+struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 {
 	int fd, id;
 	ssize_t rv;
@@ -221,35 +221,33 @@ struct journal_op *journal_new(struct jtrans *ts)
 	if (name == NULL)
 		goto error;
 
-	id = get_tid(ts->fs);
+	id = get_tid(fs);
 	if (id == 0)
 		goto error;
 
 	/* open the transaction file */
-	get_jtfile(ts->fs, id, name);
+	get_jtfile(fs, id, name);
 	fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (fd < 0)
 		goto error;
 
 	jop->id = id;
 	jop->fd = fd;
+	jop->numops = 0;
 	jop->name = name;
 	jop->curpos = 0;
 	jop->csum = 0;
-	jop->ts = ts;
-	jop->fs = ts->fs;
+	jop->fs = fs;
 
 	fiu_exit_on("jio/commit/created_tf");
 
 	/* and lock it, just in case */
 	plockf(fd, F_LOCKW, 0, 0);
 
-	ts->id = id;
-
 	/* save the header */
 	hdr.ver = 1;
 	hdr.trans_id = id;
-	hdr.flags = ts->flags;
+	hdr.flags = flags;
 
 	hdr_hton(&hdr);
 	rv = spwrite(fd, &hdr, sizeof(hdr), 0);
@@ -266,7 +264,7 @@ struct journal_op *journal_new(struct jtrans *ts)
 
 unlink_error:
 	unlink(name);
-	free_tid(ts->fs, ts->id);
+	free_tid(fs, id);
 	close(fd);
 
 error:
@@ -276,38 +274,16 @@ error:
 	return NULL;
 }
 
-/** Saves a single joper in the journal file */
-static int save_joper(struct journal_op *jop, const struct jtrans *ts,
-		struct joper *op)
+/** Save a single operation in the journal file */
+int journal_add_op(struct journal_op *jop, unsigned char *buf, size_t len,
+		off_t offset)
 {
 	ssize_t rv;
 	struct on_disk_ophdr ophdr;
 
-	/* read the current content only if the transaction is not
-	 * marked as NOROLLBACK, and if the data is not there yet,
-	 * which is the normal case, but for rollbacking we fill it
-	 * ourselves */
-	if (!(ts->flags & J_NOROLLBACK) && (op->pdata == NULL)) {
-		op->pdata = malloc(op->len);
-		if (op->pdata == NULL)
-			goto error;
-
-		op->plen = op->len;
-
-		rv = spread(ts->fs->fd, op->pdata, op->len,
-				op->offset);
-		if (rv < 0)
-			goto error;
-		if (rv < op->len) {
-			/* we are extending the file! */
-			/* ftruncate(ts->fs->fd, op->offset + op->len); */
-			op->plen = rv;
-		}
-	}
-
-	/* save the operation's header */
-	ophdr.len = op->len;
-	ophdr.offset = op->offset;
+	/* save the operation's header, */
+	ophdr.len = len;
+	ophdr.offset = offset;
 
 	ophdr_hton(&ophdr);
 	rv = spwrite(jop->fd, &ophdr, sizeof(ophdr), jop->curpos);
@@ -321,12 +297,14 @@ static int save_joper(struct journal_op *jop, const struct jtrans *ts,
 			sizeof(ophdr));
 
 	/* and save it to the disk */
-	rv = spwrite(jop->fd, op->buf, op->len, jop->curpos);
-	if (rv != op->len)
+	rv = spwrite(jop->fd, buf, len, jop->curpos);
+	if (rv != len)
 		goto error;
 
-	jop->curpos += op->len;
-	jop->csum = checksum_buf(jop->csum, op->buf, op->len);
+	jop->curpos += len;
+	jop->csum = checksum_buf(jop->csum, buf, len);
+
+	jop->numops++;
 
 	return 0;
 
@@ -334,25 +312,12 @@ error:
 	return -1;
 }
 
-/** Save the given transaction in the journal */
-int journal_save(struct journal_op *jop)
+/** Commit the journal operation */
+int journal_commit(struct journal_op *jop)
 {
 	ssize_t rv;
-	struct joper *op;
-	const struct jtrans *ts = jop->ts;
 	struct on_disk_ophdr ophdr;
 	struct on_disk_trailer trailer;
-
-	/* save each transacion in the file */
-	for (op = ts->op; op != NULL; op = op->next) {
-		rv = save_joper(jop, ts, op);
-		if (rv != 0)
-			goto error;
-
-		fiu_exit_on("jio/commit/tf_opdata");
-	}
-
-	fiu_exit_on("jio/commit/tf_data");
 
 	/* write the the empty ophdr to mark there are no more operations, and
 	 * then the trailer */
@@ -369,7 +334,7 @@ int journal_save(struct journal_op *jop)
 			sizeof(ophdr));
 
 	trailer.checksum = jop->csum;
-	trailer.numops = ts->numops;
+	trailer.numops = jop->numops;
 
 	trailer_hton(&trailer);
 	rv = spwrite(jop->fd, &trailer, sizeof(trailer), jop->curpos);
@@ -383,7 +348,7 @@ int journal_save(struct journal_op *jop)
 	 * point) so we only flush here (both data and metadata) */
 	if (fsync(jop->fd) != 0)
 		goto error;
-	if (fsync_dir(ts->fs->jdirfd) != 0)
+	if (fsync_dir(jop->fs->jdirfd) != 0)
 		goto error;
 
 	fiu_exit_on("jio/commit/tf_sync");
@@ -444,7 +409,7 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 {
 	int rv, numops;
 	unsigned char *p;
-	struct joper *op, *tmp;
+	struct operation *op, *tmp;
 	struct on_disk_hdr hdr;
 	struct on_disk_ophdr ophdr;
 	struct on_disk_trailer trailer;
@@ -484,7 +449,7 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 		if (p + ophdr.len > map + len)
 			goto error;
 
-		op = malloc(sizeof(struct joper));
+		op = malloc(sizeof(struct operation));
 		if (op == NULL)
 			goto error;
 

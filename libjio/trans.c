@@ -43,9 +43,10 @@ struct jtrans *jtrans_new(struct jfs *fs, unsigned int flags)
 	ts->op = NULL;
 	ts->numops = 0;
 	ts->len = 0;
+
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
-	pthread_mutex_init( &(ts->lock), &attr);
+	pthread_mutex_init(&(ts->lock), &attr);
 	pthread_mutexattr_destroy(&attr);
 
 	return ts;
@@ -74,6 +75,34 @@ void jtrans_free(struct jtrans *ts)
 	free(ts);
 }
 
+/** Read the previous information from the disk into the given operation
+ * structure. Returns 0 on success, -1 on error. */
+static int operation_read_prev(struct jtrans *ts, struct operation *op)
+{
+	ssize_t rv;
+
+	op->pdata = malloc(op->len);
+	if (op->pdata == NULL)
+		return -1;
+
+	rv = spread(ts->fs->fd, op->pdata, op->len,
+			op->offset);
+	if (rv < 0) {
+		free(op->pdata);
+		op->pdata = NULL;
+		return -1;
+	}
+
+	op->plen = op->len;
+	if (rv < op->len) {
+		/* we are extending the file! */
+		/* ftruncate(ts->fs->fd, op->offset + op->len); */
+		op->plen = rv;
+	}
+
+	return 0;
+}
+
 /* Add an operation to a transaction */
 int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 {
@@ -87,7 +116,7 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 		return -1;
 	}
 
-	/* fail for 0 length transactions */
+	/* fail for 0 length operations */
 	if (count == 0) {
 		pthread_mutex_unlock(&(ts->lock));
 		return 1;
@@ -106,8 +135,8 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 			pthread_mutex_unlock(&(ts->lock));
 			return -1;
 		}
-		jop = ts->op;
-		jop->prev = NULL;
+		op = ts->op;
+		op->prev = NULL;
 	} else {
 		for (tmpop = ts->op; tmpop->next != NULL; tmpop = tmpop->next)
 			;
@@ -117,34 +146,34 @@ int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
 			return -1;
 		}
 		tmpop->next->prev = tmpop;
-		jop = tmpop->next;
+		op = tmpop->next;
 	}
 
-	jop->buf = malloc(count);
-	if (jop->buf == NULL) {
+	op->buf = malloc(count);
+	if (op->buf == NULL) {
 		/* remove from the list and fail */
-		if (jop->prev == NULL) {
+		if (op->prev == NULL) {
 			ts->op = NULL;
 		} else {
-			jop->prev->next = jop->next;
+			op->prev->next = op->next;
 		}
-		free(jop);
+		free(op);
 		pthread_mutex_unlock(&(ts->lock));
 		return -1;
 	}
 
 	ts->numops++;
 	ts->len += count;
+
 	pthread_mutex_unlock(&(ts->lock));
 
-	/* we copy the buffer because then the caller can reuse it */
-	memcpy(jop->buf, buf, count);
-	jop->len = count;
-	jop->offset = offset;
-	jop->next = NULL;
-	jop->plen = 0;
-	jop->pdata = NULL;
-	jop->locked = 0;
+	memcpy(op->buf, buf, count);
+	op->len = count;
+	op->offset = offset;
+	op->next = NULL;
+	op->plen = 0;
+	op->pdata = NULL;
+	op->locked = 0;
 
 	if (!(ts->flags & J_NOROLLBACK)) {
 		/* jtrans_commit() will want to read the current data, so we
@@ -161,7 +190,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	ssize_t r, retval = -1;
 	struct operation *op;
 	struct jlinger *linger;
-	jop_t *jop;
+	jop_t *jop = NULL;
 	size_t written = 0;
 
 	pthread_mutex_lock(&(ts->lock));
@@ -189,15 +218,32 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		}
 	}
 
-	jop = journal_new(ts);
+	/* create and fill the transaction file */
+	jop = journal_new(ts->fs, ts->flags);
 	if (jop == NULL)
 		goto unlock_exit;
 
-	r = journal_save(jop);
-	if (r < 0) {
-		journal_free(jop);
-		goto unlock_exit;
+	if (!(ts->flags & J_NOROLLBACK)) {
+		for (op = ts->op; op != NULL; op = op->next) {
+			 r = operation_read_prev(ts, op);
+			 if (r < 0)
+				 goto unlink_exit;
+		}
 	}
+
+	for (op = ts->op; op != NULL; op = op->next) {
+		r = journal_add_op(jop, op->buf, op->len, op->offset);
+		if (r != 0)
+			goto unlink_exit;
+
+		fiu_exit_on("jio/commit/tf_opdata");
+	}
+
+	fiu_exit_on("jio/commit/tf_data");
+
+	r = journal_commit(jop);
+	if (r < 0)
+		goto unlink_exit;
 
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
@@ -275,13 +321,14 @@ rollback_exit:
 		}
 	}
 
+unlink_exit:
 	/* If the journal operation is no longer needed, we remove it from the
 	 * disk.
 	 *
 	 * Extreme conditions (filesystem just got read-only, for example) can
 	 * cause journal_free() to fail, but there's not much left to do at
 	 * that point, and the caller will have to be careful and stop its
-	 * operations. In that case, we will return -1, but the transaction
+	 * operations. In that case, we will return -2, and the transaction
 	 * will be marked as J_COMMITTED to indicate that the data was
 	 * effectively written to disk. */
 	if (jop) {
