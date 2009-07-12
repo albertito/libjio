@@ -85,7 +85,6 @@ int main(int argc, char **argv)
 	printf("In progress:\t %d\n", res.in_progress);
 	printf("Broken:\t\t %d\n", res.broken);
 	printf("Corrupt:\t %d\n", res.corrupt);
-	printf("Apply error:\t %d\n", res.apply_error);
 	printf("Reapplied:\t %d\n", res.reapplied);
 	printf("\n");
 

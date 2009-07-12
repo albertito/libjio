@@ -126,7 +126,6 @@ def fsck_verify(n, **kwargs):
 		'reapplied': 0,
 		'corrupt': 0,
 		'in_progress': 0,
-		'apply_error': 0,
 	}
 	expected.update(kwargs)
 	expected['total'] = sum(expected.values())

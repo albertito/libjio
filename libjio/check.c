@@ -110,7 +110,6 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	res->in_progress = 0;
 	res->broken = 0;
 	res->corrupt = 0;
-	res->apply_error = 0;
 	res->reapplied = 0;
 
 	fs.fd = open(name, O_RDWR | O_SYNC);
@@ -279,8 +278,8 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		rv = jtrans_commit(curts);
 
 		if (rv < 0) {
-			res->apply_error++;
-			goto loop;
+			ret = J_EIO;
+			goto exit;
 		}
 		res->reapplied++;
 

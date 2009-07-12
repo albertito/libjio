@@ -59,9 +59,6 @@ struct jfsck_result {
 	/** Number of corrupt transactions */
 	int corrupt;
 
-	/** Number of errors applying transactions */
-	int apply_error;
-
 	/** Number of transactions successfully reapplied */
 	int reapplied;
 };

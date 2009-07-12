@@ -682,7 +682,6 @@ static PyObject *jf_jfsck(PyObject *self, PyObject *args, PyObject *kw)
 	PyDict_SetItemString(dict, "in_progress", PyLong_FromLong(res.in_progress));
 	PyDict_SetItemString(dict, "broken", PyLong_FromLong(res.broken));
 	PyDict_SetItemString(dict, "corrupt", PyLong_FromLong(res.corrupt));
-	PyDict_SetItemString(dict, "apply_error", PyLong_FromLong(res.apply_error));
 	PyDict_SetItemString(dict, "reapplied", PyLong_FromLong(res.reapplied));
 
 	return dict;
