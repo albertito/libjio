@@ -144,7 +144,7 @@ class Stresser:
 			fiu.enable_random('jio/*', probability = 0.001)
 			fiu.enable_random('linux/*', probability = 0.01)
 			fiu.enable_random('posix/*', probability = 0.01)
-			fiu.enable_random('libc/mm/*', probability = 0.0005)
+			fiu.enable_random('libc/mm/*', probability = 0.003)
 
 	def fiu_disable(self):
 		if self.use_fi:
