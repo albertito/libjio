@@ -204,8 +204,8 @@ class TransFile (object):
 		fd = open(self.path, 'w')
 		fd.write(struct.pack("!HHI", self.ver, self.flags, self.id))
 		for o in self.ops:
-			fd.write(struct.pack("!IQs", o.tlen, o.offset,
-				o.payload))
+			fd.write(struct.pack("!IQ", o.tlen, o.offset,))
+			fd.write(o.payload)
 		fd.write(struct.pack("!IQ", 0, 0))
 		fd.write(struct.pack("!II", self.numops, self.checksum))
 
