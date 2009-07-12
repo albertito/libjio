@@ -596,7 +596,7 @@ int jsync(struct jfs *fs)
 int jmove_journal(struct jfs *fs, const char *newpath)
 {
 	int ret;
-	char *oldpath, jlockfile[PATH_MAX];
+	char *oldpath, jlockfile[PATH_MAX], oldjlockfile[PATH_MAX];
 
 	/* we try to be sure that all lingering transactions have been
 	 * applied, so when we try to remove the journal directory, only the
@@ -606,6 +606,7 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 	jsync(fs);
 
 	oldpath = fs->jdir;
+	snprintf(oldjlockfile, PATH_MAX, "%s/%s", fs->jdir, "lock");
 
 	fs->jdir = (char *) malloc(strlen(newpath + 1));
 	if (fs->jdir == NULL)
@@ -619,30 +620,20 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 
 		close(fs->jdirfd);
 		fs->jdirfd = open(newpath, O_RDONLY);
-		if (fs->jdirfd < 0) {
-			ret = -1;
+		if (fs->jdirfd < 0)
 			goto exit;
-		}
 
-		close(fs->jfd);
 		snprintf(jlockfile, PATH_MAX, "%s/%s", newpath, "lock");
-		fs->jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
-		if (fs->jfd < 0)
-			goto exit;
-
-		munmap(fs->jmap, sizeof(unsigned int));
-		fs->jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
-			PROT_READ | PROT_WRITE, MAP_SHARED, fs->jfd, 0);
-		if (fs->jmap == MAP_FAILED)
+		ret = rename(oldjlockfile, jlockfile);
+		if (ret < 0)
 			goto exit;
 
 		/* remove the journal directory, if possible */
-		snprintf(jlockfile, PATH_MAX, "%s/%s", oldpath, "lock");
-		unlink(jlockfile);
+		unlink(oldjlockfile);
 		ret = rmdir(oldpath);
 		if (ret == -1) {
 			/* we couldn't remove it, something went wrong
-			 * (possible it had some files left) */
+			 * (possibly it had some files left) */
 			goto exit;
 		}
 
