@@ -81,6 +81,8 @@ def biopen(path, mode = 'w+', jflags = 0):
 		flags = os.O_RDWR
 		if '+' in mode:
 			flags = flags | os.O_CREAT | os.O_TRUNC
+	elif 'a' in mode:
+		flags = os.O_RDWR | os.O_APPEND
 	else:
 		raise RuntimeError
 
@@ -160,7 +162,7 @@ class attrdict (dict):
 
 class TransFile (object):
 	def __init__(self, path = ''):
-		self.ver = 0
+		self.ver = 1
 		self.id = -1
 		self.flags = 0
 		self.numops = -1
@@ -201,7 +203,7 @@ class TransFile (object):
 		# intentional, so we can write broken transactions and see how
 		# jfsck() copes with them
 		fd = open(self.path, 'w')
-		fd.write(struct.pack("!HHI", 1, self.flags, self.id))
+		fd.write(struct.pack("!HHI", self.ver, self.flags, self.id))
 		for o in self.ops:
 			fd.write(struct.pack("!IQs", o.tlen, o.offset,
 				o.payload))

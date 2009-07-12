@@ -233,4 +233,103 @@ def test_n15():
 	fsck_verify(n)
 	cleanup(n)
 
+def test_n16():
+	"jopen r/o + jtrans_add + jtrans_commit"
+	c = gencontent()
+
+	# create the file before opening, read-only mode does not create it
+	n = tmppath()
+	open(n, 'w+')
+	f, jf = biopen(n, mode = 'r')
+
+	t = jf.new_trans()
+
+	try:
+		t.add(c, 80)
+	except IOError:
+		pass
+	else:
+		raise AssertionError
+
+	try:
+		t.commit()
+	except IOError:
+		pass
+	else:
+		raise AssertionError
+
+	cleanup(n)
+
+def test_n17():
+	"move journal to an existing dir"
+	import os
+
+	f, jf = bitmp()
+	n = f.name
+	p = tmppath()
+	os.mkdir(p)
+	open(p + '/x', 'w')
+
+	jf.write('x')
+	jf.jmove_journal(p)
+	jf.write('y')
+	del jf
+	os.unlink(p + '/x')
+
+	assert libjio.jfsck(n, p)['total'] == 0
+	os.unlink(n)
+
+def test_n18():
+	"jtrans_rollback with norollback"
+	c = gencontent()
+	f, jf = bitmp(jflags = libjio.J_NOROLLBACK)
+	n = f.name
+
+	t = jf.new_trans()
+	t.add(c, 80)
+	t.commit()
+	try:
+		t.rollback()
+	except IOError:
+		pass
+	else:
+		raise AssertionError
+
+	assert content(n) == '\0' * 80 + c
+	fsck_verify(n)
+	cleanup(n)
+
+def test_n19():
+	"jwrite in files opened with O_APPEND"
+	c1 = gencontent()
+	c2 = gencontent()
+	f, jf = bitmp(mode = 'a')
+	n = f.name
+
+	jf.write(c1)
+	jf.write(c2)
+
+	assert content(n) == c1 + c2
+	fsck_verify(n)
+	cleanup(n)
+
+def test_n20():
+	"jtrans_add of 0 length"
+	f, jf = bitmp()
+	n = f.name
+
+	t = jf.new_trans()
+
+	try:
+		t.add('', 80)
+	except IOError:
+		pass
+	else:
+		raise AssertionError
+
+	del t
+	del jf
+	fsck_verify(n)
+	cleanup(n)
+
 

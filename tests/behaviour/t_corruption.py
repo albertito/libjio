@@ -105,4 +105,43 @@ def test_c05():
 	assert content(n) == ''
 	cleanup(n)
 
+def test_c06():
+	"header version != 1"
+	c = gencontent()
+
+	def f1(f, jf):
+		fiu.enable("jio/commit/tf_sync")
+		jf.write(c)
+
+	n = run_with_tmp(f1)
+	assert content(n) == ''
+
+	# there is no need to recalculate the checsum because it is verified
+	# after the version check
+	tf = TransFile(transpath(n, 1))
+	tf.ver = 8
+	tf.save()
+	fsck_verify(n, broken = 1)
+	assert content(n) == ''
+	cleanup(n)
+
+def test_c07():
+	"trailer numops mismatch"
+	c = gencontent()
+
+	def f1(f, jf):
+		fiu.enable("jio/commit/tf_sync")
+		jf.write(c)
+
+	n = run_with_tmp(f1)
+	assert content(n) == ''
+
+	# there is no need to recalculate the checsum because it is verified
+	# after the numops check
+	tf = TransFile(transpath(n, 1))
+	tf.numops = 55
+	tf.save()
+	fsck_verify(n, broken = 1)
+	assert content(n) == ''
+	cleanup(n)
 
