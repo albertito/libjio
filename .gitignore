@@ -1,6 +1,8 @@
 *.o
 *.a
 *.so
+*.gcda
+*.gcno
 jiofsck
 libjio.pc
 samples/full
