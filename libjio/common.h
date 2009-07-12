@@ -77,7 +77,6 @@ void get_jtfile(struct jfs *fs, unsigned int tid, char *jtfile);
 uint64_t ntohll(uint64_t x);
 uint64_t htonll(uint64_t x);
 
-int checksum_fd(int fd, size_t len, uint32_t *csum);
 uint32_t checksum_buf(uint32_t sum, const unsigned char *buf, size_t count);
 
 void autosync_check(struct jfs *fs);

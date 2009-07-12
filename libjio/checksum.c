@@ -91,20 +91,3 @@ uint32_t checksum_buf(uint32_t crc32, const unsigned char *buf, size_t count)
 	return ~crc32;
 }
 
-/** Reads the contents of the given fd, up to len bytes, and stores the
- * checksum in csum. Returns 1 on success, 0 on error. */
-int checksum_fd(int fd, size_t len, uint32_t *csum)
-{
-	uint8_t *map;
-
-	map = (uint8_t *) mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
-	if (map == MAP_FAILED)
-		return 0;
-
-	*csum = checksum_buf(0, map, len);
-
-	munmap(map, len);
-	return 1;
-}
-
-
