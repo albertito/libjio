@@ -81,7 +81,7 @@ class Stresser:
 		self.f.seek(ppos, 0)
 		return r
 
-	def randwrite(self):
+	def prep_randwrite(self):
 		start, end = randfrange(self.fsize, self.maxoplen)
 
 		# read an extended range so we can check we
@@ -94,18 +94,33 @@ class Stresser:
 		nd = getbytes(end - start)
 		self.new_data = self.prev_data[:start - estart] \
 			+ nd + self.prev_data[- (eend - end):]
+		return nd, start
+
+	def randwrite(self, nd, start):
 		self.jf.pwrite(nd, start)
 		return True
 
 	def randwrite_fork(self):
+		# do the prep before the fork so we can verify() afterwards
+		nd, start = self.prep_randwrite()
 		pid = os.fork()
 		if pid == 0:
 			# child
 			try:
 				self.fiu_enable()
-				self.randwrite()
+				self.randwrite(nd, start)
 				self.fiu_disable()
-			except IOError:
+			except (IOError, MemoryError):
+				try:
+					self.reopen()
+				except (IOError, MemoryError):
+					pass
+				except:
+					self.fiu_disable()
+					traceback.print_exc()
+				self.fiu_disable()
+				sys.exit(1)
+			except MemoryError:
 				self.fiu_disable()
 				sys.exit(1)
 			except:
@@ -132,7 +147,14 @@ class Stresser:
 
 	def reopen(self):
 		self.jf = None
-		r = libjio.jfsck(self.fname)
+		r = { 'total': 0 }
+		try:
+			r = libjio.jfsck(self.fname)
+		except IOError as e:
+			if e.args[0] == libjio.J_ENOJOURNAL:
+				pass
+			else:
+				raise
 		self.verify()
 
 		self.jf = libjio.open(self.fname,
@@ -168,7 +190,8 @@ class Stresser:
 			if self.use_fi:
 				r = self.randwrite_fork()
 			else:
-				r = self.randwrite()
+				nd, start = self.prep_randwrite()
+				r = self.randwrite(nd, start)
 			if not r:
 				nfailures += 1
 				r = self.reopen()
