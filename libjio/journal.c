@@ -328,7 +328,7 @@ int journal_commit(struct journal_op *jop)
 	struct on_disk_ophdr ophdr;
 	struct on_disk_trailer trailer;
 
-	/* write the the empty ophdr to mark there are no more operations, and
+	/* write the empty ophdr to mark there are no more operations, and
 	 * then the trailer */
 	ophdr.len = 0;
 	ophdr.offset = 0;
