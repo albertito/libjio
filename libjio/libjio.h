@@ -86,6 +86,9 @@ enum jfsck_return {
 
 	/** Error cleaning the journal directory */
 	J_ECLEANUP = -4,
+
+	/** I/O error */
+	J_EIO = -5,
 };
 
 

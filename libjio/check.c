@@ -115,7 +115,9 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 
 	fs.fd = open(name, O_RDWR | O_SYNC);
 	if (fs.fd < 0) {
-		ret = J_ENOENT;
+		ret = J_EIO;
+		if (errno == ENOENT)
+			ret = J_ENOENT;
 		goto exit;
 	}
 
@@ -141,14 +143,22 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	}
 
 	rv = lstat(fs.jdir, &sinfo);
-	if (rv < 0 || !S_ISDIR(sinfo.st_mode)) {
+	if (rv < 0) {
+		ret = J_EIO;
+		if (errno == ENOENT)
+			ret = J_ENOJOURNAL;
+		goto exit;
+	}
+	if (!S_ISDIR(sinfo.st_mode)) {
 		ret = J_ENOJOURNAL;
 		goto exit;
 	}
 
 	fs.jdirfd = open(fs.jdir, O_RDONLY);
 	if (fs.jdirfd < 0) {
-		ret = J_ENOJOURNAL;
+		ret = J_EIO;
+		if (errno == ENOENT)
+			ret = J_ENOJOURNAL;
 		goto exit;
 	}
 
@@ -157,7 +167,9 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	snprintf(jlockfile, PATH_MAX, "%s/%s", fs.jdir, "lock");
 	rv = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (rv < 0) {
-		ret = J_ENOJOURNAL;
+		ret = J_EIO;
+		if (errno == ENOENT)
+			ret = J_ENOJOURNAL;
 		goto exit;
 	}
 	fs.jfd = rv;
@@ -165,13 +177,15 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	fs.jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, fs.jfd, 0);
 	if (fs.jmap == MAP_FAILED) {
-		ret = J_ENOJOURNAL;
+		ret = J_EIO;
 		goto exit;
 	}
 
 	dir = opendir(fs.jdir);
 	if (dir == NULL) {
-		ret = J_ENOJOURNAL;
+		ret = J_EIO;
+		if (errno == ENOENT)
+			ret = J_ENOJOURNAL;
 		goto exit;
 	}
 
@@ -214,8 +228,13 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		get_jtfile(&fs, i, tname);
 		tfd = open(tname, O_RDWR | O_SYNC, 0600);
 		if (tfd < 0) {
-			res->invalid++;
-			goto loop;
+			if (errno == ENOENT) {
+				res->invalid++;
+				goto loop;
+			} else {
+				ret = J_EIO;
+				goto exit;
+			}
 		}
 
 		/* try to lock the transaction file, if it's locked then it is
@@ -227,13 +246,21 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		}
 
 		filelen = lseek(tfd, 0, SEEK_END);
+		if (filelen == 0) {
+			res->broken++;
+			goto loop;
+		} else if (filelen < 0) {
+			ret = J_EIO;
+			goto exit;
+		}
+
 		/* no overflow problems because we know the transaction size
 		 * is limited to SSIZE_MAX */
 		map = mmap((void *) 0, filelen, PROT_READ, MAP_SHARED, tfd, 0);
 		if (map == MAP_FAILED) {
-			res->broken++;
 			map = NULL;
-			goto loop;
+			ret = J_EIO;
+			goto exit;
 		}
 
 		rv = fill_trans(map, filelen, curts);

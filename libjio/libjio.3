@@ -53,6 +53,7 @@ libjio - A library for Journaled I/O
     J_ENOJOURNAL = -2,	/* No journal associated with the given file */
     J_ENOMEM = -3,	/* Not enough free memory */
     J_ECLEANUP = -4,	/* Error cleaning the journal directory */
+    J_EIO = -5,		/* I/O error */
 };
 
 
@@ -146,11 +147,13 @@ summarizing the outcome of the operation. The error codes can be either
 .I J_ENOENT
 (no such file),
 .I J_ENOJOURNAL
-(no journal associated with that file) or
+(no journal associated with that file),
 .I J_ENOMEM
-(not enough free memory), and
+(not enough free memory),
 .I J_ECLEANUP
-(error cleaning the journal directory). There is also a program named
+(error cleaning the journal directory), and
+.I J_EIO
+(I/O error). There is also a program named
 .I jiofsck
 which is just a simple human frontend to this function.
 
