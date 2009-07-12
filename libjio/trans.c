@@ -231,6 +231,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		fiu_exit_on("jio/commit/tf_opdata");
 	}
 
+	journal_pre_commit(jop);
+
 	fiu_exit_on("jio/commit/tf_data");
 
 	if (!(ts->flags & J_NOROLLBACK)) {

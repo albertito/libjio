@@ -312,6 +312,15 @@ error:
 	return -1;
 }
 
+/** Prepares to commit the operation. Can be omitted. */
+void journal_pre_commit(struct journal_op *jop)
+{
+	/* In an attempt to reduce journal_commit() fsync() waiting time, we
+	 * submit the sync here, hoping that at least some of it will be ready
+	 * by the time we hit journal_commit() */
+	sync_range_submit(jop->fd, 0, 0);
+}
+
 /** Commit the journal operation */
 int journal_commit(struct journal_op *jop)
 {
