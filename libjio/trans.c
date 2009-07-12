@@ -223,14 +223,6 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (jop == NULL)
 		goto unlock_exit;
 
-	if (!(ts->flags & J_NOROLLBACK)) {
-		for (op = ts->op; op != NULL; op = op->next) {
-			 r = operation_read_prev(ts, op);
-			 if (r < 0)
-				 goto unlink_exit;
-		}
-	}
-
 	for (op = ts->op; op != NULL; op = op->next) {
 		r = journal_add_op(jop, op->buf, op->len, op->offset);
 		if (r != 0)
@@ -240,6 +232,14 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	}
 
 	fiu_exit_on("jio/commit/tf_data");
+
+	if (!(ts->flags & J_NOROLLBACK)) {
+		for (op = ts->op; op != NULL; op = op->next) {
+			 r = operation_read_prev(ts, op);
+			 if (r < 0)
+				 goto unlink_exit;
+		}
+	}
 
 	r = journal_commit(jop);
 	if (r < 0)
