@@ -332,4 +332,18 @@ def test_n20():
 	fsck_verify(n)
 	cleanup(n)
 
+def test_n21():
+	"jwritev and jreadv"
+	f, jf = bitmp()
+	n = f.name
+
+	jf.writev(["hello ", "world"])
+	l = [bytearray("......"), bytearray(".....")]
+	jf.lseek(0, 0)
+	jf.readv(l)
+
+	assert content(n) == "hello world"
+	assert l[0] == "hello " and l[1] == "world"
+	fsck_verify(n)
+	cleanup(n)
 
