@@ -21,7 +21,7 @@
 /* read() wrapper */
 ssize_t jread(struct jfs *fs, void *buf, size_t count)
 {
-	int rv;
+	ssize_t rv;
 	off_t pos;
 
 	pthread_mutex_lock(&(fs->lock));
@@ -45,7 +45,7 @@ ssize_t jread(struct jfs *fs, void *buf, size_t count)
 /* pread() wrapper */
 ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 {
-	int rv;
+	ssize_t rv;
 
 	plockf(fs->fd, F_LOCKR, offset, count);
 	rv = spread(fs->fd, buf, count, offset);
@@ -82,7 +82,7 @@ ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count)
 /* write() wrapper */
 ssize_t jwrite(struct jfs *fs, const void *buf, size_t count)
 {
-	int rv;
+	ssize_t rv;
 	off_t pos;
 	struct jtrans *ts;
 
@@ -120,7 +120,7 @@ exit:
 /* pwrite() wrapper */
 ssize_t jpwrite(struct jfs *fs, const void *buf, size_t count, off_t offset)
 {
-	int rv;
+	ssize_t rv;
 	struct jtrans *ts;
 
 	ts = jtrans_new(fs, 0);
@@ -142,8 +142,8 @@ exit:
 /* writev() wrapper */
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 {
-	int rv, i;
-	size_t sum;
+	int i;
+	size_t sum, rv;
 	off_t ipos, t;
 	struct jtrans *ts;
 
