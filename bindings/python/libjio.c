@@ -4,6 +4,7 @@
  * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
+#define PY_SSIZE_T_CLEAN 1
 
 #include <Python.h>
 
@@ -162,6 +163,106 @@ static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 	return r;
 }
 
+/* readv */
+PyDoc_STRVAR(jf_readv__doc,
+"readv([buf1, buf2, ...])\n\
+\n\
+Reads the data from the file into the different buffers; returns the\n\
+number of bytes written.\n\
+The buffers must be objects that support slice assignment, like bytearray\n\
+(but *not* str).\n\
+Only available in Python >= 2.6.\n\
+It's a wrapper to jreadv().\n");
+
+/* readv requires the new Py_buffer interface, which is only available in
+ * Python >= 2.6 */
+#if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
+static PyObject *jf_readv(jfile_object *fp, PyObject *args)
+{
+	long rv;
+	PyObject *buffers, *buf;
+	Py_buffer *views = NULL;
+	ssize_t len, pos = 0;
+	struct iovec *iov = NULL;
+
+	if (!PyArg_ParseTuple(args, "O:readv", &buffers))
+		return NULL;
+
+	len = PySequence_Length(buffers);
+	if (len < 0) {
+		PyErr_SetString(PyExc_TypeError, "iterable expected");
+		return NULL;
+	}
+
+	iov = malloc(sizeof(struct iovec) * len);
+	if (iov == NULL)
+		return PyErr_NoMemory();
+
+	views = malloc(sizeof(Py_buffer) * len);
+	if (views == NULL) {
+		free(iov);
+		return PyErr_NoMemory();
+	}
+
+	for (pos = 0; pos < len; pos++) {
+		buf = PySequence_GetItem(buffers, pos);
+		if (buf == NULL)
+			goto error;
+
+		if (!PyObject_CheckBuffer(buf)) {
+			PyErr_SetString(PyExc_TypeError,
+				"object must support the buffer interface");
+			goto error;
+		}
+
+		if (PyObject_GetBuffer(buf, &(views[pos]), PyBUF_CONTIG))
+			goto error;
+
+		iov[pos].iov_base = views[pos].buf;
+		iov[pos].iov_len = views[pos].len;
+	}
+
+	Py_BEGIN_ALLOW_THREADS
+	rv = jreadv(fp->fs, iov, len);
+	Py_END_ALLOW_THREADS
+
+	for (pos = 0; pos < len; pos++) {
+		PyBuffer_Release(&(views[pos]));
+	}
+
+	free(iov);
+	free(views);
+
+	if (rv < 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
+	return PyLong_FromLong(rv);
+
+error:
+	/* We might get here with pos between 0 and len, so we must release
+	 * only what we have already taken */
+	pos--;
+	while (pos >= 0) {
+		PyBuffer_Release(&(views[pos]));
+		pos--;
+	}
+
+	free(iov);
+	free(views);
+	return NULL;
+}
+
+#else
+
+static PyObject *jf_readv(jfile_object *fp, PyObject *args)
+{
+	PyErr_SetString(PyExc_NotImplementedError,
+			"only supported in Python >= 2.6");
+	return NULL;
+}
+
+#endif /* python version >= 2.6 */
+
 /* write */
 PyDoc_STRVAR(jf_write__doc,
 "write(buf)\n\
@@ -210,6 +311,60 @@ static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS
 	rv = jpwrite(fp->fs, buf, len, offset);
 	Py_END_ALLOW_THREADS
+
+	if (rv < 0)
+		return PyErr_SetFromErrno(PyExc_IOError);
+
+	return PyLong_FromLong(rv);
+}
+
+/* writev */
+PyDoc_STRVAR(jf_writev__doc,
+"writev([buf1, buf2, ...])\n\
+\n\
+Writes the data contained in the different buffers to the file, returns the\n\
+number of bytes written.\n\
+The buffers must be strings or string-alike objects, like str or bytes.\n\
+It's a wrapper to jwritev().\n");
+
+static PyObject *jf_writev(jfile_object *fp, PyObject *args)
+{
+	long rv;
+	PyObject *buffers, *buf;
+	ssize_t len, pos;
+	struct iovec *iov;
+
+	if (!PyArg_ParseTuple(args, "O:writev", &buffers))
+		return NULL;
+
+	len = PySequence_Length(buffers);
+	if (len < 0) {
+		PyErr_SetString(PyExc_TypeError, "iterable expected");
+		return NULL;
+	}
+
+	iov = malloc(sizeof(struct iovec) * len);
+	if (iov == NULL)
+		return PyErr_NoMemory();
+
+	for (pos = 0; pos < len; pos++) {
+		buf = PySequence_GetItem(buffers, pos);
+		if (buf == NULL)
+			return NULL;
+
+		iov[pos].iov_len = 0;
+		if (!PyArg_Parse(buf, "s#:writev", &(iov[pos].iov_base),
+				&(iov[pos].iov_len))) {
+			free(iov);
+			return NULL;
+		}
+	}
+
+	Py_BEGIN_ALLOW_THREADS
+	rv = jwritev(fp->fs, iov, len);
+	Py_END_ALLOW_THREADS
+
+	free(iov);
 
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
@@ -415,8 +570,10 @@ static PyMethodDef jfile_methods[] = {
 	{ "fileno", (PyCFunction) jf_fileno, METH_VARARGS, jf_fileno__doc },
 	{ "read", (PyCFunction) jf_read, METH_VARARGS, jf_read__doc },
 	{ "pread", (PyCFunction) jf_pread, METH_VARARGS, jf_pread__doc },
+	{ "readv", (PyCFunction) jf_readv, METH_VARARGS, jf_readv__doc },
 	{ "write", (PyCFunction) jf_write, METH_VARARGS, jf_write__doc },
 	{ "pwrite", (PyCFunction) jf_pwrite, METH_VARARGS, jf_pwrite__doc },
+	{ "writev", (PyCFunction) jf_writev, METH_VARARGS, jf_writev__doc },
 	{ "truncate", (PyCFunction) jf_truncate, METH_VARARGS,
 		jf_truncate__doc },
 	{ "lseek", (PyCFunction) jf_lseek, METH_VARARGS, jf_lseek__doc },
