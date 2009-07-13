@@ -37,6 +37,9 @@ def randfrange(maxend, maxsize):
 	size = random.randint(0, (maxend - 1) - start) % maxsize
 	return start, start + size
 
+def randfloat(min, max):
+	return min + random.random() % (max - min)
+
 class ConsistencyError (Exception):
 	pass
 
@@ -162,11 +165,19 @@ class Stresser:
 		return r
 
 	def fiu_enable(self):
-		if self.use_fi:
-			fiu.enable_random('jio/*', probability = 0.001)
-			fiu.enable_random('linux/*', probability = 0.01)
-			fiu.enable_random('posix/*', probability = 0.01)
-			fiu.enable_random('libc/mm/*', probability = 0.003)
+		if not self.use_fi:
+			return
+
+		# To improve code coverage, we randomize the probability each
+		# time we enable failure points
+		fiu.enable_random('jio/*',
+				probability = randfloat(0.0005, 0.005))
+		fiu.enable_random('linux/*',
+				probability = randfloat(0.005, 0.03))
+		fiu.enable_random('posix/*',
+			probability = randfloat(0.005, 0.03))
+		fiu.enable_random('libc/mm/*',
+			probability = randfloat(0.003, 0.007))
 
 	def fiu_disable(self):
 		if self.use_fi:
