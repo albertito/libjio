@@ -57,19 +57,18 @@ ssize_t jpread(struct jfs *fs, void *buf, size_t count, off_t offset)
 /* readv() wrapper */
 ssize_t jreadv(struct jfs *fs, const struct iovec *vector, int count)
 {
-	int rv, i;
-	size_t sum;
+	ssize_t rv;
 	off_t pos;
-
-	sum = 0;
-	for (i = 0; i < count; i++)
-		sum += vector[i].iov_len;
 
 	pthread_mutex_lock(&(fs->lock));
 	pos = lseek(fs->fd, 0, SEEK_CUR);
+	if (pos < 0)
+		return -1;
+
 	plockf(fs->fd, F_LOCKR, pos, count);
 	rv = readv(fs->fd, vector, count);
 	plockf(fs->fd, F_UNLOCK, pos, count);
+
 	pthread_mutex_unlock(&(fs->lock));
 
 	return rv;
