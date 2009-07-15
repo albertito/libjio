@@ -43,6 +43,16 @@ def randfloat(min, max):
 class ConsistencyError (Exception):
 	pass
 
+def jfsck(fname):
+	try:
+		r = libjio.jfsck(fname)
+		return r
+	except IOError as e:
+		if e.args[0] == libjio.J_ENOJOURNAL:
+			return { 'total': 0 }
+		else:
+			raise
+
 
 #
 # The test itself
@@ -151,14 +161,8 @@ class Stresser:
 
 	def reopen(self):
 		self.jf = None
-		r = { 'total': 0 }
-		try:
-			r = libjio.jfsck(self.fname)
-		except IOError as e:
-			if e.args[0] == libjio.J_ENOJOURNAL:
-				pass
-			else:
-				raise
+		r = jfsck(self.fname)
+
 		self.verify()
 
 		self.jf = libjio.open(self.fname,
@@ -265,7 +269,7 @@ def main():
 	print("  %d operations" % nops)
 	print("  %d simulated failures" % nfailures)
 
-	r = libjio.jfsck(fname)
+	r = jfsck(fname)
 	assert r['total'] == 0
 	print("Final check completed")
 	#os.unlink(fname)
