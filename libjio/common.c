@@ -98,6 +98,49 @@ ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 	return count;
 }
 
+/** Like writev() but either fails, or return a complete write.
+ * Note that, as opposed to writev() it WILL MODIFY iov, in particular the
+ * iov_len fields. */
+ssize_t swritev(int fd, struct iovec *iov, int iovcnt)
+{
+	int i;
+	ssize_t rv, c, t;
+	size_t total;
+
+	total = 0;
+	for (i = 0; i < iovcnt; i++)
+		total += iov[i].iov_len;
+
+	c = 0;
+	while (c < total) {
+		rv = writev(fd, iov, iovcnt);
+
+		if (rv == total)
+			return total;
+		else if (rv < 0)
+			return rv;
+
+		/* incomplete write, advance iov and try again */
+		c += rv;
+		t = 0;
+		for (i = 0; i < iovcnt; i++) {
+			if (t + iov[i].iov_len > rv) {
+				iov[i].iov_base = (unsigned char *)
+					iov[i].iov_base + rv - t;
+				iov[i].iov_len -= rv - t;
+				break;
+			} else {
+				t += iov[i].iov_len;
+			}
+		}
+
+		iovcnt -= i;
+		iov = iov + i;
+	}
+
+	return c;
+}
+
 /** Store in jdir the default journal directory path of the given filename */
 int get_jdir(const char *filename, char *jdir)
 {

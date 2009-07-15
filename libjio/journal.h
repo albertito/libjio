@@ -11,7 +11,6 @@ struct journal_op {
 	int fd;
 	int numops;
 	char *name;
-	off_t curpos;
 	uint32_t csum;
 	struct jfs *fs;
 };

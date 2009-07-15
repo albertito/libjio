@@ -226,6 +226,20 @@ def gen_ret_after(n, notyet, itstime):
 		return itstime
 	return newf
 
+def gen_ret_seq(seq):
+	"""Returns a function that each time it is called returns a value of
+	the given sequence, in order. When the sequence is exhausted, returns
+	the last value."""
+	it = iter(seq)
+	last = [0]
+	def newf(*args, **kwargs):
+		try:
+			r = it.next()
+			last[0] = r
+			return r
+		except StopIteration:
+			return last[0]
+	return newf
 
 def autorun(module, specific_test = None):
 	"Runs all the functions in the given module that begin with 'test'."

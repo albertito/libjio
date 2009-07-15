@@ -65,12 +65,12 @@ def test_f03():
 	cleanup(n)
 
 def test_f04():
-	"fail jio/commit/tf_ophdr"
+	"fail jio/commit/tf_pre_addop"
 	c = gencontent()
 
 	def f1(f, jf):
-		fiu.enable_external("jio/commit/tf_ophdr",
-				gen_ret_after(1, 0, 1))
+		fiu.enable_external("jio/commit/tf_pre_addop",
+				gen_ret_seq((0, 1)))
 		t = jf.new_trans()
 		t.add(c, 0)
 		t.add(c, len(c) + 200)
@@ -78,7 +78,7 @@ def test_f04():
 
 	n = run_with_tmp(f1)
 
-	assert len(content(transpath(n, 1))) == DHS + DOHS + len(c) + DOHS
+	assert len(content(transpath(n, 1))) == DHS + DOHS + len(c)
 	assert content(n) == ''
 	fsck_verify(n, broken = 1)
 	assert content(n) == ''

@@ -27,8 +27,8 @@ def test_c01():
 	n = run_with_tmp(f1)
 	assert content(n) == ''
 	tc = open(transpath(n, 1)).read()
-	# flip just one bit in the middle byte
-	pos = len(tc) / 2
+	# flip just one bit in the transaction data
+	pos = DHS + DOHS + len(c) / 2
 	tc = tc[:pos] + \
 		chr((ord(tc[pos]) & 0xFE) | (~ ord(tc[pos]) & 0x1) & 0xFF) + \
 		tc[pos + 1:]

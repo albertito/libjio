@@ -212,6 +212,7 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 	char *name = NULL;
 	struct journal_op *jop;
 	struct on_disk_hdr hdr;
+	struct iovec iov[1];
 
 	jop = malloc(sizeof(struct journal_op));
 	if (jop == NULL)
@@ -235,7 +236,6 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 	jop->fd = fd;
 	jop->numops = 0;
 	jop->name = name;
-	jop->curpos = 0;
 	jop->csum = 0;
 	jop->fs = fs;
 
@@ -248,13 +248,14 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 	hdr.ver = 1;
 	hdr.trans_id = id;
 	hdr.flags = flags;
-
 	hdr_hton(&hdr);
-	rv = spwrite(fd, &hdr, sizeof(hdr), 0);
+
+	iov[0].iov_base = (unsigned char *) &hdr;
+	iov[0].iov_len = sizeof(hdr);
+	rv = swritev(fd, iov, 1);
 	if (rv != sizeof(hdr))
 		goto unlink_error;
 
-	jop->curpos = sizeof(hdr);
 	jop->csum = checksum_buf(jop->csum, (unsigned char *) &hdr,
 			sizeof(hdr));
 
@@ -280,29 +281,28 @@ int journal_add_op(struct journal_op *jop, unsigned char *buf, size_t len,
 {
 	ssize_t rv;
 	struct on_disk_ophdr ophdr;
+	struct iovec iov[2];
 
-	/* save the operation's header, */
 	ophdr.len = len;
 	ophdr.offset = offset;
-
 	ophdr_hton(&ophdr);
-	rv = spwrite(jop->fd, &ophdr, sizeof(ophdr), jop->curpos);
-	if (rv != sizeof(ophdr))
-		goto error;
 
-	fiu_exit_on("jio/commit/tf_ophdr");
-
-	jop->curpos += sizeof(ophdr);
+	iov[0].iov_base = (unsigned char *) &ophdr;
+	iov[0].iov_len = sizeof(ophdr);
 	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
 			sizeof(ophdr));
 
-	/* and save it to the disk */
-	rv = spwrite(jop->fd, buf, len, jop->curpos);
-	if (rv != len)
+	iov[1].iov_base = buf;
+	iov[1].iov_len = len;
+	jop->csum = checksum_buf(jop->csum, buf, len);
+
+	fiu_exit_on("jio/commit/tf_pre_addop");
+
+	rv = swritev(jop->fd, iov, 2);
+	if (rv != sizeof(ophdr) + len)
 		goto error;
 
-	jop->curpos += len;
-	jop->csum = checksum_buf(jop->csum, buf, len);
+	fiu_exit_on("jio/commit/tf_addop");
 
 	jop->numops++;
 
@@ -327,27 +327,26 @@ int journal_commit(struct journal_op *jop)
 	ssize_t rv;
 	struct on_disk_ophdr ophdr;
 	struct on_disk_trailer trailer;
+	struct iovec iov[2];
 
 	/* write the empty ophdr to mark there are no more operations, and
 	 * then the trailer */
 	ophdr.len = 0;
 	ophdr.offset = 0;
-
 	ophdr_hton(&ophdr);
-	rv = spwrite(jop->fd, &ophdr, sizeof(ophdr), jop->curpos);
-	if (rv != sizeof(ophdr))
-		goto error;
-
-	jop->curpos += sizeof(ophdr);
+	iov[0].iov_base = (unsigned char *) &ophdr;
+	iov[0].iov_len = sizeof(ophdr);
 	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
 			sizeof(ophdr));
 
 	trailer.checksum = jop->csum;
 	trailer.numops = jop->numops;
-
 	trailer_hton(&trailer);
-	rv = spwrite(jop->fd, &trailer, sizeof(trailer), jop->curpos);
-	if (rv != sizeof(trailer))
+	iov[1].iov_base = (unsigned char *) &trailer;
+	iov[1].iov_len = sizeof(trailer);
+
+	rv = swritev(jop->fd, iov, 2);
+	if (rv != sizeof(ophdr) + sizeof(trailer))
 		goto error;
 
 	/* this is a simple but efficient optimization: instead of doing
@@ -381,10 +380,9 @@ int journal_free(struct journal_op *jop)
 		/* we do not want to leave a possibly complete transaction
 		 * file around when the transaction was not commited and the
 		 * unlink failed, so we attempt to truncate it, and if that
-		 * fails we corrupt the checksum as a last resort */
+		 * fails we corrupt the header as a last resort */
 		if (ftruncate(jop->fd, 0) != 0) {
-			if (pwrite(jop->fd, "\0\0\0\0", 4, jop->curpos - 4)
-					!= 4)
+			if (pwrite(jop->fd, "\0\0\0\0", 4, 0) != 4)
 				goto exit;
 			if (fdatasync(jop->fd) != 0)
 				goto exit;
