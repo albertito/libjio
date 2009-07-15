@@ -52,7 +52,7 @@ off_t plockf(int fd, int cmd, off_t offset, off_t len)
  * less than count it's because EOF was reached */
 ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 {
-	int rv, c;
+	ssize_t rv, c;
 
 	c = 0;
 
@@ -79,7 +79,7 @@ ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 /** Like spread() but for pwrite() */
 ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 {
-	int rv, c;
+	ssize_t rv, c;
 
 	c = 0;
 
