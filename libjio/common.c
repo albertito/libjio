@@ -87,10 +87,8 @@ ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 		rv = pwrite(fd, (char *) buf + c, count - c, offset + c);
 
 		if (rv == count)
-			/* we're done */
 			return count;
-		else if (rv <= 0)
-			/* error/nothing was written */
+		else if (rv < 0)
 			return rv;
 
 		/* incomplete write, keep on writing */
