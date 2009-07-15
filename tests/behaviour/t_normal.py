@@ -347,3 +347,19 @@ def test_n21():
 	fsck_verify(n)
 	cleanup(n)
 
+def test_n22():
+	"jpread/jpwrite ~2mb"
+	c = gencontent(2 * 1024 * 1024 + 1465)
+
+	f, jf = bitmp(jflags = libjio.J_LINGER)
+	n = f.name
+
+	jf.pwrite(c, 2000)
+	assert content(n) == '\0' * 2000 + c
+	assert jf.pread(len(c), 2000) == c
+	del jf
+
+	fsck_verify(n)
+	cleanup(n)
+
+
