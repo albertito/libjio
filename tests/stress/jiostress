@@ -53,6 +53,21 @@ def jfsck(fname):
 		else:
 			raise
 
+def comp_cont(bytes):
+	"'aaaabbcc' -> [ ('a', 4), ('b', 2), ('c', 2) ]"
+	l = []
+	prev = bytes[0]
+	c = 1
+	for b in bytes[1:]:
+		if (b == prev):
+			c += 1
+			continue
+
+		l.append((prev, c))
+		prev = b
+		c = 1
+	return l
+
 
 #
 # The test itself
@@ -166,6 +181,12 @@ class Stresser:
 		real_data = self.pread(self.current_range[0],
 				self.current_range[1])
 		if real_data not in (self.prev_data, self.new_data):
+			print('Corruption detected')
+			print('Range:', self.current_range)
+			print('Real:', comp_cont(real_data))
+			print('Prev:', comp_cont(self.prev_data))
+			print('New: ', comp_cont(self.new_data))
+			print()
 			raise ConsistencyError
 
 	def reopen(self):
