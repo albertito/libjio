@@ -38,6 +38,7 @@ def tmppath():
 
 def run_forked(f, *args, **kwargs):
 	"""Runs the function in a different process."""
+	sys.stdout.flush()
 	pid = os.fork()
 	if pid == 0:
 		# child

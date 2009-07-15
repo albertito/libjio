@@ -106,6 +106,7 @@ class Stresser:
 	def randwrite_fork(self):
 		# do the prep before the fork so we can verify() afterwards
 		nd, start = self.prep_randwrite()
+		sys.stdout.flush()
 		pid = os.fork()
 		if pid == 0:
 			# child
