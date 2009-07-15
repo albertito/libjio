@@ -90,8 +90,17 @@ class Stresser:
 	def pread(self, start, end):
 		ppos = self.f.tell()
 		self.f.seek(start, 0)
-		r = self.f.read(end - start)
+		r = bytes()
+		c = 0
+		total = end - start
+		while c < total:
+			n = self.f.read(total - c)
+			if (n == ''):
+				break
+			c += len(n)
+			r += n
 		self.f.seek(ppos, 0)
+		assert c == end - start
 		return r
 
 	def prep_randwrite(self):
