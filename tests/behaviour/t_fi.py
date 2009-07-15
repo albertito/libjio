@@ -90,7 +90,7 @@ def test_f05():
 
 	def f1(f, jf):
 		fiu.enable_external("jio/commit/tf_opdata",
-				gen_ret_after(1, 0, 1))
+				gen_ret_seq((0, 1)))
 		t = jf.new_trans()
 		t.add(c, 0)
 		t.add(c, len(c) + 200)

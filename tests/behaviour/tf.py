@@ -215,17 +215,6 @@ class TransFile (object):
 					self.ops)
 
 
-def gen_ret_after(n, notyet, itstime):
-	"""Returns a function that returns value of notyet the first n
-	invocations, and itstime afterwards."""
-	holder = [n]
-	def newf(*args, **kwargs):
-		holder[0] -= 1
-		if holder[0] >= 0:
-			return notyet
-		return itstime
-	return newf
-
 def gen_ret_seq(seq):
 	"""Returns a function that each time it is called returns a value of
 	the given sequence, in order. When the sequence is exhausted, returns
