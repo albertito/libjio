@@ -241,7 +241,6 @@ class Stresser:
 			if not r:
 				nfailures += 1
 				r = self.reopen()
-				assert r['total'] <= 2
 			self.verify()
 		sys.stdout.write("\n")
 		sys.stdout.flush()
@@ -300,7 +299,6 @@ def main():
 	print("  %d simulated failures" % nfailures)
 
 	r = jfsck(fname)
-	assert r['total'] == 0
 	print("Final check completed")
 	#os.unlink(fname)
 
