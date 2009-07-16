@@ -334,7 +334,11 @@ unlink_exit:
 	 * will be marked as J_COMMITTED to indicate that the data was
 	 * effectively written to disk. */
 	if (jop) {
-		r = journal_free(jop);
+		/* Note we only unlink if we've written down the real data, or
+		 * at least rolled it back properly */
+		int data_is_safe = (ts->flags & J_COMMITTED) ||
+			(ts->flags & J_ROLLBACKED);
+		r = journal_free(jop, data_is_safe ? 1 : 0);
 		if (r != 0)
 			retval = -2;
 
@@ -580,7 +584,7 @@ int jsync(struct jfs *fs)
 	pthread_mutex_lock(&(fs->ltlock));
 	while (fs->ltrans != NULL) {
 		fiu_exit_on("jio/jsync/pre_unlink");
-		journal_free(fs->ltrans->jop);
+		journal_free(fs->ltrans->jop, 1);
 
 		ltmp = fs->ltrans->next;
 		free(fs->ltrans);

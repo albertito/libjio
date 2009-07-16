@@ -370,9 +370,14 @@ error:
 /** Free a journal operation.
  * NOTE: It can't assume the save completed successfuly, so we can call it
  * when journal_save() fails.  */
-int journal_free(struct journal_op *jop)
+int journal_free(struct journal_op *jop, int do_unlink)
 {
 	int rv;
+
+	if (!do_unlink) {
+		rv = 0;
+		goto exit;
+	}
 
 	rv = -1;
 
