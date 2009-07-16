@@ -47,7 +47,8 @@ static int jfsck_cleanup(const char *name, const char *jdir)
 	else if (dir == NULL)
 		return -1;
 
-	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+	for (errno = 0, dent = readdir(dir); dent != NULL;
+			errno = 0, dent = readdir(dir)) {
 		/* we only care about transactions (named as numbers > 0) and
 		 * the lockfile (named "lock"); ignore everything else */
 		if (strcmp(dent->d_name, "lock") && atoi(dent->d_name) <= 0)
@@ -69,6 +70,12 @@ static int jfsck_cleanup(const char *name, const char *jdir)
 			return -1;
 		}
 	}
+
+	if (errno) {
+		closedir(dir);
+		return -1;
+	}
+
 	if (closedir(dir) != 0)
 		return -1;
 
@@ -191,7 +198,8 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 	/* find the greatest transaction number by looking into the journal
 	 * directory */
 	maxtid = 0;
-	for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+	for (errno = 0, dent = readdir(dir); dent != NULL;
+			errno = 0, dent = readdir(dir)) {
 		/* see if the file is named like a transaction, ignore
 		 * otherwise; as transactions are named as numbers > 0, a
 		 * simple atoi() is enough testing */
@@ -200,6 +208,10 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 			continue;
 		if (rv > maxtid)
 			maxtid = rv;
+	}
+	if (errno) {
+		ret = J_EIO;
+		goto exit;
 	}
 
 	/* rewrite the lockfile, writing the new maxtid on it, so that when we
