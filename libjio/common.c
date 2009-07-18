@@ -52,17 +52,15 @@ off_t plockf(int fd, int cmd, off_t offset, off_t len)
  * less than count it's because EOF was reached */
 ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 {
-	ssize_t rv, c;
+	ssize_t rv;
+	size_t c;
 
 	c = 0;
 
 	while (c < count) {
 		rv = pread(fd, (char *) buf + c, count - c, offset + c);
 
-		if (rv == count)
-			/* we're done */
-			return count;
-		else if (rv < 0)
+		if (rv < 0)
 			/* error */
 			return rv;
 		else if (rv == 0)
@@ -79,16 +77,15 @@ ssize_t spread(int fd, void *buf, size_t count, off_t offset)
 /** Like spread() but for pwrite() */
 ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 {
-	ssize_t rv, c;
+	ssize_t rv;
+	size_t c;
 
 	c = 0;
 
 	while (c < count) {
 		rv = pwrite(fd, (char *) buf + c, count - c, offset + c);
 
-		if (rv == count)
-			return count;
-		else if (rv < 0)
+		if (rv < 0)
 			return rv;
 
 		/* incomplete write, keep on writing */
@@ -104,8 +101,8 @@ ssize_t spwrite(int fd, const void *buf, size_t count, off_t offset)
 ssize_t swritev(int fd, struct iovec *iov, int iovcnt)
 {
 	int i;
-	ssize_t rv, c, t;
-	size_t total;
+	ssize_t rv;
+	size_t c, t, total;
 
 	total = 0;
 	for (i = 0; i < iovcnt; i++)
@@ -115,13 +112,17 @@ ssize_t swritev(int fd, struct iovec *iov, int iovcnt)
 	while (c < total) {
 		rv = writev(fd, iov, iovcnt);
 
-		if (rv == total)
-			return total;
-		else if (rv < 0)
+		if (rv < 0)
 			return rv;
 
-		/* incomplete write, advance iov and try again */
 		c += rv;
+
+		/* avoid going into the complex calculations for the common
+		 * case of writev() doing a complete write */
+		if (c == total)
+			break;
+
+		/* incomplete write, advance iov and try again */
 		t = 0;
 		for (i = 0; i < iovcnt; i++) {
 			if (t + iov[i].iov_len > rv) {

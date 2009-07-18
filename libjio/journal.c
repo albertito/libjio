@@ -419,7 +419,8 @@ exit:
  */
 int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 {
-	int rv, numops;
+	int rv;
+	unsigned int numops;
 	unsigned char *p;
 	struct operation *op, *tmp;
 	struct on_disk_hdr hdr;

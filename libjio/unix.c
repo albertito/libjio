@@ -143,7 +143,8 @@ exit:
 ssize_t jwritev(struct jfs *fs, const struct iovec *vector, int count)
 {
 	int i;
-	size_t sum, rv;
+	size_t sum;
+	ssize_t rv;
 	off_t ipos, t;
 	struct jtrans *ts;
 
