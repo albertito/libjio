@@ -198,6 +198,33 @@ static int fsync_dir(int fd)
 	return rv;
 }
 
+/** Corrupt a journal file. Used as a last resource to prevent an applied
+ * transaction file laying around */
+static int corrupt_journal_file(struct journal_op *jop)
+{
+	off_t pos;
+	struct on_disk_trailer trailer;
+
+	/* We set the number of operations to 0, and the checksum to
+	 * 0xffffffff, so there is no chance it's considered valid after a new
+	 * transaction overwrites this one */
+	trailer.numops = 0;
+	trailer.checksum = 0xffffffff;
+
+	pos = lseek(jop->fd, 0, SEEK_END);
+	if (pos == (off_t) -1)
+		return -1;
+
+	if (pwrite(jop->fd, (unsigned char *) &trailer, sizeof(trailer), pos)
+			!= sizeof(trailer))
+		return -1;
+
+	if (fdatasync(jop->fd) != 0)
+		return -1;
+
+	return 0;
+}
+
 
 /*
  * Journal functions
@@ -385,11 +412,9 @@ int journal_free(struct journal_op *jop, int do_unlink)
 		/* we do not want to leave a possibly complete transaction
 		 * file around when the transaction was not commited and the
 		 * unlink failed, so we attempt to truncate it, and if that
-		 * fails we corrupt the header as a last resort */
+		 * fails we corrupt it as a last resort. */
 		if (ftruncate(jop->fd, 0) != 0) {
-			if (pwrite(jop->fd, "\0\0\0\0", 4, 0) != 4)
-				goto exit;
-			if (fdatasync(jop->fd) != 0)
+			if (corrupt_journal_file(jop) != 0)
 				goto exit;
 		}
 	}
@@ -410,7 +435,6 @@ exit:
 
 	return rv;
 }
-
 
 /** Fill a transaction structure from a mmapped transaction file. Useful for
  * checking purposes.
