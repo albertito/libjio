@@ -9,6 +9,7 @@ ALL_CFLAGS = $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 
 
 PREFIX = /usr/local
+INSTALL = install
 
 ifneq ($(V), 1)
         NICE_CC = @echo "  CC  $@"; $(CC)
@@ -29,8 +30,8 @@ preload: libjio_preload.o
 	$(NICE_CC) $(ALL_CFLAGS) -c $< -o $@
 
 install: preload
-	install -d $(PREFIX)/lib
-	install -m 0755 libjio_preload.so $(PREFIX)/lib
+	$(INSTALL) -d $(PREFIX)/lib
+	$(INSTALL) -m 0755 libjio_preload.so $(PREFIX)/lib
 
 clean:
 	rm -f libjio_preload.o libjio_preload.so

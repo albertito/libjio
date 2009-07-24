@@ -14,7 +14,8 @@ After installing, you need to run "ldconfig" in order to update your dynamic
 library cache.
 
 If the default "make" is not GNU make (like in BSD systems), use "gmake"
-instead.
+instead. If the default "install" is not GNU/BSD compatible (like in Solaris
+systems), use "gmake INSTALL=ginstall".
 
 
 Special builds

@@ -34,6 +34,9 @@ endif
 PREFIX = /usr/local
 
 
+# install utility, we assume it's GNU/BSD compatible
+INSTALL=install
+
 ifneq ($(V), 1)
         NICE_CC = @echo "  CC  $@"; $(CC)
         NICE_AR = @echo "  AR  $@"; $(AR)
@@ -69,17 +72,17 @@ jiofsck: jiofsck.o libjio.a
 	$(NICE_CC) $(ALL_LDFLAGS) jiofsck.o libjio.a $(LIBS) -o jiofsck
 
 install: all
-	install -d $(PREFIX)/lib
-	install -m 0755 libjio.so $(PREFIX)/lib
-	install -m 0644 libjio.a $(PREFIX)/lib
-	install -d $(PREFIX)/include
-	install -m 0644 libjio.h $(PREFIX)/include
-	install -d $(PREFIX)/lib/pkgconfig
-	install -m 644 libjio.pc $(PREFIX)/lib/pkgconfig
-	install -d $(PREFIX)/bin
-	install -m 0775 jiofsck $(PREFIX)/bin
-	install -d $(PREFIX)/man/man3
-	install -m 0644 libjio.3 $(PREFIX)/man/man3/
+	$(INSTALL) -d $(PREFIX)/lib
+	$(INSTALL) -m 0755 libjio.so $(PREFIX)/lib
+	$(INSTALL) -m 0644 libjio.a $(PREFIX)/lib
+	$(INSTALL) -d $(PREFIX)/include
+	$(INSTALL) -m 0644 libjio.h $(PREFIX)/include
+	$(INSTALL) -d $(PREFIX)/lib/pkgconfig
+	$(INSTALL) -m 644 libjio.pc $(PREFIX)/lib/pkgconfig
+	$(INSTALL) -d $(PREFIX)/bin
+	$(INSTALL) -m 0775 jiofsck $(PREFIX)/bin
+	$(INSTALL) -d $(PREFIX)/man/man3
+	$(INSTALL) -m 0644 libjio.3 $(PREFIX)/man/man3/
 	@echo
 	@echo "Please run ldconfig to update your library cache"
 	@echo
