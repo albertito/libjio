@@ -33,6 +33,8 @@ endif
 # prefix for installing the binaries
 PREFIX = /usr/local
 
+# prefix for eventual location of binaries
+DESTDIR=$(PREFIX)
 
 # install utility, we assume it's GNU/BSD compatible
 INSTALL=install
@@ -64,7 +66,7 @@ libjio.a: $(OBJS)
 libjio.pc: libjio.skel.pc
 	@echo "generating libjio.pc"
 	@cat libjio.skel.pc | \
-		sed 's@++PREFIX++@$(PREFIX)@g' | \
+		sed 's@++PREFIX++@$(DESTDIR)@g' | \
 		sed 's@++CFLAGS++@$(MANDATORY_CFLAGS)@g' \
 		> libjio.pc
 
