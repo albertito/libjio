@@ -92,8 +92,8 @@ install: all
 	$(INSTALL) -m 644 libjio.pc $(PREFIX)/lib/pkgconfig
 	$(INSTALL) -d $(PREFIX)/bin
 	$(INSTALL) -m 0775 jiofsck $(PREFIX)/bin
-	$(INSTALL) -d $(PREFIX)/man/man3
-	$(INSTALL) -m 0644 libjio.3 $(PREFIX)/man/man3/
+	$(INSTALL) -d $(PREFIX)/share/man/man3
+	$(INSTALL) -m 0644 libjio.3 $(PREFIX)/share/man/man3/
 	@echo
 	@echo "Please run ldconfig to update your library cache"
 	@echo
