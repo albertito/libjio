@@ -48,6 +48,10 @@ else
 endif
 
 
+LIB_VER=0.51
+LIB_SO_VER=0
+
+
 # objects to build
 OBJS = autosync.o checksum.o common.o compat.o trans.o check.o journal.o \
        unix.o ansi.o
@@ -58,7 +62,10 @@ default: all
 all: libjio.so libjio.a libjio.pc jiofsck
 
 libjio.so: $(OBJS)
-	$(NICE_CC) -shared $(ALL_LDFLAGS) $(LIBS) $(OBJS) -o libjio.so
+	$(NICE_CC) -shared $(ALL_LDFLAGS) \
+		-Wl,-soname,libjio.so.$(LIB_SO_VER) \
+		$(LIBS) $(OBJS) -o libjio.so.$(LIB_VER)
+	ln -fs libjio.so.$(LIB_VER) libjio.so
 
 libjio.a: $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
@@ -75,7 +82,9 @@ jiofsck: jiofsck.o libjio.a
 
 install: all
 	$(INSTALL) -d $(PREFIX)/lib
-	$(INSTALL) -m 0755 libjio.so $(PREFIX)/lib
+	$(INSTALL) -m 0755 libjio.so.$(LIB_VER) $(PREFIX)/lib
+	ln -fs libjio.so.$(LIB_VER) $(PREFIX)/lib/libjio.so
+	ln -fs libjio.so.$(LIB_VER) $(PREFIX)/lib/libjio.so.$(LIB_SO_VER)
 	$(INSTALL) -m 0644 libjio.a $(PREFIX)/lib
 	$(INSTALL) -d $(PREFIX)/include
 	$(INSTALL) -m 0644 libjio.h $(PREFIX)/include
@@ -96,7 +105,8 @@ doxygen:
 	$(MAKE) -C doxygen
 
 clean:
-	rm -f $(OBJS) libjio.a libjio.so libjio.pc jiofsck.o jiofsck
+	rm -f libjio.a libjio.so libjio.so.$(LIB_VER) libjio.pc
+	rm -f $(OBJS) jiofsck.o jiofsck
 	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
 	$(MAKE) -C doxygen $@
 
