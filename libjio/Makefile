@@ -61,23 +61,23 @@ default: all
 
 all: libjio.so libjio.a libjio.pc jiofsck
 
-libjio.so: $(OBJS)
+libjio.so: build-flags $(OBJS)
 	$(NICE_CC) -shared $(ALL_LDFLAGS) \
 		-Wl,-soname,libjio.so.$(LIB_SO_VER) \
 		$(LIBS) $(OBJS) -o libjio.so.$(LIB_VER)
 	ln -fs libjio.so.$(LIB_VER) libjio.so
 
-libjio.a: $(OBJS)
+libjio.a: build-flags $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
 
-libjio.pc: libjio.skel.pc
+libjio.pc: build-flags libjio.skel.pc
 	@echo "generating libjio.pc"
 	@cat libjio.skel.pc | \
 		sed 's@++PREFIX++@$(DESTDIR)@g' | \
 		sed 's@++CFLAGS++@$(MANDATORY_CFLAGS)@g' \
 		> libjio.pc
 
-jiofsck: jiofsck.o libjio.a
+jiofsck: build-flags jiofsck.o libjio.a
 	$(NICE_CC) $(ALL_LDFLAGS) jiofsck.o libjio.a $(LIBS) -o jiofsck
 
 install: all
@@ -98,6 +98,17 @@ install: all
 	@echo "Please run ldconfig to update your library cache"
 	@echo
 
+BF = $(ALL_CFLAGS) ~ $(PREFIX)
+build-flags: .force-build-flags
+	@if [ x"$(BF)" != x"`cat build-flags 2>/dev/null`" ]; then \
+		if [ -f build-flags ]; then \
+			echo "build flags changed, rebuilding"; \
+		fi; \
+		echo "$(BF)" > build-flags; \
+	fi
+
+$(OBJS): build-flags
+
 .c.o:
 	$(NICE_CC) $(ALL_CFLAGS) -c $< -o $@
 
@@ -107,9 +118,9 @@ doxygen:
 clean:
 	rm -f libjio.a libjio.so libjio.so.$(LIB_VER) libjio.pc
 	rm -f $(OBJS) jiofsck.o jiofsck
-	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out
+	rm -f *.bb *.bbg *.da *.gcov *.gcno *.gcda gmon.out build-flags
 	$(MAKE) -C doxygen $@
 
 
-.PHONY: default all install clean doxygen
+.PHONY: default all install clean doxygen .force-build-flags
 

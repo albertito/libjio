@@ -15,4 +15,5 @@ tests/performance/random
 *.pyo
 libjio/doxygen/doc.internal
 libjio/doxygen/doc.public
+libjio/build-flags
 
