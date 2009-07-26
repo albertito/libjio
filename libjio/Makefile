@@ -70,9 +70,9 @@ libjio.so: build-flags $(OBJS)
 libjio.a: build-flags $(OBJS)
 	$(NICE_AR) cr libjio.a $(OBJS)
 
-libjio.pc: build-flags libjio.skel.pc
+libjio.pc: build-flags libjio.pc.in
 	@echo "generating libjio.pc"
-	@cat libjio.skel.pc | \
+	@cat libjio.pc.in | \
 		sed 's@++PREFIX++@$(DESTDIR)@g' | \
 		sed 's@++CFLAGS++@$(MANDATORY_CFLAGS)@g' \
 		> libjio.pc
