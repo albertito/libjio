@@ -10,14 +10,23 @@ default: all
 
 all: public internal
 
-public:
+# $(LIB_VER) must be defined externally if we want the generated docs to
+# specify a version number. Usually, this Makefile will be invoked by
+# libjio's, which has that variable properly defined.
+Doxyfile.base: Doxyfile.base.in
+	@echo "generating Doxyfile.base"
+	@cat Doxyfile.base.in | \
+		sed 's@++VERSION++@$(LIB_VER)@g' \
+		> Doxyfile.base
+
+public: Doxyfile.base
 	$(NICE_DOXYGEN) Doxyfile.public
 
-internal:
+internal: Doxyfile.base
 	$(NICE_DOXYGEN) Doxyfile.internal
 
 clean:
-	rm -rf doc.internal doc.public
+	rm -rf doc.internal doc.public Doxyfile.base
 
 
 .PHONY: all clean default doxygen internal public

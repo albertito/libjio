@@ -74,6 +74,7 @@ libjio.pc: build-flags libjio.pc.in
 	@echo "generating libjio.pc"
 	@cat libjio.pc.in | \
 		sed 's@++PREFIX++@$(DESTDIR)@g' | \
+		sed 's@++VERSION++@$(LIB_VER)@g' | \
 		sed 's@++CFLAGS++@$(MANDATORY_CFLAGS)@g' \
 		> libjio.pc
 
@@ -113,7 +114,7 @@ $(OBJS): build-flags
 	$(NICE_CC) $(ALL_CFLAGS) -c $< -o $@
 
 doxygen:
-	$(MAKE) -C doxygen
+	$(MAKE) LIB_VER=$(LIB_VER) -C doxygen
 
 clean:
 	rm -f libjio.a libjio.so libjio.so.$(LIB_VER) libjio.pc
