@@ -225,6 +225,31 @@ static int corrupt_journal_file(struct journal_op *jop)
 	return 0;
 }
 
+/** Mark the journal as broken. To do so, we just create a file named "broken"
+ * inside the journal directory. Used internally to mark severe journal errors
+ * that should prevent further journal use to avoid potential corruption, like
+ * failures to remove transaction files. The mark is removed by jfsck(). */
+static int mark_broken(struct jfs *fs)
+{
+	char broken_path[PATH_MAX];
+	int fd;
+
+	snprintf(broken_path, PATH_MAX, "%s/broken", fs->jdir);
+	fd = creat(broken_path, 0600);
+	close(fd);
+
+	return fd >= 0;
+}
+
+/** Check if the journal is broken */
+static int is_broken(struct jfs *fs)
+{
+	char broken_path[PATH_MAX];
+
+	snprintf(broken_path, PATH_MAX, "%s/broken", fs->jdir);
+	return access(broken_path, F_OK) == 0;
+}
+
 
 /*
  * Journal functions
@@ -237,9 +262,12 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 	int fd, id;
 	ssize_t rv;
 	char *name = NULL;
-	struct journal_op *jop;
+	struct journal_op *jop = NULL;
 	struct on_disk_hdr hdr;
 	struct iovec iov[1];
+
+	if (is_broken(fs))
+		goto error;
 
 	jop = malloc(sizeof(struct journal_op));
 	if (jop == NULL)
@@ -414,13 +442,17 @@ int journal_free(struct journal_op *jop, int do_unlink)
 		 * unlink failed, so we attempt to truncate it, and if that
 		 * fails we corrupt it as a last resort. */
 		if (ftruncate(jop->fd, 0) != 0) {
-			if (corrupt_journal_file(jop) != 0)
+			if (corrupt_journal_file(jop) != 0) {
+				mark_broken(jop->fs);
 				goto exit;
+			}
 		}
 	}
 
-	if (fsync_dir(jop->fs->jdirfd) != 0)
+	if (fsync_dir(jop->fs->jdirfd) != 0) {
+		mark_broken(jop->fs);
 		goto exit;
+	}
 
 	fiu_exit_on("jio/commit/pre_ok_free_tid");
 	free_tid(jop->fs, jop->id);

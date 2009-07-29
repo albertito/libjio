@@ -145,3 +145,33 @@ def test_c07():
 	assert content(n) == ''
 	cleanup(n)
 
+def test_c08():
+	"broken journal"
+	c = gencontent()
+
+	f, jf = bitmp(jflags = 0)
+	n = f.name
+
+	def f1(f, jf):
+		fiu.enable("jio/commit/tf_sync")
+		jf.write(c)
+
+	run_forked(f1, f, jf)
+
+	assert content(n) == ''
+	open(jiodir(n) + '/broken', 'w+')
+
+	def f2(f, jf):
+		try:
+			jf.pwrite(c, 200)
+		except IOError:
+			return
+		raise RuntimeError
+
+	run_forked(f2, f, jf)
+
+	fsck_verify(n, reapplied = 1)
+	assert content(n) == c
+	assert not os.path.exists(jiodir(n) + '/broken')
+	cleanup(n)
+

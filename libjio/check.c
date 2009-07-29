@@ -91,7 +91,7 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 {
 	int tfd, rv, i, ret;
 	unsigned int maxtid;
-	char jlockfile[PATH_MAX], tname[PATH_MAX];
+	char jlockfile[PATH_MAX], tname[PATH_MAX], brokenname[PATH_MAX];
 	struct stat sinfo;
 	struct jfs fs;
 	struct jtrans *curts;
@@ -222,6 +222,19 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		goto exit;
 	}
 
+	/* remove the broken mark so we can call jtrans_commit() */
+	snprintf(brokenname, PATH_MAX, "%s/broken", fs.jdir);
+	rv = access(brokenname, F_OK);
+	if (rv == 0) {
+		if (unlink(brokenname) != 0) {
+			ret = J_EIO;
+			goto exit;
+		}
+	} else if (errno != ENOENT) {
+		ret = J_EIO;
+		goto exit;
+	}
+
 	/* verify (and possibly fix) all the transactions */
 	for (i = 1; i <= maxtid; i++) {
 		curts = jtrans_new(&fs, 0);
@@ -337,6 +350,5 @@ exit:
 		munmap(fs.jmap, sizeof(unsigned int));
 
 	return ret;
-
 }
 
