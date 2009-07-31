@@ -564,6 +564,8 @@ struct jfs *jopen(const char *name, int flags, int mode, unsigned int jflags)
 	if (jfd < 0)
 		goto error_exit;
 
+	fs->jfd = jfd;
+
 	/* initialize the lock file by writing the first tid to it, but only
 	 * if its empty, otherwise there is a race if two processes call
 	 * jopen() simultaneously and both initialize the file */
@@ -573,13 +575,10 @@ struct jfs *jopen(const char *name, int flags, int mode, unsigned int jflags)
 		t = 0;
 		rv = spwrite(jfd, &t, sizeof(t), 0);
 		if (rv != sizeof(t)) {
-			plockf(jfd, F_UNLOCK, 0, 0);
 			goto error_exit;
 		}
 	}
 	plockf(jfd, F_UNLOCK, 0, 0);
-
-	fs->jfd = jfd;
 
 	fs->jmap = (unsigned int *) mmap(NULL, sizeof(unsigned int),
 			PROT_READ | PROT_WRITE, MAP_SHARED, jfd, 0);
