@@ -269,17 +269,30 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	fiu_exit_on("jio/commit/wrote_all_ops");
 
 	if (ts->flags & J_LINGER) {
+		struct jlinger *lp;
+
 		linger = malloc(sizeof(struct jlinger));
 		if (linger == NULL)
 			goto rollback_exit;
 
 		linger->jop = jop;
+		linger->next = NULL;
 
 		pthread_mutex_lock(&(ts->fs->ltlock));
-		linger->next = ts->fs->ltrans;
-		ts->fs->ltrans = linger;
+
+		/* add it to the end of the list so they're in order */
+		if (ts->fs->ltrans == NULL) {
+			ts->fs->ltrans = linger;
+		} else {
+			lp = ts->fs->ltrans;
+			while (lp->next != NULL)
+				lp = lp->next;
+			lp->next = linger;
+		}
+
 		ts->fs->ltrans_len += written;
 		autosync_check(ts->fs);
+
 		pthread_mutex_unlock(&(ts->fs->ltlock));
 
 		/* Leave the journal_free() up to jsync() */
@@ -581,10 +594,16 @@ int jsync(struct jfs *fs)
 	if (rv != 0)
 		return rv;
 
+	/* note the jops will be in order, so if we crash or fail in the
+	 * middle of this, there will be no problem applying the remaining
+	 * transactions */
 	pthread_mutex_lock(&(fs->ltlock));
 	while (fs->ltrans != NULL) {
 		fiu_exit_on("jio/jsync/pre_unlink");
-		journal_free(fs->ltrans->jop, 1);
+		if (journal_free(fs->ltrans->jop, 1) != 0) {
+			pthread_mutex_unlock(&(fs->ltlock));
+			return -1;
+		}
 
 		ltmp = fs->ltrans->next;
 		free(fs->ltrans);
