@@ -75,6 +75,37 @@ void jtrans_free(struct jtrans *ts)
 	free(ts);
 }
 
+/** Lock/unlock the ranges of the file covered by the transaction. mode must
+ * be either F_LOCKW or F_UNLOCK. Returns 0 on success, -1 on error. */
+static int lock_file_ranges(struct jtrans *ts, int mode)
+{
+	off_t lr;
+	struct operation *op;
+
+	if (ts->flags & J_NOLOCK)
+		return 0;
+
+	for (op = ts->op; op != NULL; op = op->next) {
+		if (mode == F_LOCKW) {
+			lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
+			if (lr == -1)
+				goto error;
+			op->locked = 1;
+		} else if (mode == F_UNLOCK && op->locked) {
+			lr = plockf(ts->fs->fd, F_UNLOCK, op->offset,
+					op->len);
+			if (lr == -1)
+				goto error;
+			op->locked = 0;
+		}
+	}
+
+	return 0;
+
+error:
+	return -1;
+}
+
 /** Read the previous information from the disk into the given operation
  * structure. Returns 0 on success, -1 on error. */
 static int operation_read_prev(struct jtrans *ts, struct operation *op)
@@ -203,25 +234,10 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (ts->flags & J_RDONLY)
 		goto exit;
 
-	/* first of all lock all the regions we're going to work with;
-	 * otherwise there could be another transaction trying to write the
-	 * same spots and we could end up with interleaved writes, that could
-	 * break atomicity warantees if we need to rollback */
-	if (!(ts->flags & J_NOLOCK)) {
-		off_t lr;
-		for (op = ts->op; op != NULL; op = op->next) {
-			lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
-			if (lr == -1)
-				/* note it can fail with EDEADLK */
-				goto unlock_exit;
-			op->locked = 1;
-		}
-	}
-
 	/* create and fill the transaction file */
 	jop = journal_new(ts->fs, ts->flags);
 	if (jop == NULL)
-		goto unlock_exit;
+		goto exit;
 
 	for (op = ts->op; op != NULL; op = op->next) {
 		r = journal_add_op(jop, op->buf, op->len, op->offset);
@@ -234,6 +250,13 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	journal_pre_commit(jop);
 
 	fiu_exit_on("jio/commit/tf_data");
+
+	/* lock all the regions we're going to work with; otherwise there
+	 * could be another transaction trying to write the same spots and we
+	 * could end up with interleaved writes, that could break atomicity
+	 * warantees if we need to rollback */
+	if (lock_file_ranges(ts, F_LOCKW) != 0)
+		goto unlink_exit;
 
 	if (!(ts->flags & J_NOROLLBACK)) {
 		for (op = ts->op; op != NULL; op = op->next) {
@@ -358,18 +381,10 @@ unlink_exit:
 		jop = NULL;
 	}
 
-unlock_exit:
 	/* always unlock everything at the end; otherwise we could have
 	 * half-overlapping transactions applying simultaneously, and if
 	 * anything goes wrong it would be possible to break consistency */
-	if (!(ts->flags & J_NOLOCK)) {
-		for (op = ts->op; op != NULL; op = op->next) {
-			if (op->locked) {
-				plockf(ts->fs->fd, F_UNLOCK,
-						op->offset, op->len);
-			}
-		}
-	}
+	lock_file_ranges(ts, F_UNLOCK);
 
 exit:
 	pthread_mutex_unlock(&(ts->lock));
