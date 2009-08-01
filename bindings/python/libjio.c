@@ -876,10 +876,14 @@ static void populate_module(PyObject *m)
 	PyModule_AddIntConstant(m, "J_ROLLBACKED", J_ROLLBACKED);
 	PyModule_AddIntConstant(m, "J_ROLLBACKING", J_ROLLBACKING);
 	PyModule_AddIntConstant(m, "J_RDONLY", J_RDONLY);
+
+	/* enum jfsck_return */
 	PyModule_AddIntConstant(m, "J_ESUCCESS", J_ESUCCESS);
 	PyModule_AddIntConstant(m, "J_ENOENT", J_ENOENT);
 	PyModule_AddIntConstant(m, "J_ENOJOURNAL", J_ENOJOURNAL);
 	PyModule_AddIntConstant(m, "J_ENOMEM", J_ENOMEM);
+	PyModule_AddIntConstant(m, "J_ECLEANUP", J_ECLEANUP);
+	PyModule_AddIntConstant(m, "J_EIO", J_EIO);
 
 	/* open constants (at least the POSIX ones) */
 	PyModule_AddIntConstant(m, "O_RDONLY", O_RDONLY);
