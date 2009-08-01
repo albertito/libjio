@@ -21,26 +21,19 @@
 #include "trans.h"
 
 
-/** Remove all the files in the journal directory (if any).
+/** Remove the journal directory (if it's clean).
  *
  * @param name path to the file
- * @param jdir path to the journal directory, use NULL for the default
+ * @param jdir path to the journal directory
  * @returns 0 on success, < 0 on error
  */
 static int jfsck_cleanup(const char *name, const char *jdir)
 {
-	char path[PATH_MAX], tfile[PATH_MAX*3];
+	char tfile[PATH_MAX*3];
 	DIR *dir;
 	struct dirent *dent;
 
-	if (jdir == NULL) {
-		if (!get_jdir(name, path))
-			return -1;
-	} else {
-		strcpy(path, jdir);
-	}
-
-	dir = opendir(path);
+	dir = opendir(jdir);
 	if (dir == NULL && errno == ENOENT)
 		/* it doesn't exist, so it's clean */
 		return 0;
@@ -49,14 +42,15 @@ static int jfsck_cleanup(const char *name, const char *jdir)
 
 	for (errno = 0, dent = readdir(dir); dent != NULL;
 			errno = 0, dent = readdir(dir)) {
-		/* we only care about transactions (named as numbers > 0) and
-		 * the lockfile (named "lock"); ignore everything else */
-		if (strcmp(dent->d_name, "lock") && atoi(dent->d_name) <= 0)
+		/* We only care about files we know, and ignore everything
+		 * else. Note that transactions should have been removed by
+		 * jfsck(), we will not do it to prevent accidental misuse */
+		if (strcmp(dent->d_name, "lock"))
 			continue;
 
 		/* build the full path to the transaction file */
 		memset(tfile, 0, PATH_MAX * 3);
-		strcat(tfile, path);
+		strcat(tfile, jdir);
 		strcat(tfile, "/");
 		strcat(tfile, dent->d_name);
 
@@ -79,7 +73,7 @@ static int jfsck_cleanup(const char *name, const char *jdir)
 	if (closedir(dir) != 0)
 		return -1;
 
-	if (rmdir(path) != 0)
+	if (rmdir(jdir) != 0)
 		return -1;
 
 	return 0;
@@ -254,7 +248,7 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		if (tfd < 0) {
 			if (errno == ENOENT) {
 				res->invalid++;
-				goto loop;
+				goto nounlink_loop;
 			} else {
 				ret = J_EIO;
 				goto exit;
@@ -309,6 +303,12 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 		res->reapplied++;
 
 loop:
+		if (unlink(tname) != 0) {
+			ret = J_EIO;
+			goto exit;
+		}
+
+nounlink_loop:
 		if (tfd >= 0) {
 			close(tfd);
 			tfd = -1;
