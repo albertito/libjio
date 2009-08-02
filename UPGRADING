@@ -6,12 +6,14 @@ You should always clean all your files before upgrading. While I don't expect
 the transaction on-disk format to change, it's a good practise and it doesn't
 take much effort. When it's mandatory, it will be noted.
 
--> 0.51
+-> 0.90 (On-disk format change, pre 1.0 freeze)
   - The way transactions are stored on disk has changed. It is mandatory that
     you jfsck all your files before upgrading. Hopefully this will be the last
     backwards-incompatible format change before 1.0.
   - jtrans_new() now takes an additional flags parameter.
   - jopen() jflags parameter is now unsigned.
+  - J_NOCLEANUP was removed in favour of J_CLEANUP, and the default behaviour
+    of jfsck() is now not to clean up unless J_CLEANUP is passed in the flags.
 
 -> 0.50 (Big API change)
   - Structures are now opaque types:

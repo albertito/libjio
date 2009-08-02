@@ -329,8 +329,8 @@ nounlink_loop:
 		res->total++;
 	}
 
-	if ( !(flags & J_NOCLEANUP) ) {
-		if (jfsck_cleanup(name, jdir) < 0) {
+	if (flags & J_CLEANUP) {
+		if (jfsck_cleanup(name, fs.jdir) < 0) {
 			ret = J_ECLEANUP;
 		}
 	}

@@ -263,8 +263,8 @@ int jfs_autosync_stop(jfs_t *fs);
  * @param jdir journal directory of the given file, use NULL for the default
  * @param res structure where to store the result
  * @param flags flags that change the checking behaviour, currently only
- *	J_NOCLEANUP is supported, which avoids cleaning up the journal
- *	directory after a successful recovery
+ *	J_CLEANUP is supported, which removes the journal directory after a
+ *	successful recovery
  * @see struct jfsck_result
  * @returns 0 on success, < 0 on error, with the following possible negative
  * 	values from enum jfsck_return: J_ENOENT if there was no such file with
@@ -462,11 +462,11 @@ FILE *jfsopen(jfs_t *stream, const char *mode);
  * jfsck() flags
  */
 
-/** Do not perform a journal cleanup. Used in jfsck().
+/** Perform a journal cleanup. Used in jfsck().
  *
  * @see jfsck()
  * @ingroup check */
-#define J_NOCLEANUP	1
+#define J_CLEANUP	1
 
 #endif
 

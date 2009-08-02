@@ -111,9 +111,9 @@ def transpath(path, ntrans):
 	jpath = jiodir(path)
 	return jpath + '/' + str(ntrans)
 
-def fsck(path):
+def fsck(path, flags = 0):
 	"Calls libjio's jfsck()."
-	res = libjio.jfsck(path)
+	res = libjio.jfsck(path, flags = flags)
 	return res
 
 def fsck_verify(n, **kwargs):
@@ -130,7 +130,7 @@ def fsck_verify(n, **kwargs):
 	}
 	expected.update(kwargs)
 	expected['total'] = sum(expected.values())
-	res = fsck(n)
+	res = fsck(n, flags = libjio.J_CLEANUP)
 
 	for k in expected:
 		if k not in res:

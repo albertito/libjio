@@ -59,8 +59,8 @@ int main(int argc, char **argv)
 	memset(&res, 0, sizeof(res));
 
 	flags = 0;
-	if (!do_cleanup)
-		flags |= J_NOCLEANUP;
+	if (do_cleanup)
+		flags |= J_CLEANUP;
 
 	printf("Checking journal: ");
 	fflush(stdout);

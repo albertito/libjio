@@ -135,8 +135,8 @@ to the journal directory (usually NULL for the default, unless you've changed
 it manually using
 .BR jmove_journal() ),
 and optionally a flags parameter, which can be 0 for the default behaviour, or
-J_NOCLEANUP to indicate that the journal should not be cleaned up after
-successful recovery.
+J_CLEANUP to indicate that the journal should be cleaned up after successful
+recovery.
 
 It is used to perform journal checking and recovery in case of a crash. It
 must be performed when nobody else is using the file (like in the case of a

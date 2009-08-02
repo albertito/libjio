@@ -885,6 +885,9 @@ static void populate_module(PyObject *m)
 	PyModule_AddIntConstant(m, "J_ECLEANUP", J_ECLEANUP);
 	PyModule_AddIntConstant(m, "J_EIO", J_EIO);
 
+	/* jfsck() flags */
+	PyModule_AddIntConstant(m, "J_CLEANUP", J_CLEANUP);
+
 	/* open constants (at least the POSIX ones) */
 	PyModule_AddIntConstant(m, "O_RDONLY", O_RDONLY);
 	PyModule_AddIntConstant(m, "O_WRONLY", O_WRONLY);
