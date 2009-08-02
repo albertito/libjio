@@ -270,7 +270,7 @@ int jfs_autosync_stop(jfs_t *fs);
  * 	values from enum jfsck_return: J_ENOENT if there was no such file with
  * 	the given name, J_ENOJOURNAL if there was no journal at the given
  * 	jdir, J_ENOMEM if memory could not be allocated, J_ECLEANUP if there
- * 	was an error cleaning the journal.
+ * 	was an error cleaning the journal, J_EIO if there was an I/O error.
  * @ingroup check
  */
 enum jfsck_return jfsck(const char *name, const char *jdir,
