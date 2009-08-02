@@ -400,6 +400,9 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 	struct operation *op, *curop, *lop;
 
 	newts = jtrans_new(ts->fs, 0);
+	if (newts == NULL)
+		return -1;
+
 	newts->flags = ts->flags;
 	newts->numops = ts->numops;
 
