@@ -559,7 +559,7 @@ struct jfs *jopen(const char *name, int flags, int mode, unsigned int jflags)
 	if (fs->jdirfd < 0)
 		goto error_exit;
 
-	snprintf(jlockfile, PATH_MAX, "%s/%s", jdir, "lock");
+	snprintf(jlockfile, PATH_MAX, "%s/lock", jdir);
 	jfd = open(jlockfile, O_RDWR | O_CREAT, 0600);
 	if (jfd < 0)
 		goto error_exit;
@@ -637,13 +637,13 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 
 	/* we try to be sure that all lingering transactions have been
 	 * applied, so when we try to remove the journal directory, only the
-	 * lockfile is there; however, we do this just to be nice, but the
-	 * caller must be sure there are no in-flight transactions or any
-	 * other kind of operation around when he calls this function */
+	 * lockfile is there; however, we do this just to be nice, the caller
+	 * must be sure there are no in-flight transactions or any other kind
+	 * of operation around when he calls this function */
 	jsync(fs);
 
 	oldpath = fs->jdir;
-	snprintf(oldjlockfile, PATH_MAX, "%s/%s", fs->jdir, "lock");
+	snprintf(oldjlockfile, PATH_MAX, "%s/lock", fs->jdir);
 
 	fs->jdir = (char *) malloc(strlen(newpath + 1));
 	if (fs->jdir == NULL)
@@ -660,7 +660,7 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 		if (fs->jdirfd < 0)
 			goto exit;
 
-		snprintf(jlockfile, PATH_MAX, "%s/%s", newpath, "lock");
+		snprintf(jlockfile, PATH_MAX, "%s/lock", newpath);
 		ret = rename(oldjlockfile, jlockfile);
 		if (ret < 0)
 			goto exit;
@@ -710,6 +710,7 @@ int jclose(struct jfs *fs)
 		free(fs->name);
 	if (fs->jdir)
 		free(fs->jdir);
+
 	pthread_mutex_destroy(&(fs->lock));
 
 	free(fs);
