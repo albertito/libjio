@@ -40,6 +40,7 @@ int sync_range_wait(int fd, off_t offset, size_t nbytes);
 #include <fcntl.h>
 #ifndef POSIX_FADV_WILLNEED
 #define LACK_POSIX_FADVISE 1
+#define POSIX_FADV_WILLNEED 0
 #define posix_fadvise(fd, offset, len, advise)
 #endif
 
