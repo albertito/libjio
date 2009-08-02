@@ -66,16 +66,31 @@ int main(int argc, char **argv)
 	fflush(stdout);
 	rv = jfsck(file, jdir, &res, flags);
 
-	if (rv == J_ENOENT) {
+	switch (rv) {
+	case J_ESUCCESS:
+		printf("done\n");
+		break;
+	case J_ENOENT:
 		printf("No such file or directory\n");
 		return 1;
-	} else if (rv == J_ENOJOURNAL) {
+	case J_ENOJOURNAL:
 		printf("No journal associated to the file, "
 				"or journal empty\n");
 		return 1;
+	case J_ENOMEM:
+		printf("Not enough memory\n");
+		return 1;
+	case J_ECLEANUP:
+		printf("Error cleaning up the journal directory\n");
+		return 1;
+	case J_EIO:
+		printf("I/O error\n");
+		perror("  additional information");
+		return 1;
+	default:
+		printf("Unknown result, please report as a bug\n");
+		return 1;
 	}
-
-	printf("done\n");
 
 	printf("Journal checking results\n");
 	printf("------------------------\n\n");
@@ -88,11 +103,8 @@ int main(int argc, char **argv)
 	printf("Reapplied:\t %d\n", res.reapplied);
 	printf("\n");
 
-	if (!do_cleanup) {
-		printf("You can now safely remove the journal directory "
-				"completely\nto start a new journal.\n");
-	} else {
-		printf("The journal has been checked and cleaned up.\n");
+	if (do_cleanup) {
+		printf("The journal has been cleaned up.\n");
 	}
 
 	return 0;
