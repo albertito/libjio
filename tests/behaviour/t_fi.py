@@ -72,8 +72,8 @@ def test_f04():
 		fiu.enable_external("jio/commit/tf_pre_addop",
 				gen_ret_seq((0, 1)))
 		t = jf.new_trans()
-		t.add(c, 0)
-		t.add(c, len(c) + 200)
+		t.add_w(c, 0)
+		t.add_w(c, len(c) + 200)
 		t.commit()
 
 	n = run_with_tmp(f1)
@@ -92,8 +92,8 @@ def test_f05():
 		fiu.enable_external("jio/commit/tf_opdata",
 				gen_ret_seq((0, 1)))
 		t = jf.new_trans()
-		t.add(c, 0)
-		t.add(c, len(c) + 200)
+		t.add_w(c, 0)
+		t.add_w(c, len(c) + 200)
 		t.commit()
 
 	n = run_with_tmp(f1)
@@ -111,8 +111,8 @@ def test_f06():
 	def f1(f, jf):
 		fiu.enable("jio/commit/tf_data")
 		t = jf.new_trans()
-		t.add(c, 0)
-		t.add(c, len(c) + 200)
+		t.add_w(c, 0)
+		t.add_w(c, len(c) + 200)
 		t.commit()
 
 	n = run_with_tmp(f1)
@@ -144,8 +144,8 @@ def test_f08():
 	def f1(f, jf):
 		fiu.enable("jio/commit/wrote_op")
 		t = jf.new_trans()
-		t.add(c, 0)
-		t.add(c, len(c) + 200)
+		t.add_w(c, 0)
+		t.add_w(c, len(c) + 200)
 		t.commit()
 
 	n = run_with_tmp(f1)
@@ -192,7 +192,7 @@ def test_f11():
 	def f1(f, jf):
 		jf.write('x' * (80 + len(c)))
 		t = jf.new_trans()
-		t.add(c, 80)
+		t.add_w(c, 80)
 		t.commit()
 		assert content(f.name) == 'x' * 80 + c
 		fiu.enable("jio/commit/tf_sync")
@@ -212,7 +212,7 @@ def test_f12():
 	def f1(f, jf):
 		fiu.enable("jio/jsync/pre_unlink")
 		t = jf.new_trans()
-		t.add(c, 0)
+		t.add_w(c, 0)
 		t.commit()
 		jf.jsync()
 

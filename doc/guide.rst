@@ -75,9 +75,9 @@ Now that you have opened a file, the next thing to do would be to create a
 transaction. This is what *jtrans_new()* is for: it takes a file structure and
 returns a new transaction structure.
 
-To add an operation to the transaction, use *jtrans_add()*. You can add as
-many operations as you want. Operations within a transaction may overlap, and
-will be applied in order.
+To add a write operation to the transaction, use *jtrans_add_w()*. You can add
+as many operations as you want. Operations within a transaction may overlap,
+and will be applied in order.
 
 Finally, to apply our transaction to the file, use *jtrans_commit()*.
 
@@ -93,7 +93,7 @@ are ignored for simplicity)::
   file = jopen("filename", O_RDWR | O_CREAT, 0600, 0);
 
   trans = jtrans_new(file, 0);
-  jtrans_add(trans, buf, strlen(buf), 0);
+  jtrans_add_w(trans, buf, strlen(buf), 0);
   jtrans_commit(trans);
   jtrans_free(trans);
 
@@ -101,7 +101,7 @@ are ignored for simplicity)::
 
 As we've seen, you open the file and initialize the structure with *jopen()*
 (with the parameter *jflags* being the last 0), create a new transaction with
-*jtrans_new()*, then add an operation with *jtrans_add()* (the last 0 is the
+*jtrans_new()*, then add an operation with *jtrans_add_w()* (the last 0 is the
 offset, in this case the beginning of the file), commit the transaction with
 *jtrans_commit()*, free it with *jtrans_free()*, and finally close the file
 with *jclose()*.
@@ -110,6 +110,9 @@ Reading is much easier: the library provides three functions, *jread()*,
 *jpread()* and *jreadv()*, that behave exactly like *read()*, *pread()* and
 *readv()*, except that they play safe with libjio's writing code. You should
 use these to read from files when using libjio.
+
+You can also add read operations to a transaction using *jtrans_add_r()*, and
+the data will be read atomically at commit time.
 
 
 Integrity checking and recovery

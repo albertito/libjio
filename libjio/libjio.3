@@ -23,7 +23,9 @@ libjio - A library for Journaled I/O
 
 .BI "jtrans_t *jtrans_new(jfs_t *" fs ", unsigned int " flags ");"
 .BI "int jtrans_commit(jtrans_t *" ts ");"
-.BI "int jtrans_add(jtrans_t *" ts ", const void *" buf ","
+.BI "int jtrans_add_r(jtrans_t *" ts ", void *" buf ","
+.BI "		size_t " count ", off_t " offset ");"
+.BI "int jtrans_add_w(jtrans_t *" ts ", const void *" buf ","
 .BI "		size_t " count ", off_t " offset ");"
 .BI "int jtrans_rollback(jtrans_t *" ts ");"
 .BI "void jtrans_free(jtrans_t *" ts ");"
@@ -79,8 +81,8 @@ interfaces to
 and friends.
 
 The basic functions consist of
-.BR jtrans_new() ", " jtrans_add() ", " jtrans_commit() " and "
-.BR jtrans_rollback() .
+.BR jtrans_new() ", " jtrans_add_r() ", " jtrans_add_w() ", "
+.BR jtrans_commit() " and " jtrans_rollback() .
 They provide a lower-level method for manipulating transactions.
 
 .SS TYPES AND STRUCTURES
@@ -174,9 +176,8 @@ semantics and behave the same way.
 .SS BASIC FUNCTIONS
 
 The basic functions are the ones which manipulate transactions directly:
-.BR jtrans_new() ", " jtrans_add() ", " jtrans_commit() ", " jtrans_rollback()
-and
-.BR jtrans_free() .
+.BR jtrans_new() ", " jtrans_add_r() ", " jtrans_add_w() ", "
+.BR jtrans_commit() ", " jtrans_rollback() " and " jtrans_free()" .
 These are intended to be use when your application requires direct control
 over the transactions.
 
@@ -190,22 +191,34 @@ is not a disk operation, but only frees the pointers that were previously
 allocated by the library; all disk operations are performed by the other two
 functions.
 
-.B jtrans_add()
-is used to add operations to a transaction, and it takes the same parameters
-as
+You can add multiple read and write operations to a transaction, and they will
+be applied in order.
+
+.B jtrans_add_w()
+is used to add write operations to a transaction, and it takes the same
+parameters as
 .BR pwrite() :
 a buffer, its length and the offset where it should be applied, and adds it to
-the transaction. You can add multiple operations to a transaction, and they
-will be applied in order.
+the transaction. The buffer is copied internally and can be free()d right
+after this function returns.
+
+.B jtrans_add_r()
+is used to add read operations to a transaction, and it takes the same
+parameters as
+.BR pread() :
+a buffer, its length and the offset where it should read from, and adds it to
+the transaction. Note that if there is not enough data in the file to read
+the specified amount of bytes, the commit will fail, so do not attempt to read
+beyond EOF (you can use jread() for that purpose).
 
 .B jtrans_commit()
-commits the given transaction to disk. After it has returned, data has been
-saved to the disk. The commit operation is atomic with regards to other read
-or write operations on different processes, as long as they all access it via
-libjio. It returns the number of bytes written, -1 if there was an error but
-atomic warantees were preserved, or -2 if there was an error and there is a
-possible break of atomic warantees (which is an indication of a severe
-underlying condition).
+commits the given transaction to disk. After it has returned, write operations
+have been saved to the disk, and read operations have been read from it. The
+commit operation is atomic with regards to other read or write operations on
+different processes, as long as they all access it via libjio. It returns the
+number 0 on success, -1 if there was an error but atomic warantees were
+preserved, or -2 if there was an error and there is a possible break of atomic
+warantees (which is an indication of a severe underlying condition).
 
 .B jtrans_rollback()
 reverses a transaction that was applied with

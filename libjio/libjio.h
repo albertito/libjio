@@ -148,16 +148,19 @@ int jsync(jfs_t *fs);
  */
 jtrans_t *jtrans_new(jfs_t *fs, unsigned int flags);
 
-/** Add an operation to a transaction.
+/** Add a write operation to a transaction.
  *
- * An operation consists of a buffer, its length, and the offset to write it
- * to.
+ * A write operation consists of a buffer, its length, and the offset to write
+ * it to.
  *
  * The file will not be touched (not even locked) until commit time, where the
  * first count bytes of buf will be written at offset.
  *
  * Transactions will be applied in order, and overlapping operations are
  * permitted, in which case the latest one will prevail.
+ *
+ * The buffer will be copied internally and can be free()d right after this
+ * function returns.
  *
  * @param ts transaction
  * @param buf buffer to write
@@ -166,22 +169,50 @@ jtrans_t *jtrans_new(jfs_t *fs, unsigned int flags);
  * @returns 0 on success, -1 on error
  * @ingroup basic
  */
-int jtrans_add(jtrans_t *ts, const void *buf, size_t count, off_t offset);
+int jtrans_add_w(jtrans_t *ts, const void *buf, size_t count, off_t offset);
+
+/** Add a read operation to a transaction.
+ *
+ * An operation consists of a buffer, its length, and the offset to read it
+ * from.
+ *
+ * The file will not be touched (not even locked) until commit time, where the
+ * first count bytes at offset will be read into buf.
+ *
+ * Note that if there is not enough data in the file to read the specified
+ * amount of bytes, the commit will fail, so do not attempt to read beyond EOF
+ * (you can use jread() for that purpose).
+ *
+ * Transactions will be applied in order, and overlapping operations are
+ * permitted, in which case the latest one will prevail.
+ *
+ * In case of an error in jtrans_commit(), the contents of the buffer are
+ * undefined.
+ *
+ * @param ts transaction
+ * @param buf buffer to read to
+ * @param count how many bytes to read
+ * @param offset offset to read at
+ * @returns 0 on success, -1 on error
+ * @ingroup basic
+ * @see jread()
+ */
+int jtrans_add_r(jtrans_t *ts, void *buf, size_t count, off_t offset);
 
 /** Commit a transaction.
  * 
- * All the operations added to it using jtrans_add() will be written to disk,
- * in the same order they were added.
+ * All the operations added to it using jtrans_add_w()/jtrans_add_r() will be
+ * written to/read from disk, in the same order they were added.
  *
  * After this function returns successfully, all the data can be trusted to be
  * on the disk. The commit is atomic with regards to other processes using
  * libjio, but not accessing directly to the file.
  *
  * @param ts transaction
- * @returns the amount of bytes written to disk, or -1 if there was an error
- *	but atomic warranties were preserved, or -2 if there was an error and
- *	there is a possible break of atomic warranties (which is an indication
- *	of a severe underlying condition).
+ * @returns 0 on success, or -1 if there was an error but atomic warranties
+ * 	were preserved, or -2 if there was an error and there is a possible
+ * 	break of atomic warranties (which is an indication of a severe
+ * 	underlying condition).
  * @ingroup basic
  */
 ssize_t jtrans_commit(jtrans_t *ts);
@@ -189,7 +220,8 @@ ssize_t jtrans_commit(jtrans_t *ts);
 /** Rollback a transaction.
  *
  * This function atomically undoes a previous committed transaction. After its
- * successful return, the data can be trusted to be on disk.
+ * successful return, the data can be trusted to be on disk. The read
+ * operations will be ignored.
  *
  * Use with care.
  *

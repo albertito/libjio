@@ -24,16 +24,16 @@ int main(int argc, char **argv)
 		perror("jtrans_new()");
 
 #define str1 "1ROLLBACKTEST1!\n"
-	jtrans_add(ts, str1, strlen(str1), 0);
+	jtrans_add_w(ts, str1, strlen(str1), 0);
 
 #define str2 "2ROLLBACKTEST2!\n"
-	jtrans_add(ts, str2, strlen(str2), strlen(str1));
+	jtrans_add_w(ts, str2, strlen(str2), strlen(str1));
 
 #define str3 "3ROLLBACKTEST3!\n"
-	jtrans_add(ts, str3, strlen(str3), strlen(str1) + strlen(str2));
+	jtrans_add_w(ts, str3, strlen(str3), strlen(str1) + strlen(str2));
 
 	rv = jtrans_commit(ts);
-	if (rv != strlen(str1) + strlen(str2) + strlen(str3))
+	if (rv < 0)
 		perror("jtrans_commit()");
 	printf("commit ok: %d\n", rv);
 

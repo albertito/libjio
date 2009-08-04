@@ -14,6 +14,9 @@ take much effort. When it's mandatory, it will be noted.
   - jopen() jflags parameter is now unsigned.
   - J_NOCLEANUP was removed in favour of J_CLEANUP, and the default behaviour
     of jfsck() is now not to clean up unless J_CLEANUP is passed in the flags.
+  - jtrans_add() renamed to jtrans_add_w().
+  - jtrans_commit() returns 0 on success, instead of the amount of bytes
+    written.
 
 -> 0.50 (Big API change)
   - Structures are now opaque types:

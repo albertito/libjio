@@ -491,7 +491,6 @@ exit:
 int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 {
 	int rv;
-	unsigned int numops;
 	unsigned char *p;
 	struct operation *op, *tmp;
 	struct on_disk_hdr hdr;
@@ -514,8 +513,10 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 
 	ts->id = hdr.trans_id;
 	ts->flags = hdr.flags;
+	ts->numops_r = 0;
+	ts->numops_w = 0;
+	ts->len_w = 0;
 
-	numops = 0;
 	for (;;) {
 		if (p + sizeof(ophdr) > map + len)
 			goto error;
@@ -539,6 +540,7 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 
 		op->len = ophdr.len;
 		op->offset = ophdr.offset;
+		op->direction = D_WRITE;
 
 		op->buf = (void *) p;
 		p += op->len;
@@ -557,7 +559,8 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 			op->next = NULL;
 		}
 
-		numops++;
+		ts->numops_w++;
+		ts->len_w += op->len;
 	}
 
 	if (p + sizeof(trailer) > map + len)
@@ -568,10 +571,8 @@ int fill_trans(unsigned char *map, off_t len, struct jtrans *ts)
 
 	trailer_ntoh(&trailer);
 
-	if (trailer.numops != numops)
+	if (trailer.numops != ts->numops_w)
 		goto error;
-
-	ts->numops = numops;
 
 	if (checksum_buf(0, map, len - sizeof(trailer)) != trailer.checksum) {
 		rv = -2;

@@ -41,8 +41,9 @@ struct jtrans *jtrans_new(struct jfs *fs, unsigned int flags)
 	ts->id = 0;
 	ts->flags = fs->flags | flags;
 	ts->op = NULL;
-	ts->numops = 0;
-	ts->len = 0;
+	ts->numops_r = 0;
+	ts->numops_w = 0;
+	ts->len_w = 0;
 
 	pthread_mutexattr_init(&attr);
 	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
@@ -62,7 +63,7 @@ void jtrans_free(struct jtrans *ts)
 	while (ts->op != NULL) {
 		tmpop = ts->op->next;
 
-		if (ts->op->buf)
+		if (ts->op->buf && ts->op->direction == D_WRITE)
 			free(ts->op->buf);
 		if (ts->op->pdata)
 			free(ts->op->pdata);
@@ -134,86 +135,106 @@ static int operation_read_prev(struct jtrans *ts, struct operation *op)
 	return 0;
 }
 
-/* Add an operation to a transaction */
-int jtrans_add(struct jtrans *ts, const void *buf, size_t count, off_t offset)
+/** Common function to add an operation to a transaction */
+static int jtrans_add_common(struct jtrans *ts, const void *buf, size_t count,
+		off_t offset, enum op_direction direction)
 {
 	struct operation *op, *tmpop;
 
+	op = tmpop = NULL;
+
 	pthread_mutex_lock(&(ts->lock));
 
-	/* fail for read-only accesses */
-	if (ts->flags & J_RDONLY) {
-		pthread_mutex_unlock(&(ts->lock));
-		return -1;
+	/* Writes are not allowed in read-only mode, they fail early */
+	if ((ts->flags & J_RDONLY) && direction == D_WRITE)
+		goto error;
+
+	if (count == 0)
+		goto error;
+
+	if ((long long) ts->len_w + count > MAX_TSIZE)
+		goto error;
+
+	op = malloc(sizeof(struct operation));
+	if (op == NULL)
+		goto error;
+
+	if (direction == D_WRITE) {
+		op->buf = malloc(count);
+		if (op->buf == NULL)
+			goto error;
+
+		ts->numops_w++;
+	} else {
+		ts->numops_r++;
 	}
 
-	/* fail for 0 length operations */
-	if (count == 0) {
-		pthread_mutex_unlock(&(ts->lock));
-		return -1;
-	}
-
-	if ((long long) ts->len + count > MAX_TSIZE) {
-		pthread_mutex_unlock(&(ts->lock));
-		return -1;
-	}
-
-	/* find the last operation in the transaction and create a new one at
-	 * the end */
+	/* add op to the end of the linked list */
+	op->next = NULL;
 	if (ts->op == NULL) {
-		ts->op = malloc(sizeof(struct operation));
-		if (ts->op == NULL) {
-			pthread_mutex_unlock(&(ts->lock));
-			return -1;
-		}
-		op = ts->op;
+		ts->op = op;
 		op->prev = NULL;
 	} else {
 		for (tmpop = ts->op; tmpop->next != NULL; tmpop = tmpop->next)
 			;
-		tmpop->next = malloc(sizeof(struct operation));
-		if (tmpop->next == NULL) {
-			pthread_mutex_unlock(&(ts->lock));
-			return -1;
-		}
-		tmpop->next->prev = tmpop;
-		op = tmpop->next;
+		tmpop->next = op;
+		op->prev = tmpop;
 	}
-
-	op->buf = malloc(count);
-	if (op->buf == NULL) {
-		/* remove from the list and fail */
-		if (op->prev == NULL) {
-			ts->op = NULL;
-		} else {
-			op->prev->next = op->next;
-		}
-		free(op);
-		pthread_mutex_unlock(&(ts->lock));
-		return -1;
-	}
-
-	ts->numops++;
-	ts->len += count;
 
 	pthread_mutex_unlock(&(ts->lock));
 
-	memcpy(op->buf, buf, count);
 	op->len = count;
 	op->offset = offset;
-	op->next = NULL;
 	op->plen = 0;
 	op->pdata = NULL;
 	op->locked = 0;
+	op->direction = direction;
 
-	if (!(ts->flags & J_NOROLLBACK)) {
-		/* jtrans_commit() will want to read the current data, so we
-		 * tell the kernel about that */
+	if (direction == D_WRITE) {
+		memcpy(op->buf, buf, count);
+
+		if (!(ts->flags & J_NOROLLBACK)) {
+			/* jtrans_commit() will want to read the current data,
+			 * so we tell the kernel about that */
+			posix_fadvise(ts->fs->fd, offset, count,
+					POSIX_FADV_WILLNEED);
+		}
+	} else {
+		/* this casts the const away, which is ugly but let us have a
+		 * common read/write path and avoid useless code repetition
+		 * just to handle it */
+		op->buf = (void *) buf;
+
+		/* if there are no overlapping writes, jtrans_commit() will
+		 * want to read the data from the disk; and if there are we
+		 * will already have submitted a request and one more won't
+		 * hurt */
 		posix_fadvise(ts->fs->fd, offset, count, POSIX_FADV_WILLNEED);
 	}
 
 	return 0;
+
+error:
+	pthread_mutex_unlock(&(ts->lock));
+
+	if (op && direction == D_WRITE)
+		free(op->buf);
+	free(op);
+
+	return -1;
 }
+
+int jtrans_add_r(struct jtrans *ts, void *buf, size_t count, off_t offset)
+{
+	return jtrans_add_common(ts, buf, count, offset, D_READ);
+}
+
+int jtrans_add_w(struct jtrans *ts, const void *buf, size_t count,
+		off_t offset)
+{
+	return jtrans_add_common(ts, buf, count, offset, D_WRITE);
+}
+
 
 /* Commit a transaction */
 ssize_t jtrans_commit(struct jtrans *ts)
@@ -230,16 +251,25 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	ts->flags = ts->flags & ~J_COMMITTED;
 	ts->flags = ts->flags & ~J_ROLLBACKED;
 
-	/* fail for read-only accesses */
-	if (ts->flags & J_RDONLY)
+	if (ts->numops_r + ts->numops_w == 0)
 		goto exit;
 
-	/* create and fill the transaction file */
-	jop = journal_new(ts->fs, ts->flags);
-	if (jop == NULL)
+	/* fail for read-only accesses if we have write operations */
+	if (ts->numops_w && (ts->flags & J_RDONLY))
 		goto exit;
+
+	/* create and fill the transaction file only if we have at least one
+	 * write operation */
+	if (ts->numops_w) {
+		jop = journal_new(ts->fs, ts->flags);
+		if (jop == NULL)
+			goto exit;
+	}
 
 	for (op = ts->op; op != NULL; op = op->next) {
+		if (op->direction == D_READ)
+			continue;
+
 		r = journal_add_op(jop, op->buf, op->len, op->offset);
 		if (r != 0)
 			goto unlink_exit;
@@ -247,7 +277,8 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		fiu_exit_on("jio/commit/tf_opdata");
 	}
 
-	journal_pre_commit(jop);
+	if (jop)
+		journal_pre_commit(jop);
 
 	fiu_exit_on("jio/commit/tf_data");
 
@@ -260,19 +291,34 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 	if (!(ts->flags & J_NOROLLBACK)) {
 		for (op = ts->op; op != NULL; op = op->next) {
+			if (op->direction == D_READ)
+				continue;
+
 			 r = operation_read_prev(ts, op);
 			 if (r < 0)
 				 goto unlink_exit;
 		}
 	}
 
-	r = journal_commit(jop);
-	if (r < 0)
-		goto unlink_exit;
+	if (jop) {
+		r = journal_commit(jop);
+		if (r < 0)
+			goto unlink_exit;
+	}
 
 	/* now that we have a safe transaction file, let's apply it */
 	written = 0;
 	for (op = ts->op; op != NULL; op = op->next) {
+		if (op->direction == D_READ) {
+			r = spread(ts->fs->fd, op->buf, op->len, op->offset);
+			if (r != op->len)
+				goto rollback_exit;
+
+			continue;
+		}
+
+		/* from now on, write ops (which are more interesting) */
+
 		r = spwrite(ts->fs->fd, op->buf, op->len, op->offset);
 		if (r != op->len)
 			goto rollback_exit;
@@ -291,7 +337,7 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 	fiu_exit_on("jio/commit/wrote_all_ops");
 
-	if (ts->flags & J_LINGER) {
+	if (jop && (ts->flags & J_LINGER)) {
 		struct jlinger *lp;
 
 		linger = malloc(sizeof(struct jlinger));
@@ -320,9 +366,12 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 		/* Leave the journal_free() up to jsync() */
 		jop = NULL;
-	} else {
+	} else if (jop) {
 		if (have_sync_range) {
 			for (op = ts->op; op != NULL; op = op->next) {
+				if (op->direction == D_READ)
+					continue;
+
 				r = sync_range_wait(ts->fs->fd, op->len,
 						op->offset);
 				if (r != 0)
@@ -336,10 +385,12 @@ ssize_t jtrans_commit(struct jtrans *ts)
 
 	/* mark the transaction as committed */
 	ts->flags = ts->flags | J_COMMITTED;
-	retval = written;
+
+	retval = 1;
 
 rollback_exit:
 	/* If the transaction failed we try to recover by rolling it back.
+	 * Only used if it has at least one write operation.
 	 *
 	 * NOTE: on extreme conditions (ENOSPC/disk failure) this can fail
 	 * too! There's nothing much we can do in that case, the caller should
@@ -347,7 +398,8 @@ rollback_exit:
 	 *
 	 * Transactions that were successfuly recovered by rolling them back
 	 * will have J_ROLLBACKED in their flags. */
-	if (!(ts->flags & J_COMMITTED) && !(ts->flags & J_ROLLBACKING)) {
+	if (jop && !(ts->flags & J_COMMITTED) &&
+			!(ts->flags & J_ROLLBACKING)) {
 		r = ts->flags;
 		ts->flags = ts->flags | J_NOLOCK | J_ROLLBACKING;
 		if (jtrans_rollback(ts) >= 0) {
@@ -404,7 +456,9 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		return -1;
 
 	newts->flags = ts->flags;
-	newts->numops = ts->numops;
+	newts->numops_r = 0;
+	newts->numops_w = 0;
+	newts->len_w = 0;
 
 	if (ts->op == NULL || ts->flags & J_NOROLLBACK) {
 		rv = -1;
@@ -415,8 +469,11 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 	for (op = ts->op; op->next != NULL; op = op->next)
 		;
 
-	/* and traverse the list backwards */
+	/* and traverse the list backwards, skipping read operations */
 	for ( ; op != NULL; op = op->prev) {
+		if (op->direction == D_READ)
+			continue;
+
 		/* if we extended the data in the previous transaction, we
 		 * should truncate it back */
 		/* DANGEROUS: this is one of the main reasons why rollbacking
@@ -442,7 +499,11 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 		curop->buf = op->pdata;
 		curop->plen = op->plen;
 		curop->pdata = op->pdata;
+		curop->direction = op->direction;
 		curop->locked = 0;
+
+		newts->numops_w++;
+		newts->len_w += curop->len;
 
 		/* add the new transaction to the list */
 		if (newts->op == NULL) {
