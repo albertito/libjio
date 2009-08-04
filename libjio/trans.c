@@ -648,7 +648,7 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 	oldpath = fs->jdir;
 	snprintf(oldjlockfile, PATH_MAX, "%s/lock", fs->jdir);
 
-	fs->jdir = (char *) malloc(strlen(newpath + 1));
+	fs->jdir = (char *) malloc(strlen(newpath) + 1);
 	if (fs->jdir == NULL)
 		return -1;
 	strcpy(fs->jdir, newpath);
