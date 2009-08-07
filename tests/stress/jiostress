@@ -213,6 +213,8 @@ class Stresser:
 			probability = randfloat(0.005, 0.03))
 		fiu.enable_random('libc/mm/*',
 			probability = randfloat(0.003, 0.07))
+		fiu.enable_random('libc/str/*',
+			probability = randfloat(0.005, 0.07))
 
 	def fiu_disable(self):
 		if self.use_fi:
