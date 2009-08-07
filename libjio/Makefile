@@ -48,7 +48,7 @@ else
 endif
 
 
-LIB_VER=0.51
+LIB_VER=0.90
 LIB_SO_VER=0
 
 
