@@ -156,7 +156,7 @@ jtrans_t *jtrans_new(jfs_t *fs, unsigned int flags);
  * The file will not be touched (not even locked) until commit time, where the
  * first count bytes of buf will be written at offset.
  *
- * Transactions will be applied in order, and overlapping operations are
+ * Operations will be applied in order, and overlapping operations are
  * permitted, in which case the latest one will prevail.
  *
  * The buffer will be copied internally and can be free()d right after this
@@ -183,7 +183,7 @@ int jtrans_add_w(jtrans_t *ts, const void *buf, size_t count, off_t offset);
  * amount of bytes, the commit will fail, so do not attempt to read beyond EOF
  * (you can use jread() for that purpose).
  *
- * Transactions will be applied in order, and overlapping operations are
+ * Operations will be applied in order, and overlapping operations are
  * permitted, in which case the latest one will prevail.
  *
  * In case of an error in jtrans_commit(), the contents of the buffer are
