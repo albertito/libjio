@@ -10,7 +10,6 @@
 #include <stdint.h>	/* for uint*_t */
 #include <sys/uio.h>	/* for struct iovec */
 
-#include "libjio.h"	/* for struct jfs */
 #include "fiu-local.h"	/* for fault injection functions */
 
 #define _F_READ		0x00001
