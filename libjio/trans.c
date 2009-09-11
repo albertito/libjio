@@ -258,12 +258,22 @@ ssize_t jtrans_commit(struct jtrans *ts)
 	if (ts->numops_w && (ts->flags & J_RDONLY))
 		goto exit;
 
+	/* Lock all the regions we're going to work with; otherwise there
+	 * could be another transaction trying to write the same spots and we
+	 * could end up with interleaved writes, that could break atomicity
+	 * warantees if we need to rollback.
+	 * Note we do this before creating a new transaction, so we know it's
+	 * not possible to have two overlapping transactions on disk at the
+	 * same time. */
+	if (lock_file_ranges(ts, F_LOCKW) != 0)
+		goto unlock_exit;
+
 	/* create and fill the transaction file only if we have at least one
 	 * write operation */
 	if (ts->numops_w) {
 		jop = journal_new(ts->fs, ts->flags);
 		if (jop == NULL)
-			goto exit;
+			goto unlock_exit;
 	}
 
 	for (op = ts->op; op != NULL; op = op->next) {
@@ -281,13 +291,6 @@ ssize_t jtrans_commit(struct jtrans *ts)
 		journal_pre_commit(jop);
 
 	fiu_exit_on("jio/commit/tf_data");
-
-	/* lock all the regions we're going to work with; otherwise there
-	 * could be another transaction trying to write the same spots and we
-	 * could end up with interleaved writes, that could break atomicity
-	 * warantees if we need to rollback */
-	if (lock_file_ranges(ts, F_LOCKW) != 0)
-		goto unlink_exit;
 
 	if (!(ts->flags & J_NOROLLBACK)) {
 		for (op = ts->op; op != NULL; op = op->next) {
@@ -433,6 +436,7 @@ unlink_exit:
 		jop = NULL;
 	}
 
+unlock_exit:
 	/* always unlock everything at the end; otherwise we could have
 	 * half-overlapping transactions applying simultaneously, and if
 	 * anything goes wrong it would be possible to break consistency */
