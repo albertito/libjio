@@ -250,24 +250,6 @@ static int is_broken(struct jfs *fs)
 	return access(broken_path, F_OK) == 0;
 }
 
-/* Open and lock (exclusive) the given file name. Returns the file descriptor,
- * or -1 on error. */
-static int open_and_lockw(const char *name, int flags, int mode)
-{
-	int fd;
-
-	fd = open(name, flags, mode);
-	if (fd < 0)
-		return -1;
-
-	if (plockf(fd, F_LOCKW, 0, 0) != 0) {
-		close(fd);
-		return -1;
-	}
-
-	return fd;
-}
-
 
 /*
  * Journal functions
@@ -301,9 +283,12 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 
 	/* open the transaction file */
 	get_jtfile(fs, id, name);
-	fd = open_and_lockw(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
+	fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0600);
 	if (fd < 0)
 		goto error;
+
+	if (plockf(fd, F_LOCKW, 0, 0) != 0)
+		goto unlink_error;
 
 	jop->id = id;
 	jop->fd = fd;
