@@ -4,6 +4,8 @@
 *.so.*
 *.gcda
 *.gcno
+*.gcov
+libjio/build/
 jiofsck
 libjio.pc
 samples/full
