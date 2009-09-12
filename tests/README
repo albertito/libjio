@@ -1,0 +1,50 @@
+
+The library is normally tested using several tools, which are described below.
+
+Each commit must pass at least the behaviour and stress tests successfully,
+invasive commits must be tested with the ones that are most likely affected by
+it, and releases must be checked with all the tests.
+
+In any case, remember that testing is not a replacement for careful code
+inspection.
+
+
+Behaviour tests:
+  Check how the library behaves in different situations, from basic ones to
+  weird crash scenarios, using fault injection. They can be found in the
+  behaviour/ directory.
+
+Stress test:
+  It's a randomized stress test that performs different transactions and
+  checks the result was the one expected. Can also run with randomized fault
+  injection both in libjio's predetermined points and in POSIX functions. It
+  can be found in the stress/ directory.
+
+Performance tests:
+  Check the performance of simple operations like streaming and randomized
+  writes. Not the most interesting tests, but can be useful for profiling.
+
+Valgrind:
+  Run the other tests under valgrind and see there are no libjio-related
+  issues. Performance tests are the easier ones, sadly behaviour and stress
+  tests are more painful because Python makes valgrind emit lots of warnings,
+  but it's definitely worth the effort and should be done frequently.
+
+Code coverage:
+  Use gcov and lcov to check that the behaviour and stress tests cover most of
+  the code. Currently, it's over 90%, and it shouldn't go down. However, this
+  test shouldn't be given more relevance that the one it deserves, since it's
+  mostly useful to see if we're missing some real scenario in the other tests.
+
+Profiling:
+  Use kcachegrind and prof (the Linux Kernel tool) to check for suspicious
+  bottlenecks.
+
+Static checkers:
+  Build using sparse (make CC=cgcc) and clang (make CC=ccc), and run cppcheck.
+
+Portability:
+  Build in some different architectures. At least Linux and some BSD must
+  be checked before releases.
+
+
