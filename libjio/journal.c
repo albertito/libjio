@@ -215,7 +215,7 @@ static int corrupt_journal_file(struct journal_op *jop)
 	if (pos == (off_t) -1)
 		return -1;
 
-	if (pwrite(jop->fd, (unsigned char *) &trailer, sizeof(trailer), pos)
+	if (pwrite(jop->fd, (void *) &trailer, sizeof(trailer), pos)
 			!= sizeof(trailer))
 		return -1;
 
@@ -305,7 +305,7 @@ struct journal_op *journal_new(struct jfs *fs, unsigned int flags)
 	hdr.flags = flags;
 	hdr_hton(&hdr);
 
-	iov[0].iov_base = (unsigned char *) &hdr;
+	iov[0].iov_base = (void *) &hdr;
 	iov[0].iov_len = sizeof(hdr);
 	rv = swritev(fd, iov, 1);
 	if (rv != sizeof(hdr))
@@ -342,12 +342,12 @@ int journal_add_op(struct journal_op *jop, unsigned char *buf, size_t len,
 	ophdr.offset = offset;
 	ophdr_hton(&ophdr);
 
-	iov[0].iov_base = (unsigned char *) &ophdr;
+	iov[0].iov_base = (void *) &ophdr;
 	iov[0].iov_len = sizeof(ophdr);
 	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
 			sizeof(ophdr));
 
-	iov[1].iov_base = buf;
+	iov[1].iov_base = (void *) buf;
 	iov[1].iov_len = len;
 	jop->csum = checksum_buf(jop->csum, buf, len);
 
@@ -389,7 +389,7 @@ int journal_commit(struct journal_op *jop)
 	ophdr.len = 0;
 	ophdr.offset = 0;
 	ophdr_hton(&ophdr);
-	iov[0].iov_base = (unsigned char *) &ophdr;
+	iov[0].iov_base = (void *) &ophdr;
 	iov[0].iov_len = sizeof(ophdr);
 	jop->csum = checksum_buf(jop->csum, (unsigned char *) &ophdr,
 			sizeof(ophdr));
@@ -397,7 +397,7 @@ int journal_commit(struct journal_op *jop)
 	trailer.checksum = jop->csum;
 	trailer.numops = jop->numops;
 	trailer_hton(&trailer);
-	iov[1].iov_base = (unsigned char *) &trailer;
+	iov[1].iov_base = (void *) &trailer;
 	iov[1].iov_len = sizeof(trailer);
 
 	rv = swritev(jop->fd, iov, 2);

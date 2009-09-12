@@ -126,7 +126,7 @@ ssize_t swritev(int fd, struct iovec *iov, int iovcnt)
 		t = 0;
 		for (i = 0; i < iovcnt; i++) {
 			if (t + iov[i].iov_len > rv) {
-				iov[i].iov_base = (unsigned char *)
+				iov[i].iov_base = (char *)
 					iov[i].iov_base + rv - t;
 				iov[i].iov_len -= rv - t;
 				break;
