@@ -60,8 +60,8 @@ endif
 
 
 # library version, used for soname and generated documentation
-LIB_VER=0.90
-LIB_SO_VER=0
+LIB_VER=1.00
+LIB_SO_VER=1
 
 
 OBJS = $(addprefix $O/,autosync.o checksum.o common.o compat.o trans.o \
