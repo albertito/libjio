@@ -2,9 +2,11 @@
 Here you can find a summary of the changes in the library that could require
 an effort from its users, like the ones affecting the API, ABI or semantics.
 
-You should always clean all your files before upgrading. While I don't expect
-the transaction on-disk format to change, it's a good practise and it doesn't
-take much effort. When it's mandatory, it will be noted.
+Normally, nothing should be required when upgrading between two stable
+releases from the same branch.
+
+
+------- 1.00: Stable release
 
 -> 0.90 (On-disk format change, pre 1.0 freeze)
   - The way transactions are stored on disk has changed. It is mandatory that
