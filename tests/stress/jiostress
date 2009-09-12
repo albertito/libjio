@@ -66,7 +66,224 @@ def comp_cont(bytes):
 		l.append((prev, c))
 		prev = b
 		c = 1
+	l.append((b, c))
 	return l
+
+def pread(fd, start, end):
+	ppos = fd.tell()
+	fd.seek(start, 0)
+	r = bytes()
+	c = 0
+	total = end - start
+	while c < total:
+		n = fd.read(total - c)
+		if (n == ''):
+			break
+		c += len(n)
+		r += n
+	fd.seek(ppos, 0)
+	assert c == end - start
+	return r
+
+#
+# A range of bytes inside a file, used inside the transactions
+#
+# Note it can't "remember" the fd as it may change between prepare() and
+# verify().
+#
+
+class Range:
+	def __init__(self, fsize, maxlen):
+		# public
+		self.start, self.end = randfrange(fsize, maxlen)
+		self.new_data = None
+		self.type = 'r'
+
+		# private
+		self.prev_data = None
+		self.new_data_ctx = None
+		self.read_buf = None
+
+		# read an extended range so we can check we
+		# only wrote what we were supposed to
+		self.ext_start = max(0, self.start - 32)
+		self.ext_end = min(fsize, self.end + 32)
+
+	def overlaps(self, other):
+		if (other.ext_start <= self.ext_start <= other.ext_end) or \
+		   (other.ext_start <= self.ext_end <= other.ext_end) or \
+		   (self.ext_start <= other.ext_start <= self.ext_end) or \
+		   (self.ext_start <= other.ext_end <= self.ext_end):
+			return True
+		return False
+
+	def prepare_r(self):
+		self.type = 'r'
+		self.read_buf = bytearray(self.end - self.start)
+
+	def verify_r(self, fd):
+		real_data = pread(fd, self.start, self.end)
+		if real_data != self.read_buf:
+			print('Corruption detected')
+			self.show(fd)
+			raise ConsistencyError
+
+	def prepare_w(self, fd):
+		self.type = 'w'
+		self.prev_data = pread(fd, self.ext_start, self.ext_end)
+
+		self.new_data = getbytes(self.end - self.start)
+		self.new_data_ctx = \
+			self.prev_data[:self.start - self.ext_start] \
+			+ self.new_data \
+			+ self.prev_data[- (self.ext_end - self.end):]
+
+		return self.new_data, self.start
+
+	def verify_w(self, fd):
+		# NOTE: fd must be a real file
+		real_data = pread(fd, self.ext_start, self.ext_end)
+		if real_data not in (self.prev_data, self.new_data_ctx):
+			print('Corruption detected')
+			self.show(fd)
+			raise ConsistencyError
+
+	def verify(self, fd):
+		if self.type == 'r':
+			self.verify_r(fd)
+		else:
+			self.verify_w(fd)
+
+	def show(self, fd):
+		real_data = pread(fd, self.start, self.end)
+		print('Range:', self.ext_start, self.ext_end)
+		print('Real:', comp_cont(real_data))
+		if self.type == 'w':
+			print('Prev:', comp_cont(self.prev_data))
+			print('New: ', comp_cont(self.new_data_ctx))
+		else:
+			print('Buf:', comp_cont(self.read_buf))
+		print()
+
+
+#
+# Transactions
+#
+
+class T_base:
+	"Interface for the transaction types"
+	def __init__(self, f, jf, fsize):
+		pass
+
+	def prepare(self):
+		pass
+
+	def apply(self):
+		pass
+
+	def verify(self, write_only = False):
+		pass
+
+class T_jwrite (T_base):
+	def __init__(self, f, jf, fsize):
+		self.f = f
+		self.jf = jf
+		self.fsize = fsize
+
+		self.maxoplen = min(int(fsize / 256), 16 * 1024 * 1024)
+		self.range = Range(self.fsize, self.maxoplen)
+
+	def prepare(self):
+		self.range.prepare_w(self.f)
+
+	def apply(self):
+		self.jf.pwrite(self.range.new_data, self.range.start)
+
+	def verify(self, write_only = False):
+		self.range.verify(self.f)
+
+class T_writeonly (T_base):
+	def __init__(self, f, jf, fsize):
+		self.f = f
+		self.jf = jf
+		self.fsize = fsize
+
+		# favour many small ops
+		self.maxoplen = 1 * 1024 * 1024
+		self.nops = random.randint(1, 26)
+
+		self.ranges = []
+
+		c = 0
+		while len(self.ranges) < self.nops and c < self.nops * 1.25:
+			candidate = Range(self.fsize, self.maxoplen)
+			safe = True
+			for r in self.ranges:
+				if candidate.overlaps(r):
+					safe = False
+					break
+			if safe:
+				self.ranges.append(candidate)
+			c += 1
+
+	def prepare(self):
+		for r in self.ranges:
+			r.prepare_w(self.f)
+
+	def apply(self):
+		t = self.jf.new_trans()
+		for r in self.ranges:
+			t.add_w(r.new_data, r.start)
+		t.commit()
+
+	def verify(self, write_only = False):
+		try:
+			for r in self.ranges:
+				r.verify(self.f)
+		except ConsistencyError:
+			# show context on errors
+			print("-" * 50)
+			for r in self.ranges:
+				r.show(self.f)
+			print("-" * 50)
+			raise
+
+class T_readwrite (T_writeonly):
+	def __init__(self, f, jf, fsize):
+		T_writeonly.__init__(self, f, jf, fsize)
+		self.read_ranges = []
+
+	def prepare(self):
+		for r in self.ranges:
+			if random.choice((True, False)):
+				r.prepare_w(self.f)
+			else:
+				r.prepare_r()
+
+	def apply(self):
+		t = self.jf.new_trans()
+		for r in self.ranges:
+			if r.type == 'r':
+				t.add_r(r.read_buf, r.start)
+			else:
+				t.add_w(r.new_data, r.start)
+		t.commit()
+
+	def verify(self, write_only = False):
+		try:
+			for r in self.ranges:
+				if write_only and r.type == 'r':
+					continue
+				r.verify(self.f)
+		except ConsistencyError:
+			# show context on errors
+			print("-" * 50)
+			for r in self.ranges:
+				r.show(self.f)
+			print("-" * 50)
+			raise
+
+t_list = [T_jwrite, T_writeonly, T_readwrite]
 
 
 #
@@ -81,9 +298,6 @@ class Stresser:
 		self.use_fi = use_fi
 		self.use_as = use_as
 
-		self.maxoplen = min(int(self.fsize / 256),
-					64 * 1024)
-
 		jflags = 0
 		if use_as:
 			jflags = libjio.J_LINGER
@@ -97,60 +311,27 @@ class Stresser:
 		if use_as:
 			self.jf.autosync_start(5, 10 * 1024 * 1024)
 
-		# data used for consistency checks
-		self.current_range = (0, 0)
-		self.prev_data = b""
-		self.new_data = b""
-
-	def pread(self, start, end):
-		ppos = self.f.tell()
-		self.f.seek(start, 0)
-		r = bytes()
-		c = 0
-		total = end - start
-		while c < total:
-			n = self.f.read(total - c)
-			if (n == ''):
-				break
-			c += len(n)
-			r += n
-		self.f.seek(ppos, 0)
-		assert c == end - start
-		return r
-
-	def prep_randwrite(self):
-		start, end = randfrange(self.fsize, self.maxoplen)
-
-		# read an extended range so we can check we
-		# only wrote what we were supposed to
-		estart = max(0, start - 32)
-		eend = min(self.fsize, end + 32)
-		self.current_range = (estart, eend)
-		self.prev_data = self.pread(estart, eend)
-
-		nd = getbytes(end - start)
-		self.new_data = self.prev_data[:start - estart] \
-			+ nd + self.prev_data[- (eend - end):]
-		return nd, start
-
-	def randwrite(self, nd, start):
-		self.jf.pwrite(nd, start)
+	def apply(self, trans):
+		trans.prepare()
+		trans.apply()
+		trans.verify()
 		return True
 
-	def randwrite_fork(self):
+	def apply_fork(self, trans):
 		# do the prep before the fork so we can verify() afterwards
-		nd, start = self.prep_randwrite()
+		trans.prepare()
+
 		sys.stdout.flush()
 		pid = os.fork()
 		if pid == 0:
 			# child
 			try:
 				self.fiu_enable()
-				self.randwrite(nd, start)
+				trans.apply()
 				self.fiu_disable()
 			except (IOError, MemoryError):
 				try:
-					self.reopen()
+					self.reopen(trans)
 				except (IOError, MemoryError):
 					pass
 				except:
@@ -165,6 +346,7 @@ class Stresser:
 				self.fiu_disable()
 				traceback.print_exc()
 				sys.exit(1)
+			trans.verify()
 			sys.exit(0)
 		else:
 			# parent
@@ -176,24 +358,11 @@ class Stresser:
 				return False
 			return True
 
-	def verify(self):
-		# NOTE: must not use self.jf
-		real_data = self.pread(self.current_range[0],
-				self.current_range[1])
-		if real_data not in (self.prev_data, self.new_data):
-			print('Corruption detected')
-			print('Range:', self.current_range)
-			print('Real:', comp_cont(real_data))
-			print('Prev:', comp_cont(self.prev_data))
-			print('New: ', comp_cont(self.new_data))
-			print()
-			raise ConsistencyError
-
-	def reopen(self):
+	def reopen(self, trans):
 		self.jf = None
 		r = jfsck(self.fname)
 
-		self.verify()
+		trans.verify(write_only = True)
 
 		self.jf = libjio.open(self.fname,
 			libjio.O_RDWR | libjio.O_CREAT, 0o600)
@@ -226,6 +395,7 @@ class Stresser:
 	def run(self):
 		nfailures = 0
 		sys.stdout.write("  ")
+
 		for i in range(1, self.nops + 1):
 			sys.stdout.write(".")
 			if i % 10 == 0:
@@ -235,15 +405,18 @@ class Stresser:
 				sys.stdout.write("  ")
 			sys.stdout.flush()
 
+			trans = random.choice(t_list)(self.f, self.jf,
+					self.fsize)
+
 			if self.use_fi:
-				r = self.randwrite_fork()
+				r = self.apply_fork(trans)
 			else:
-				nd, start = self.prep_randwrite()
-				r = self.randwrite(nd, start)
+				r = self.apply(trans)
 			if not r:
 				nfailures += 1
-				r = self.reopen()
-			self.verify()
+				r = self.reopen(trans)
+				trans.verify(write_only = True)
+
 		sys.stdout.write("\n")
 		sys.stdout.flush()
 		return nfailures
@@ -258,7 +431,7 @@ def usage():
 Use: jiostress <file name> <file size in Mb> [<number of operations>]
 	[--fi] [--as]
 
-If the number of operations is not provided, the default (1000) will be
+If the number of operations is not provided, the default (500) will be
 used.
 
 If the "--fi" option is passed, the test will perform fault injection. This
@@ -273,7 +446,7 @@ def main():
 	try:
 		fname = sys.argv[1]
 		fsize = int(sys.argv[2]) * 1024 * 1024
-		nops = 1000
+		nops = 500
 		if len(sys.argv) >= 4 and sys.argv[3].isnumeric():
 			nops = int(sys.argv[3])
 
