@@ -1,0 +1,13 @@
+
+The following list documents the assumptions the library makes. All of them
+should be well within normal behaviour for decent filesystems.
+
+ - fcntl() locking works.
+ - fsync(), fdatasync() and sync_file_range(WAIT_AFTER) return after the data
+   has been stored on stable storage, like they're supposed to.
+ - If a crash occurs while a write is in progress, the data within the
+   relevant range may contain garbage, but the data outside the range will not
+   be touched. Failure in doing so is normally considered corruption and
+   covering from it is outside the scope of the library.
+
+
