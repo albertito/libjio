@@ -9,6 +9,7 @@
 #include <sys/types.h>	/* for ssize_t and off_t */
 #include <stdint.h>	/* for uint*_t */
 #include <sys/uio.h>	/* for struct iovec */
+#include <pthread.h>	/* pthread_mutex_t */
 
 #include "fiu-local.h"	/* for fault injection functions */
 
