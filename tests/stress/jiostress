@@ -11,6 +11,7 @@ import sys
 import os
 import random
 import traceback
+from optparse import OptionParser
 import libjio
 
 try:
@@ -426,51 +427,44 @@ class Stresser:
 # Main
 #
 
-def usage():
-	print("""
-Use: jiostress <file name> <file size in Mb> [<number of operations>]
-	[--fi] [--as]
-
-If the number of operations is not provided, the default (500) will be
-used.
-
-If the "--fi" option is passed, the test will perform fault injection. This
-option conflicts with "--as".
-
-If the "--as" option is passed, lingering transactions will be used, along
-with the automatic syncing thread. This option conflicts with "--fi".
-""")
-
 
 def main():
-	try:
-		fname = sys.argv[1]
-		fsize = int(sys.argv[2]) * 1024 * 1024
-		nops = 500
-		if len(sys.argv) >= 4 and sys.argv[3].isnumeric():
-			nops = int(sys.argv[3])
+	usage = "Use: %prog [options] <file name> <file size in Mb>"
+	parser = OptionParser(usage = usage)
+	parser.add_option("-n", "--nops", dest = "nops", type = "int",
+		default = 500,
+		help = "number of operations (defaults to %default)")
+	parser.add_option("-f", "--fi", dest = "use_fi",
+		action = "store_true", default = False,
+		help = "use fault injection (conflicts with --as)")
+	parser.add_option("-a", "--as", dest = "use_as",
+		action = "store_true", default = False,
+		help = "use J_LINGER + autosync (conflicts with --fi)")
 
-		use_fi = False
-		if '--fi' in sys.argv:
-			use_fi = True
+	options, args = parser.parse_args()
 
-		use_as = False
-		if '--as' in sys.argv:
-			use_as = True
-	except:
-		usage()
+	if len(args) != 2:
+		parser.print_help()
 		sys.exit(1)
 
-	if use_fi and use_as:
+	fname = args[0]
+	try:
+		fsize = int(args[1]) * 1024 * 1024
+	except ValueError:
+		print("Error: the size of the file must be numeric")
+		sys.exit(1)
+
+	if options.use_fi and options.use_as:
 		print("Error: --fi and --as cannot be used together")
 		sys.exit(1)
 
-	s = Stresser(fname, fsize, nops, use_fi, use_as)
+	s = Stresser(fname, fsize, options.nops, options.use_fi,
+			options.use_as)
 	print("Running stress test")
 	nfailures = s.run()
 	del s
 	print("Stress test completed")
-	print("  %d operations" % nops)
+	print("  %d operations" % options.nops)
 	print("  %d simulated failures" % nfailures)
 
 	r = jfsck(fname)
