@@ -123,6 +123,17 @@ enum jfsck_return jfsck(const char *name, const char *jdir,
 
 	fs.name = (char *) name;
 
+	/* Locking the whole file protect us from concurrent runs, but it's
+	 * not to be trusted nor assumed (lingering transactions break it): it
+	 * just helps prevent some accidents. */
+	lr = plockf(fs.fd, F_LOCKW, 0, 0);
+	if (lr == -1) {
+		/* In the future, we may want to differentiate this case from
+		 * a normal I/O error. */
+		ret = J_EIO;
+		goto exit;
+	}
+
 	if (jdir == NULL) {
 		fs.jdir = (char *) malloc(PATH_MAX);
 		if (fs.jdir == NULL) {
