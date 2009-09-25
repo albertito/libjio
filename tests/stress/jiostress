@@ -47,9 +47,13 @@ def randfloat(min, max):
 class ConsistencyError (Exception):
 	pass
 
-def jfsck(fname):
+def jfsck(fname, cleanup = False):
+	flags = 0
+	if cleanup:
+		flags = libjio.J_CLEANUP
+
 	try:
-		r = libjio.jfsck(fname)
+		r = libjio.jfsck(fname, flags = flags)
 		return r
 	except IOError as e:
 		if e.args[0] == libjio.J_ENOJOURNAL:
@@ -632,6 +636,9 @@ def main():
 	parser.add_option("", "--no-verify", dest = "do_verify",
 		action = "store_false", default = True,
 		help = "do not perform verifications")
+	parser.add_option("", "--keep", dest = "keep",
+		action = "store_true", default = False,
+		help = "keep the file after completing the test")
 
 	options, args = parser.parse_args()
 
@@ -665,7 +672,9 @@ def main():
 
 	r = jfsck(fname)
 	print("Final check completed")
-	#os.unlink(fname)
+	if not options.keep:
+		jfsck(fname, cleanup = True)
+		os.unlink(fname)
 
 
 if __name__ == '__main__':
