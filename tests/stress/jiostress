@@ -510,7 +510,10 @@ class Stresser:
 			# parent
 			id, status = os.waitpid(pid, 0)
 			if not os.WIFEXITED(status):
-				raise RuntimeError(status)
+				i = (status,
+					os.WIFSIGNALED(status),
+					os.WTERMSIG(status))
+				raise RuntimeError(i)
 
 			if os.WEXITSTATUS(status) != 0:
 				return False
