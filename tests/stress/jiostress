@@ -609,10 +609,18 @@ def run_stressers(nproc, fname, fsize, nops, use_fi, use_as, output, lockmgr,
 	print("Launched stress tests")
 	totalops, nfailures = output.output_loop()
 	print("Stress test completed, waiting for children")
+	nerrors = 0
 	for pid in pids:
-		os.waitpid(pid, 0)
+		rpid, status = os.waitpid(pid, 0)
+		if os.WEXITSTATUS(status) != 0:
+			nerrors += 1
+
 	print("  %d operations" % totalops)
 	print("  %d simulated failures" % nfailures)
+	print("  %d processes ended with errors" % nerrors)
+	if nerrors:
+		return False
+	return True
 
 def main():
 	usage = "Use: %prog [options] <file name> <file size in Mb>"
@@ -666,17 +674,22 @@ def main():
 	else:
 		lockmgr = VoidLockManager()
 
-	run_stressers(options.nproc, fname, fsize, options.nops,
+	success = run_stressers(options.nproc, fname, fsize, options.nops,
 			options.use_fi, options.use_as, output, lockmgr,
 			options.do_verify)
 
 	r = jfsck(fname)
 	print("Final check completed")
-	if not options.keep:
+	if success and not options.keep:
 		jfsck(fname, cleanup = True)
 		os.unlink(fname)
 
+	if not success:
+		print("Test failed")
+		return 1
+	return 0
+
 
 if __name__ == '__main__':
-	main()
+	sys.exit(main())
 
