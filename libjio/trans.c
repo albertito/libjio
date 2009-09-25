@@ -80,25 +80,45 @@ void jtrans_free(struct jtrans *ts)
  * be either F_LOCKW or F_UNLOCK. Returns 0 on success, -1 on error. */
 static int lock_file_ranges(struct jtrans *ts, int mode)
 {
-	off_t lr;
-	struct operation *op;
+	unsigned int nops;
+	off_t lr, min_offset;
+	struct operation *op, *start_op;
 
 	if (ts->flags & J_NOLOCK)
 		return 0;
 
-	for (op = ts->op; op != NULL; op = op->next) {
-		if (mode == F_LOCKW) {
-			lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
-			if (lr == -1)
-				goto error;
-			op->locked = 1;
-		} else if (mode == F_UNLOCK && op->locked) {
-			lr = plockf(ts->fs->fd, F_UNLOCK, op->offset,
-					op->len);
-			if (lr == -1)
-				goto error;
-			op->locked = 0;
+	/* Lock/unlock always in the same order to avoid deadlocks. We will
+	 * begin with the operation that has the smallest start offset, and go
+	 * from there.
+	 * Note that this is O(n^2), but n is usually (very) small, and we're
+	 * about to do synchronous I/O, so it's not really worrying. It has a
+	 * small optimization to help when the operations tend to be in the
+	 * right order. */
+	nops = 0;
+	min_offset = 0;
+	start_op = ts->op;
+	while (nops < ts->numops_r + ts->numops_w) {
+		for (op = start_op; op != NULL; op = op->next) {
+			if (min_offset < op->offset)
+				continue;
+			min_offset = op->offset;
+			start_op = op->next;
+
+			if (mode == F_LOCKW) {
+				lr = plockf(ts->fs->fd, F_LOCKW, op->offset, op->len);
+				if (lr == -1)
+					goto error;
+				op->locked = 1;
+			} else if (mode == F_UNLOCK && op->locked) {
+				lr = plockf(ts->fs->fd, F_UNLOCK, op->offset,
+						op->len);
+				if (lr == -1)
+					goto error;
+				op->locked = 0;
+			}
 		}
+
+		nops++;
 	}
 
 	return 0;
