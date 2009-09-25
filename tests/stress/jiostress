@@ -331,7 +331,7 @@ class T_jwrite (T_base):
 		self.fsize = fsize
 		self.do_verify = do_verify
 
-		self.maxoplen = min(int(fsize / 256), 16 * 1024 * 1024)
+		self.maxoplen = min(int(fsize / 256), 2 * 1024 * 1024)
 		self.range = Range(self.fsize, self.maxoplen, lockmgr)
 
 	def prepare(self):
@@ -353,7 +353,7 @@ class T_writeonly (T_base):
 		self.do_verify = do_verify
 
 		# favour many small ops
-		self.maxoplen = 1 * 1024 * 1024
+		self.maxoplen = 512 * 1024
 		self.nops = random.randint(1, 26)
 
 		self.ranges = []
