@@ -618,17 +618,17 @@ def main():
 	usage = "Use: %prog [options] <file name> <file size in Mb>"
 	parser = OptionParser(usage = usage)
 	parser.add_option("-n", "--nops", dest = "nops", type = "int",
-		default = 500,
+		default = 100,
 		help = "number of operations (defaults to %default)")
+	parser.add_option("-p", "--nproc", dest = "nproc", type = "int",
+		default = 1,
+		help = "number of processes (defaults to %default)")
 	parser.add_option("", "--fi", dest = "use_fi",
 		action = "store_true", default = False,
 		help = "use fault injection (conflicts with --as)")
 	parser.add_option("", "--as", dest = "use_as",
 		action = "store_true", default = False,
 		help = "use J_LINGER + autosync (conflicts with --fi)")
-	parser.add_option("-p", "--nproc", dest = "nproc", type = "int",
-		default = 1,
-		help = "number of processes (defaults to %default)")
 	parser.add_option("", "--no-internal-lock",
 		dest = "use_internal_locks", action = "store_false",
 		default = True,
