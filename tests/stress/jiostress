@@ -650,6 +650,10 @@ def main():
 	parser.add_option("", "--keep", dest = "keep",
 		action = "store_true", default = False,
 		help = "keep the file after completing the test")
+	parser.add_option("", "--force", dest = "force",
+		action = "store_true", default = False,
+		help = "force the tests to run, even if conflicting"
+			+ " options are selected")
 
 	options, args = parser.parse_args()
 
@@ -664,13 +668,14 @@ def main():
 		print("Error: the size of the file must be numeric")
 		return 1
 
-	if options.use_fi and options.use_as:
-		print("Error: --fi and --as cannot be used together")
-		return 1
+	if not options.force:
+		if options.use_fi and options.use_as:
+			print("Error: --fi and --as cannot be used together")
+			return 1
 
-	if options.use_fi and options.nproc > 1:
-		print("Error: --fi cannot be used with multiple processes")
-		return 1
+		if options.use_fi and options.nproc > 1:
+			print("Error: --fi cannot be used with multiple processes")
+			return 1
 
 	if not options.use_internal_locks:
 		options.do_verify = False
