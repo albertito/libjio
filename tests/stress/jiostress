@@ -636,7 +636,7 @@ def main():
 		help = "number of processes (defaults to %default)")
 	parser.add_option("", "--fi", dest = "use_fi",
 		action = "store_true", default = False,
-		help = "use fault injection (conflicts with --as)")
+		help = "use fault injection (conflicts with --as and -p > 1)")
 	parser.add_option("", "--as", dest = "use_as",
 		action = "store_true", default = False,
 		help = "use J_LINGER + autosync (conflicts with --fi)")
@@ -666,6 +666,10 @@ def main():
 
 	if options.use_fi and options.use_as:
 		print("Error: --fi and --as cannot be used together")
+		sys.exit(1)
+
+	if options.use_fi and options.nproc > 1:
+		print("Error: --fi cannot be used with multiple processes")
 		sys.exit(1)
 
 	if not options.use_internal_locks:
