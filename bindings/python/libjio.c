@@ -279,7 +279,7 @@ static PyObject *jf_write(jfile_object *fp, PyObject *args)
 {
 	long rv;
 	unsigned char *buf;
-	int len;
+	ssize_t len;
 
 	if (!PyArg_ParseTuple(args, "s#:write", &buf, &len))
 		return NULL;
@@ -307,7 +307,7 @@ static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 	long rv;
 	unsigned char *buf;
 	long long offset;
-	int len;
+	ssize_t len;
 
 	if (!PyArg_ParseTuple(args, "s#L:pwrite", &buf, &len, &offset))
 		return NULL;
@@ -659,7 +659,7 @@ It's a wrapper to jtrans_add_w().\n");
 static PyObject *jt_add_w(jtrans_object *tp, PyObject *args)
 {
 	long rv;
-	int len;
+	ssize_t len;
 	long long offset;
 	unsigned char *buf;
 
