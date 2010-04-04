@@ -655,22 +655,22 @@ def main():
 
 	if len(args) != 2:
 		parser.print_help()
-		sys.exit(1)
+		return 1
 
 	fname = args[0]
 	try:
 		fsize = int(args[1]) * 1024 * 1024
 	except ValueError:
 		print("Error: the size of the file must be numeric")
-		sys.exit(1)
+		return 1
 
 	if options.use_fi and options.use_as:
 		print("Error: --fi and --as cannot be used together")
-		sys.exit(1)
+		return 1
 
 	if options.use_fi and options.nproc > 1:
 		print("Error: --fi cannot be used with multiple processes")
-		sys.exit(1)
+		return 1
 
 	if not options.use_internal_locks:
 		options.do_verify = False
