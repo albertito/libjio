@@ -20,7 +20,7 @@ libjio = Extension("libjio",
 
 setup(
 	name = 'libjio',
-	version = '1.00',
+	version = '1.01',
 	description = "A library for journaled, transactional I/O",
 	author = "Alberto Bertogli",
 	author_email = "albertito@blitiri.com.ar",
