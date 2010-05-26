@@ -101,7 +101,7 @@ static PyObject *jf_read(jfile_object *fp, PyObject *args)
 	unsigned char *buf;
 	PyObject *r;
 
-	if (!PyArg_ParseTuple(args, "i:read", &len))
+	if (!PyArg_ParseTuple(args, "l:read", &len))
 		return NULL;
 
 	buf = malloc(len);
@@ -142,7 +142,7 @@ static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 	unsigned char *buf;
 	PyObject *r;
 
-	if (!PyArg_ParseTuple(args, "iL:pread", &len, &offset))
+	if (!PyArg_ParseTuple(args, "lL:pread", &len, &offset))
 		return NULL;
 
 	buf = malloc(len);
