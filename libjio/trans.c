@@ -631,12 +631,12 @@ struct jfs *jopen(const char *name, int flags, int mode, unsigned int jflags)
 
 	if (!get_jdir(name, jdir))
 		goto error_exit;
-	rv = mkdir(jdir, 0750);
+	mkdir(jdir, 0750);
 	rv = lstat(jdir, &sinfo);
 	if (rv < 0 || !S_ISDIR(sinfo.st_mode))
 		goto error_exit;
 
-	fs->jdir = (char *) malloc(strlen(jdir) + 1);
+	fs->jdir = malloc(strlen(jdir) + 1);
 	if (fs->jdir == NULL)
 		goto error_exit;
 	strcpy(fs->jdir, jdir);
@@ -733,7 +733,7 @@ int jmove_journal(struct jfs *fs, const char *newpath)
 	oldpath = fs->jdir;
 	snprintf(oldjlockfile, PATH_MAX, "%s/lock", fs->jdir);
 
-	fs->jdir = (char *) malloc(strlen(newpath) + 1);
+	fs->jdir = malloc(strlen(newpath) + 1);
 	if (fs->jdir == NULL)
 		return -1;
 	strcpy(fs->jdir, newpath);
