@@ -43,7 +43,7 @@ case "$1" in
 		echo
 		echo "stress tests (fiu)"
 		./wrap-python 3 ../stress/jiostress \
-			$(tempfile -p libjio-tests) 20 -n 50 --fi
+			$(tempfile -p libjio-tests) 20 -n 400 --fi
 		;;
 esac
 
