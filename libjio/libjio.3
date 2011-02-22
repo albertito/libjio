@@ -1,6 +1,6 @@
 .TH libjio 3 "21/Feb/2004"
 .SH NAME
-libjio - A library for Journaled I/O
+libjio \- A library for Journaled I/O
 .SH SYNOPSIS
 .nf
 .B #include <libjio.h>
@@ -17,7 +17,7 @@ libjio - A library for Journaled I/O
 .BI "		off_t " offset ");"
 .BI "ssize_t jwritev(jfs_t *" fs ", const struct iovec *" vector ","
 .BI "		int " count ");"
-.BI "int jtruncate(jfs_t *" fs ", off_t " lenght ");"
+.BI "int jtruncate(jfs_t *" fs ", off_t " length ");"
 .BI "off_t jlseek(jfs_t *" fs ", off_t " offset ", int " whence ");"
 .BI "int jclose(jfs_t *" fs ");"
 
@@ -44,17 +44,17 @@ libjio - A library for Journaled I/O
     int invalid;          /* invalid files in the journal directory */
     int in_progress;      /* transactions in progress */
     int broken;           /* transactions broken */
-    int rollbacked;       /* transactions that were rollbacked */
+    int rollbacked;       /* transactions that were rolled back */
     ...
 };
 
 .BR "enum jfsck_return" " {"
     J_ESUCCESS = 0,	/* Success */
-    J_ENOENT = -1,	/* No such file or directory */
-    J_ENOJOURNAL = -2,	/* No journal associated with the given file */
-    J_ENOMEM = -3,	/* Not enough free memory */
-    J_ECLEANUP = -4,	/* Error cleaning the journal directory */
-    J_EIO = -5,		/* I/O error */
+    J_ENOENT = \-1,	/* No such file or directory */
+    J_ENOJOURNAL = \-2,	/* No journal associated with the given file */
+    J_ENOMEM = \-3,	/* Not enough free memory */
+    J_ECLEANUP = \-4,	/* Error cleaning the journal directory */
+    J_EIO = \-5,		/* I/O error */
 };
 
 
@@ -216,9 +216,9 @@ commits the given transaction to disk. After it has returned, write operations
 have been saved to the disk, and read operations have been read from it. The
 commit operation is atomic with regards to other read or write operations on
 different processes, as long as they all access it via libjio. It returns the
-number 0 on success, -1 if there was an error but atomic warantees were
-preserved, or -2 if there was an error and there is a possible break of atomic
-warantees (which is an indication of a severe underlying condition).
+number 0 on success, \-1 if there was an error but atomic warranties were
+preserved, or \-2 if there was an error and there is a possible break of atomic
+warranties (which is an indication of a severe underlying condition).
 
 .B jtrans_rollback()
 reverses a transaction that was applied with
