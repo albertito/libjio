@@ -30,6 +30,15 @@ preload:
 preload_install: preload
 	$(MAKE) -C bindings/preload/ install
 
+tests: all python2 python3
+	tests/util/quick-test-run.sh normal
+
+tests-fi: all python2 python3
+	@if [ "$(FI)" != "1" ]; then \
+		echo "Error: $@ has to be run using:  make FI=1 $@"; \
+		exit 1; \
+	fi
+	tests/util/quick-test-run.sh fiu
 
 clean:
 	$(MAKE) -C libjio/ clean
@@ -40,5 +49,5 @@ clean:
 .PHONY: default all libjio install \
 	python2 python2_install python3 python3_install \
 	preload preload_install \
-	clean
+	tests tests-fiu clean
 

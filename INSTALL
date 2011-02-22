@@ -37,3 +37,14 @@ them, you should have libjio already installed.
  - To build the Python 3 bindings, run "make python3". To install them, run
    "make python3_install".
 
+
+Tests
+-----
+
+Several tests can be found in the "tests/" directory. For practical purposes,
+there are two make targets that run a reasonable set of tests against the
+built version of the library:
+
+ - To run the standard tests, run "make tests".
+ - To run the tests with fault injection support, run "make FI=1 tests-fi".
+

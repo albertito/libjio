@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Python 2 wrapper, which makes it able to import the build (and not the
+# installed) version of libjio.
+# The first parameter must be the python version (2 or 3)
+
+PYVER="$1"
+shift
+
+if [ "$PYVER" != 2 ] && [ "$PYVER" != 3 ]; then
+	echo "Error: the first argument must be the version (2 or 3)"
+	exit 1
+fi
+
+# Find our directory, which we will use to find the other tools
+OURDIR=$(readlink -f $(dirname $0))
+
+# Find the built versions of the library and Python bindings and add them to
+# the lookup paths, so we run against them
+. $OURDIR/build_lib_env.sh
+
+MODBIN=$(readlink -f \
+		"$OURDIR"/../../bindings/python/build/lib*-$PYVER.*/libjio.so)
+
+if ! [ -x "$MODBIN" ]; then
+	echo "Can't find python$PYVER bindings (run make python$PYVER)"
+	exit 1
+fi
+
+export "PYTHONPATH=$(dirname $MODBIN):$PYTHONPATH"
+
+if [ "$PYVER" == 2 ]; then
+	exec python "$@"
+else
+	exec python3 "$@"
+fi
+
