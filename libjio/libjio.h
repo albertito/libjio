@@ -384,7 +384,7 @@ ssize_t jwritev(jfs_t *fs, const struct iovec *vector, int count);
 /** Truncates the file to the given length. Works just like UNIX ftruncate(2).
  *
  * @param fs file to truncate
- * @param length lenght to truncate to
+ * @param length length to truncate to
  * @returns 0 on success, -1 on error
  * @see ftruncate(2)
  * @ingroup unix

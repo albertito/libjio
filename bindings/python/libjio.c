@@ -378,7 +378,7 @@ static PyObject *jf_writev(jfile_object *fp, PyObject *args)
 
 /* truncate */
 PyDoc_STRVAR(jf_truncate__doc,
-"truncate(lenght)\n\
+"truncate(length)\n\
 \n\
 Truncate the file to the given size.\n\
 It's a wrapper to jtruncate().\n");
@@ -386,13 +386,13 @@ It's a wrapper to jtruncate().\n");
 static PyObject *jf_truncate(jfile_object *fp, PyObject *args)
 {
 	int rv;
-	long long lenght;
+	long long length;
 
-	if (!PyArg_ParseTuple(args, "L:truncate", &lenght))
+	if (!PyArg_ParseTuple(args, "L:truncate", &length))
 		return NULL;
 
 	Py_BEGIN_ALLOW_THREADS
-	rv = jtruncate(fp->fs, lenght);
+	rv = jtruncate(fp->fs, length);
 	Py_END_ALLOW_THREADS
 
 	if (rv != 0)
