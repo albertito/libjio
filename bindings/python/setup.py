@@ -15,7 +15,7 @@ libjio = Extension("libjio",
 		# these two allow us to build without having libjio installed,
 		# assuming we're in the libjio source tree
 		include_dirs = ['../../libjio/'],
-		library_dirs=['../../libjio/']
+		library_dirs=['../../libjio/build/']
 	)
 
 setup(

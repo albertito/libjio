@@ -99,6 +99,7 @@ $O/libjio.so: $O/build-flags $(OBJS)
 		$(LIBS) $(OBJS) -o $O/libjio.so.$(LIB_VER)
 	@echo "  LN  libjio.so.$(LIB_VER)"
 	@ln -fs libjio.so.$(LIB_VER) $O/libjio.so
+	@ln -fs libjio.so.$(LIB_VER) $O/libjio.so.$(LIB_SO_VER)
 
 $O/libjio.a: $O/build-flags $(OBJS)
 	$(N_AR) cr $@ $(OBJS)
@@ -137,6 +138,7 @@ doxygen:
 
 clean:
 	rm -f $O/libjio.a $O/libjio.so $O/libjio.so.$(LIB_VER) $O/libjio.pc
+	rm -f $O/libjio.so.$(LIB_SO_VER)
 	rm -f $(OBJS) $O/jiofsck.o $O/jiofsck
 	rm -f $O/*.bb $O/*.bbg $O/*.da $O/*.gcov $O/*.gcno $O/*.gcda $O/gmon.out
 	rm -f $O/build-flags $O/*.o.mak
