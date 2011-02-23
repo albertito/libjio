@@ -24,6 +24,14 @@ fi
 
 set -e
 
+function get_tmp() {
+	if which tempfile > /dev/null 2> /dev/null; then
+		tempfile -p libjio-tests
+	else
+		echo ${TMPDIR:-/tmp}/libjio-tests-$$.tmp
+	fi
+}
+
 case "$1" in
 	normal)
 		echo "behaviour tests (normal)"
@@ -31,7 +39,7 @@ case "$1" in
 		echo
 		echo "stress tests (normal)"
 		./wrap-python 3 ../stress/jiostress \
-			$(tempfile -p libjio-tests) 20 -n 50 -p 3
+			$(get_tmp -p libjio-tests) 20 -n 50 -p 3
 		;;
 	fiu)
 		echo "behaviour tests (all)"
@@ -39,11 +47,11 @@ case "$1" in
 		echo
 		echo "stress tests (normal)"
 		./wrap-python 3 ../stress/jiostress \
-			$(tempfile -p libjio-tests) 20 -n 50 -p 3
+			$(get_tmp -p libjio-tests) 20 -n 50 -p 3
 		echo
 		echo "stress tests (fiu)"
 		./wrap-python 3 ../stress/jiostress \
-			$(tempfile -p libjio-tests) 20 -n 400 --fi
+			$(get_tmp -p libjio-tests) 20 -n 400 --fi
 		;;
 esac
 
