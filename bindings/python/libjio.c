@@ -900,7 +900,7 @@ It's a wrapper to jfsck().\n");
 static PyObject *jf_jfsck(PyObject *self, PyObject *args, PyObject *kw)
 {
 	int rv;
-	unsigned int flags;
+	unsigned int flags = 0;
 	char *name, *jdir = NULL;
 	struct jfsck_result res;
 	PyObject *dict;
