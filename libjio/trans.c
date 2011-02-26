@@ -546,10 +546,13 @@ ssize_t jtrans_rollback(struct jtrans *ts)
 	rv = jtrans_commit(newts);
 
 exit:
-	/* free the transaction */
+	/* Free the transaction, taking care to set buf to NULL first since
+	 * points to the same address as pdata, which would otherwise make
+	 * jtrans_free() attempt to free it twice. We leave the data at
+	 * curop->pdata since it is freed unconditionally, while the action
+	 * on curop->buf depends on the direction of the transaction. */
 	for (curop = newts->op; curop != NULL; curop = curop->next) {
 		curop->buf = NULL;
-		curop->pdata = NULL;
 	}
 	jtrans_free(newts);
 
