@@ -41,6 +41,9 @@ static int classic(void)
 	if (rv != strlen(STR))
 		perror("write()");
 
+	if (close(fd))
+		perror("close()");
+
 	return 0;
 }
 
