@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Apply the environment changes needed to use the built (and not the
 # installed) versions of the library and Python bindings.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Python 2 wrapper, which makes it able to import the build (and not the
 # installed) version of libjio.

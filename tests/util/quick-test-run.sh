@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is a convenience script for running some of the other tests without
 # manual intervention, as a means of a fast and easy correctness test.
