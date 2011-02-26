@@ -72,6 +72,26 @@ static void jf_dealloc(jfile_object *fp)
 	PyObject_Del(fp);
 }
 
+
+/* In order to support older Python versions, we use this function to convert
+ * from ssize_t to a Python long. */
+PyObject *Our_PyLong_FromSsize_t(ssize_t v)
+{
+	/* Use PyLong_FromSsize_t() if available (Python 3 and >= 2.6),
+	 * otherwise just fall back to the function that fits the size. */
+#if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
+	return PyLong_FromSsize_t(v);
+#else
+	switch (sizeof(ssize_t)) {
+		case sizeof(long long):
+			return PyLong_FromLongLong(v);
+		default:
+			return PyLong_FromLong(v);
+	}
+#endif
+}
+
+
 /* fileno */
 PyDoc_STRVAR(jf_fileno__doc,
 "fileno()\n\
@@ -96,13 +116,17 @@ It's a wrapper to jread().\n");
 
 static PyObject *jf_read(jfile_object *fp, PyObject *args)
 {
-	long rv;
-	long len;
+	ssize_t rv, len;
 	unsigned char *buf;
 	PyObject *r;
 
-	if (!PyArg_ParseTuple(args, "l:read", &len))
+	if (!PyArg_ParseTuple(args, "n:read", &len))
 		return NULL;
+
+	if (len < 0) {
+		PyErr_SetString(PyExc_TypeError, "len must be >= 0");
+		return NULL;
+	}
 
 	buf = malloc(len);
 	if (buf == NULL)
@@ -136,14 +160,23 @@ It's a wrapper to jpread().\n");
 
 static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 {
-	long rv;
-	long len;
+	ssize_t rv, len;
 	long long offset;
 	unsigned char *buf;
 	PyObject *r;
 
-	if (!PyArg_ParseTuple(args, "lL:pread", &len, &offset))
+	if (!PyArg_ParseTuple(args, "nL:pread", &len, &offset))
 		return NULL;
+
+	if (len < 0) {
+		PyErr_SetString(PyExc_TypeError, "len must be >= 0");
+		return NULL;
+	}
+
+	if (offset < 0) {
+		PyErr_SetString(PyExc_TypeError, "offset must be >= 0");
+		return NULL;
+	}
 
 	buf = malloc(len);
 	if (buf == NULL)
@@ -183,7 +216,7 @@ It's a wrapper to jreadv().\n");
 #if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
 static PyObject *jf_readv(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 	PyObject *buffers, *buf;
 	Py_buffer *views = NULL;
 	ssize_t len, pos = 0;
@@ -240,7 +273,7 @@ static PyObject *jf_readv(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 
 error:
 	/* We might get here with pos between 0 and len, so we must release
@@ -277,7 +310,7 @@ It's a wrapper to jwrite().\n");
 
 static PyObject *jf_write(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 	unsigned char *buf;
 	ssize_t len;
 
@@ -291,7 +324,7 @@ static PyObject *jf_write(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 }
 
 /* pwrite */
@@ -304,13 +337,18 @@ It's a wrapper to jpwrite().\n");
 
 static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 	unsigned char *buf;
 	long long offset;
 	ssize_t len;
 
 	if (!PyArg_ParseTuple(args, "s#L:pwrite", &buf, &len, &offset))
 		return NULL;
+
+	if (offset < 0) {
+		PyErr_SetString(PyExc_TypeError, "offset must be >= 0");
+		return NULL;
+	}
 
 	Py_BEGIN_ALLOW_THREADS
 	rv = jpwrite(fp->fs, buf, len, offset);
@@ -319,7 +357,7 @@ static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 }
 
 /* writev */
@@ -333,7 +371,7 @@ It's a wrapper to jwritev().\n");
 
 static PyObject *jf_writev(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 	PyObject *buffers, *buf;
 	ssize_t len, pos;
 	struct iovec *iov;
@@ -373,7 +411,7 @@ static PyObject *jf_writev(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 }
 
 /* truncate */
@@ -444,7 +482,7 @@ It's a wrapper to jsync().\n");
 
 static PyObject *jf_jsync(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	int rv;
 
 	if (!PyArg_ParseTuple(args, ":jsync"))
 		return NULL;
@@ -469,7 +507,7 @@ It's a wrapper to jmove_journal().\n");
 
 static PyObject *jf_jmove_journal(jfile_object *fp, PyObject *args)
 {
-	long rv;
+	int rv;
 	char *newpath;
 
 	if (!PyArg_ParseTuple(args, "s:jmove_journal", &newpath))
@@ -543,7 +581,7 @@ It's a wrapper to jtrans_new().\n");
 
 static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 {
-	jtrans_object *tp;
+	jtrans_object *tp = NULL;
 	unsigned int flags = 0;
 
 	if (!PyArg_ParseTuple(args, "|I:new_trans", &flags))
@@ -658,13 +696,18 @@ It's a wrapper to jtrans_add_w().\n");
 
 static PyObject *jt_add_w(jtrans_object *tp, PyObject *args)
 {
-	long rv;
+	int rv;
 	ssize_t len;
 	long long offset;
 	unsigned char *buf;
 
 	if (!PyArg_ParseTuple(args, "s#L:add_w", &buf, &len, &offset))
 		return NULL;
+
+	if (offset < 0) {
+		PyErr_SetString(PyExc_TypeError, "offset must be >= 0");
+		return NULL;
+	}
 
 	rv = jtrans_add_w(tp->ts, buf, len, offset);
 	if (rv < 0)
@@ -690,9 +733,9 @@ Only available in Python >= 2.6.\n");
 #if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
 static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
 {
-	long rv;
+	int rv;
 	PyObject *py_buf;
-	unsigned long long offset;
+	long long offset;
 	Py_buffer *view = NULL, **new_views;
 
 	if (!PyArg_ParseTuple(args, "OL:add_r", &py_buf, &offset))
@@ -701,6 +744,11 @@ static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
 	if (!PyObject_CheckBuffer(py_buf)) {
 		PyErr_SetString(PyExc_TypeError,
 			"object must support the buffer interface");
+		return NULL;
+	}
+
+	if (offset < 0) {
+		PyErr_SetString(PyExc_TypeError, "offset must be >= 0");
 		return NULL;
 	}
 
@@ -758,7 +806,7 @@ It's a wrapper to jtrans_commit().\n");
 
 static PyObject *jt_commit(jtrans_object *tp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 
 	if (!PyArg_ParseTuple(args, ":commit"))
 		return NULL;
@@ -770,7 +818,7 @@ static PyObject *jt_commit(jtrans_object *tp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 }
 
 /* rollback */
@@ -782,7 +830,7 @@ It's a wrapper to jtrans_rollback().\n");
 
 static PyObject *jt_rollback(jtrans_object *tp, PyObject *args)
 {
-	long rv;
+	ssize_t rv;
 
 	if (!PyArg_ParseTuple(args, ":rollback"))
 		return NULL;
@@ -794,7 +842,7 @@ static PyObject *jt_rollback(jtrans_object *tp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return PyLong_FromLong(rv);
+	return Our_PyLong_FromSsize_t(rv);
 }
 
 /* method table */
@@ -854,7 +902,7 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 	int flags = O_RDONLY;
 	int mode = 0600;
 	unsigned int jflags = 0;
-	jfile_object *fp;
+	jfile_object *fp = NULL;
 
 	flags = O_RDWR;
 	mode = 0600;
