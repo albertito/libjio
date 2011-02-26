@@ -1,5 +1,5 @@
 
-CFLAGS := -Wall -O3 -D_XOPEN_SOURCE=500 \
+CFLAGS := -Wall -std=c99 -pedantic -O3 -D_XOPEN_SOURCE=500 \
 	$(shell getconf LFS_CFLAGS 2>/dev/null)
 LIBS = -ljio
 
