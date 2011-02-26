@@ -680,6 +680,13 @@ def main():
 	if not options.use_internal_locks:
 		options.do_verify = False
 
+
+	# Open the file with O_EXCL here to make sure we're the ones creating
+	# it, to avoid stepping over existing files, and also prevent security
+	# issues with temporary files. We discard the file descriptor, as
+	# we're not really interested in it here, we just wanted the file.
+	_ = os.open(fname, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o600)
+
 	output = OutputHandler(every = 2)
 	if options.use_internal_locks:
 		lockmgr = LockManager()
