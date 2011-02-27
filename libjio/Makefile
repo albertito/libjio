@@ -60,7 +60,7 @@ endif
 
 
 # library version, used for soname and generated documentation
-LIB_VER=1.01
+LIB_VER=1.02
 LIB_SO_VER=1
 
 
