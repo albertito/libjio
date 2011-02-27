@@ -803,6 +803,7 @@ int jclose(struct jfs *fs)
 		free(fs->jdir);
 
 	pthread_mutex_destroy(&(fs->lock));
+	pthread_mutex_destroy(&(fs->ltlock));
 
 	free(fs);
 
