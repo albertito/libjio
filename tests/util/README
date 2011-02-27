@@ -1,6 +1,6 @@
 These are useful scripts for running the tests against the built library
 (instead of running them against the installed version).
 
-The most user-friendly script is the quick-test-run.sh, which is safe to run
-after building the library.
+The most user-friendly script is quick-test-run, which is safe to run after
+building the library.
 
