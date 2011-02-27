@@ -20,11 +20,10 @@ import libjio
 try:
 	import fiu
 except ImportError:
-	print()
-	print("Error: unable to load fiu module. This test needs libfiu")
-	print("support. Please install libfiu and recompile libjio with FI=1.")
-	print()
-	raise
+	# It may be mandatory if the appropriate command line options are
+	# given, but we will check later once we have parsed them
+	fiu = None
+
 
 #
 # Auxiliary stuff
@@ -676,6 +675,11 @@ def main():
 		if options.use_fi and options.nproc > 1:
 			print("Error: --fi cannot be used with multiple processes")
 			return 1
+
+	if options.use_fi and not fiu:
+		print("Error: unable to load fiu module, but use_fi was")
+		print("enabled. Please install libfiu and recompile libjio with FI=1.")
+		return 1
 
 	if not options.use_internal_locks:
 		options.do_verify = False
