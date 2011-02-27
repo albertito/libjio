@@ -394,3 +394,53 @@ def test_n23():
 	cleanup(n)
 
 
+def test_n24():
+	"many jtrans_add_w + many jtrans_add_r"
+	f, jf = bitmp()
+	n = f.name
+
+	# just randomly chosen numbers
+	len_c1 = 1293
+	len_c2 = 529
+	len_c3 = 1621
+	block_len = len_c1 + len_c2 + len_c3
+
+	t = jf.new_trans()
+	bufs = []
+	for i in range(50):
+		offset = i * block_len
+		buf1 = bytearray(0 for _ in range(30))
+		buf2 = bytearray(0 for _ in range(100))
+		bufs.append((buf1, buf2))
+
+		# We can't use the bytearray directly because add_w requires
+		# an immutable object, so we convert it to a string
+		c1 = str(bytearray(i for _ in range(len_c1)))
+		c2 = str(bytearray(i for _ in range(len_c2)))
+		c3 = str(bytearray(i for _ in range(len_c3)))
+
+		t.add_w(c1, offset)
+		t.add_r(buf1, offset)
+		t.add_w(c2, offset + len(c1))
+		t.add_r(buf2, offset + len(c1) - len(buf2) / 2)
+		t.add_w(c3, offset + len(c1) + len(c2))
+
+	t.commit()
+
+	cont = content(n)
+	for i in range(50):
+		offset = i * block_len
+		buf1, buf2 = bufs[i]
+		c1 = str(bytearray(i for _ in range(len_c1)))
+		c2 = str(bytearray(i for _ in range(len_c2)))
+		c3 = str(bytearray(i for _ in range(len_c3)))
+
+		assert cont[offset : offset + block_len] == c1 + c2 + c3
+		assert buf1 == c1[:len(buf1)]
+		assert buf2 == c1[-(len(buf2) / 2):] + c2[:len(buf2) / 2]
+
+	del t
+	del jf
+	fsck_verify(n)
+	cleanup(n)
+
