@@ -370,8 +370,8 @@ def test_n23():
 	n = f.name
 
 	c1 = gencontent(1000)
-	c2 = gencontent(1000)
-	c3 = gencontent(1000)
+	c2 = gencontent(2000)
+	c3 = gencontent(3000)
 
 	buf1 = bytearray(0 for i in range(30))
 	buf2 = bytearray(0 for i in range(100))
@@ -379,7 +379,7 @@ def test_n23():
 	t = jf.new_trans()
 	t.add_w(c1, 0)
 	t.add_r(buf1, 0)
-	t.add_w(c2, len(c2))
+	t.add_w(c2, len(c1))
 	t.add_r(buf2, len(c1) - len(buf2) / 2)
 	t.add_w(c3, len(c1) + len(c2))
 	t.commit()
