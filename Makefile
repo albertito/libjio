@@ -11,14 +11,19 @@ install:
 	$(MAKE) -C libjio/ install
 
 
+PY_DEBUG=
+ifdef DEBUG
+	PY_DEBUG=--debug
+endif
+
 python2: libjio
-	cd bindings/python && python setup.py build
+	cd bindings/python && python setup.py build $(PY_DEBUG)
 
 python2_install: python2
 	cd bindings/python && python setup.py install
 
 python3: libjio
-	cd bindings/python && python3 setup.py build
+	cd bindings/python && python3 setup.py build $(PY_DEBUG)
 
 python3_install: python3
 	cd bindings/python && python3 setup.py install
