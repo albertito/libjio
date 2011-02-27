@@ -771,7 +771,7 @@ static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
 		return PyErr_SetFromErrno(PyExc_IOError);
 	}
 
-	new_views = realloc(tp->views, sizeof(Py_buffer *) * tp->nviews + 1);
+	new_views = realloc(tp->views, sizeof(Py_buffer *) * (tp->nviews + 1));
 	if (new_views == NULL) {
 		PyBuffer_Release(view);
 		free(view);
