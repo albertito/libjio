@@ -4,19 +4,29 @@ O = build
 
 CFLAGS = -std=c99 -pedantic -Wall -O3
 
+UNAME := $(shell uname -s)
+
 MANDATORY_CFLAGS := \
 	-D_LARGEFILE_SOURCE=1 $(shell getconf LFS_CFLAGS 2>/dev/null) \
 	-D_XOPEN_SOURCE=600
 
 MANDATORY_LDFLAGS := $(shell getconf LFS_LIBS 2>/dev/null)
 
+ifeq ($(UNAME),Darwin)
+  LIB_EXT = dylib
+  LIB_DEST_OPT = -install_name
+else
+  LIB_EXT = so
+  LIB_DEST_OPT = -soname
+endif
+
 ALL_CFLAGS += $(CFLAGS) $(MANDATORY_CFLAGS) -fPIC
 ALL_LDFLAGS += $(LDFLAGS) $(MANDATORY_LDFLAGS) -fPIC
 
 
 # some platforms do not have librt, we only use it if available
-NEED_LIBRT := $(shell ld -o rtcheck.so -shared -lrt 2>/dev/null && echo -lrt; \
-	rm -f rtcheck.so)
+NEED_LIBRT := $(shell ld -o rtcheck.$(LIB_EXT) -shared -lrt 2>/dev/null && echo -lrt; \
+	rm -f rtcheck.$(LIB_EXT))
 
 LIBS = -lpthread $(NEED_LIBRT)
 
@@ -61,7 +71,7 @@ endif
 
 # library version, used for soname and generated documentation
 LIB_VER=1.02
-LIB_SO_VER=1
+LIB_OBJ_VER=1
 
 
 OBJS = $(addprefix $O/,autosync.o checksum.o common.o compat.o trans.o \
@@ -72,7 +82,7 @@ OBJS = $(addprefix $O/,autosync.o checksum.o common.o compat.o trans.o \
 
 default: all
 
-all: $O/libjio.so $O/libjio.a $O/libjio.pc $O/jiofsck
+all: $O/libjio.$(LIB_EXT) $O/libjio.a $O/libjio.pc $O/jiofsck
 
 # used to rebuild everything when the build flags have changed
 BF = $(CC) ~ $(ALL_CFLAGS) ~ $(PREFIX)
@@ -93,13 +103,13 @@ $O/%.o: %.c
 
 sinclude $(OBJS:.o=.o.mak)
 
-$O/libjio.so: $O/build-flags $(OBJS)
+$O/libjio.$(LIB_EXT): $O/build-flags $(OBJS)
 	$(N_CC) -shared $(ALL_LDFLAGS) \
-		-Wl,-soname,libjio.so.$(LIB_SO_VER) \
-		$(LIBS) $(OBJS) -o $O/libjio.so.$(LIB_VER)
-	@echo "  LN  libjio.so.$(LIB_VER)"
-	@ln -fs libjio.so.$(LIB_VER) $O/libjio.so
-	@ln -fs libjio.so.$(LIB_VER) $O/libjio.so.$(LIB_SO_VER)
+		-Wl,$(LIB_DEST_OPT),libjio.$(LIB_EXT).$(LIB_OBJ_VER) \
+		$(LIBS) $(OBJS) -o $O/libjio.$(LIB_EXT).$(LIB_VER)
+	@echo "  LN  libjio.$(LIB_EXT).$(LIB_VER)"
+	@ln -fs libjio.$(LIB_EXT).$(LIB_VER) $O/libjio.$(LIB_EXT)
+	@ln -fs libjio.$(LIB_EXT).$(LIB_VER) $O/libjio.$(LIB_EXT).$(LIB_OBJ_VER)
 
 $O/libjio.a: $O/build-flags $(OBJS)
 	$(N_AR) cr $@ $(OBJS)
@@ -117,9 +127,9 @@ $O/jiofsck: $O/build-flags $O/jiofsck.o $O/libjio.a
 
 install: all
 	$(INSTALL) -d $(PREFIX)/lib
-	$(INSTALL) -m 0755 $O/libjio.so.$(LIB_VER) $(PREFIX)/lib
-	ln -fs libjio.so.$(LIB_VER) $(PREFIX)/lib/libjio.so
-	ln -fs libjio.so.$(LIB_VER) $(PREFIX)/lib/libjio.so.$(LIB_SO_VER)
+	$(INSTALL) -m 0755 $O/libjio.$(LIB_EXT).$(LIB_VER) $(PREFIX)/lib
+	ln -fs libjio.$(LIB_EXT).$(LIB_VER) $(PREFIX)/lib/libjio.$(LIB_EXT)
+	ln -fs libjio.$(LIB_EXT).$(LIB_VER) $(PREFIX)/lib/libjio.$(LIB_EXT).$(LIB_OBJ_VER)
 	$(INSTALL) -m 0644 $O/libjio.a $(PREFIX)/lib
 	$(INSTALL) -d $(PREFIX)/include
 	$(INSTALL) -m 0644 libjio.h $(PREFIX)/include
@@ -137,8 +147,8 @@ doxygen:
 	$(MAKE) LIB_VER=$(LIB_VER) -C doxygen
 
 clean:
-	rm -f $O/libjio.a $O/libjio.so $O/libjio.so.$(LIB_VER) $O/libjio.pc
-	rm -f $O/libjio.so.$(LIB_SO_VER)
+	rm -f $O/libjio.a $O/libjio.$(LIB_EXT) $O/libjio.$(LIB_EXT).$(LIB_VER) $O/libjio.pc
+	rm -f $O/libjio.$(LIB_EXT).$(LIB_OBJ_VER)
 	rm -f $(OBJS) $O/jiofsck.o $O/jiofsck
 	rm -f $O/*.bb $O/*.bbg $O/*.da $O/*.gcov $O/*.gcno $O/*.gcda $O/gmon.out
 	rm -f $O/build-flags $O/*.o.mak
