@@ -106,7 +106,7 @@ sinclude $(OBJS:.o=.o.mak)
 $O/libjio.$(LIB_EXT): $O/build-flags $(OBJS)
 	$(N_CC) -shared $(ALL_LDFLAGS) \
 		-Wl,$(LIB_DEST_OPT),libjio.$(LIB_EXT).$(LIB_OBJ_VER) \
-		$(LIBS) $(OBJS) -o $O/libjio.$(LIB_EXT).$(LIB_VER)
+		$(OBJS) $(LIBS) -o $O/libjio.$(LIB_EXT).$(LIB_VER)
 	@echo "  LN  libjio.$(LIB_EXT).$(LIB_VER)"
 	@ln -fs libjio.$(LIB_EXT).$(LIB_VER) $O/libjio.$(LIB_EXT)
 	@ln -fs libjio.$(LIB_EXT).$(LIB_VER) $O/libjio.$(LIB_EXT).$(LIB_OBJ_VER)
