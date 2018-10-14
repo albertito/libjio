@@ -9,6 +9,11 @@ failures.
 
 import sys
 import os
+
+# Extend the modules path with PYTHON3PATH, which is useful for automated
+# testing under some conditions.
+sys.path[1:1] = os.getenv("PYTHON3PATH", "").split(os.pathsep)
+
 import time
 import select
 import random
