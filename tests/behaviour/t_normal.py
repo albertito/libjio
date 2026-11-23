@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Normal tests.
 
@@ -12,9 +12,9 @@ def test_n01():
 		pass
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_n02():
@@ -22,8 +22,8 @@ def test_n02():
 	c = gencontent()
 
 	def f1(f, jf):
-		jf.write(c[:len(c) / 2])
-		jf.write(c[len(c) / 2:])
+		jf.write(c[:len(c) // 2])
+		jf.write(c[len(c) // 2:])
 		jf.lseek(0, 0)
 		assert jf.read(len(c) * 2) == c
 
@@ -40,7 +40,7 @@ def test_n03():
 		jf.pwrite(c, 80)
 
 	n = run_with_tmp(f1)
-	assert content(n) == '\0' * 80 + c
+	assert content(n) == b'\0' * 80 + c
 	fsck_verify(n)
 	cleanup(n)
 
@@ -50,7 +50,7 @@ def test_n04():
 		jf.truncate(826)
 
 	n = run_with_tmp(f1)
-	assert content(n) == '\0' * 826
+	assert content(n) == b'\0' * 826
 	fsck_verify(n)
 	cleanup(n)
 
@@ -64,7 +64,7 @@ def test_n05():
 		t.commit()
 
 	n = run_with_tmp(f1)
-	assert content(n) == '\0' * 80 + c
+	assert content(n) == b'\0' * 80 + c
 	fsck_verify(n)
 	cleanup(n)
 
@@ -83,7 +83,7 @@ def test_n06():
 	# XXX: This is weird, because the file was empty at the beginning.
 	# However, making it go back to 0 is delicate and the current code
 	# doesn't implement it. It probably should.
-	assert content(n) == '\0' * 80
+	assert content(n) == b'\0' * 80
 	fsck_verify(n)
 	cleanup(n)
 
@@ -197,9 +197,9 @@ def test_n13():
 	n = f.name
 	p = tmppath()
 
-	jf.write('x')
+	jf.write(b'x')
 	jf.jmove_journal(p)
-	jf.write('y')
+	jf.write(b'y')
 	del jf
 
 	assert libjio.jfsck(n, p)['total'] == 0
@@ -211,8 +211,8 @@ def test_n14():
 	n = f.name
 
 	jf.autosync_start(1, 10)
-	jf.write('x' * 200)
-	jf.write('x' * 200)
+	jf.write(b'x' * 200)
+	jf.write(b'x' * 200)
 	jf.autosync_stop()
 	del jf
 
@@ -227,7 +227,7 @@ def test_n15():
 	n = f.name
 
 	jf.pwrite(c, 2000)
-	assert content(n) == '\0' * 2000 + c
+	assert content(n) == b'\0' * 2000 + c
 	assert jf.pread(len(c), 2000) == c
 	del jf
 
@@ -272,9 +272,9 @@ def test_n17():
 	os.mkdir(p)
 	open(p + '/x', 'w')
 
-	jf.write('x')
+	jf.write(b'x')
 	jf.jmove_journal(p)
-	jf.write('y')
+	jf.write(b'y')
 	del jf
 	os.unlink(p + '/x')
 
@@ -297,7 +297,7 @@ def test_n18():
 	else:
 		raise AssertionError
 
-	assert content(n) == '\0' * 80 + c
+	assert content(n) == b'\0' * 80 + c
 	fsck_verify(n)
 	cleanup(n)
 
@@ -323,7 +323,7 @@ def test_n20():
 	t = jf.new_trans()
 
 	try:
-		t.add_w('', 80)
+		t.add_w(b'', 80)
 	except IOError:
 		pass
 	else:
@@ -339,13 +339,13 @@ def test_n21():
 	f, jf = bitmp()
 	n = f.name
 
-	jf.writev(["hello ", "world"])
-	l = [bytearray("......"), bytearray(".....")]
+	jf.writev([b"hello ", b"world"])
+	l = [bytearray(b"......"), bytearray(b".....")]
 	jf.lseek(0, 0)
 	jf.readv(l)
 
-	assert content(n) == "hello world"
-	assert l[0] == "hello " and l[1] == "world"
+	assert content(n) == b"hello world"
+	assert l[0] == b"hello " and l[1] == b"world"
 	fsck_verify(n)
 	cleanup(n)
 
@@ -357,7 +357,7 @@ def test_n22():
 	n = f.name
 
 	jf.pwrite(c, 2000)
-	assert content(n) == '\0' * 2000 + c
+	assert content(n) == b'\0' * 2000 + c
 	assert jf.pread(len(c), 2000) == c
 	del jf
 
@@ -380,13 +380,13 @@ def test_n23():
 	t.add_w(c1, 0)
 	t.add_r(buf1, 0)
 	t.add_w(c2, len(c1))
-	t.add_r(buf2, len(c1) - len(buf2) / 2)
+	t.add_r(buf2, len(c1) - len(buf2) // 2)
 	t.add_w(c3, len(c1) + len(c2))
 	t.commit()
 
 	assert content(n) == c1 + c2 + c3
 	assert buf1 == c1[:len(buf1)]
-	assert buf2 == c1[-(len(buf2) / 2):] + c2[:len(buf2) / 2]
+	assert buf2 == c1[-(len(buf2) // 2):] + c2[:len(buf2) // 2]
 
 	del t
 	del jf
@@ -414,15 +414,15 @@ def test_n24():
 		bufs.append((buf1, buf2))
 
 		# We can't use the bytearray directly because add_w requires
-		# an immutable object, so we convert it to a string
-		c1 = str(bytearray(i for _ in range(len_c1)))
-		c2 = str(bytearray(i for _ in range(len_c2)))
-		c3 = str(bytearray(i for _ in range(len_c3)))
+		# an immutable object, so we convert it to bytes
+		c1 = bytes(bytearray(i for _ in range(len_c1)))
+		c2 = bytes(bytearray(i for _ in range(len_c2)))
+		c3 = bytes(bytearray(i for _ in range(len_c3)))
 
 		t.add_w(c1, offset)
 		t.add_r(buf1, offset)
 		t.add_w(c2, offset + len(c1))
-		t.add_r(buf2, offset + len(c1) - len(buf2) / 2)
+		t.add_r(buf2, offset + len(c1) - len(buf2) // 2)
 		t.add_w(c3, offset + len(c1) + len(c2))
 
 	t.commit()
@@ -431,13 +431,13 @@ def test_n24():
 	for i in range(50):
 		offset = i * block_len
 		buf1, buf2 = bufs[i]
-		c1 = str(bytearray(i for _ in range(len_c1)))
-		c2 = str(bytearray(i for _ in range(len_c2)))
-		c3 = str(bytearray(i for _ in range(len_c3)))
+		c1 = bytes(bytearray(i for _ in range(len_c1)))
+		c2 = bytes(bytearray(i for _ in range(len_c2)))
+		c3 = bytes(bytearray(i for _ in range(len_c3)))
 
 		assert cont[offset : offset + block_len] == c1 + c2 + c3
 		assert buf1 == c1[:len(buf1)]
-		assert buf2 == c1[-(len(buf2) / 2):] + c2[:len(buf2) / 2]
+		assert buf2 == c1[-(len(buf2) // 2):] + c2[:len(buf2) // 2]
 
 	del t
 	del jf

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # General tests using libfiu. libjio must have been built with libfiu enabled
 # (using something like make FI=1) for them to work.
@@ -10,11 +10,11 @@ import libjio
 try:
 	import fiu
 except ImportError:
-	print
-	print "Error: unable to load fiu module. Fault injection tests need"
-	print "libfiu support. Please install libfiu and recompile libjio"
-	print "with FI=1. You can still run the other tests."
-	print
+	print()
+	print("Error: unable to load fiu module. Fault injection tests need")
+	print("libfiu support. Please install libfiu and recompile libjio")
+	print("with FI=1. You can still run the other tests.")
+	print()
 	raise
 
 
@@ -47,7 +47,7 @@ def test_f02():
 
 	n = run_with_tmp(f1)
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_f03():
@@ -59,9 +59,9 @@ def test_f03():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_f04():
@@ -79,9 +79,9 @@ def test_f04():
 	n = run_with_tmp(f1)
 
 	assert len(content(transpath(n, 1))) == DHS + DOHS + len(c)
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_f05():
@@ -99,9 +99,9 @@ def test_f05():
 	n = run_with_tmp(f1)
 
 	assert len(content(transpath(n, 1))) == DHS + (DOHS + len(c)) * 2
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_f06():
@@ -118,9 +118,9 @@ def test_f06():
 	n = run_with_tmp(f1)
 
 	assert len(content(transpath(n, 1))) == DHS + (DOHS + len(c)) * 2
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_f07():
@@ -132,7 +132,7 @@ def test_f07():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 	fsck_verify(n, reapplied = 1)
 	assert content(n) == c
 	cleanup(n)
@@ -152,7 +152,7 @@ def test_f08():
 
 	assert content(n) == c
 	fsck_verify(n, reapplied = 1)
-	assert content(n) == c + '\0' * 200 + c
+	assert content(n) == c + b'\0' * 200 + c
 	cleanup(n)
 
 def test_f09():
@@ -190,19 +190,19 @@ def test_f11():
 	c = gencontent()
 
 	def f1(f, jf):
-		jf.write('x' * (80 + len(c)))
+		jf.write(b'x' * (80 + len(c)))
 		t = jf.new_trans()
 		t.add_w(c, 80)
 		t.commit()
-		assert content(f.name) == 'x' * 80 + c
+		assert content(f.name) == b'x' * 80 + c
 		fiu.enable("jio/commit/tf_sync")
 		t.rollback()
 
 	n = run_with_tmp(f1)
 
-	assert content(n) == 'x' * 80 + c
+	assert content(n) == b'x' * 80 + c
 	fsck_verify(n, reapplied = 1)
-	assert content(n) == 'x' * (80 + len(c))
+	assert content(n) == b'x' * (80 + len(c))
 	cleanup(n)
 
 def test_f12():

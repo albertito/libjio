@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Corruption tests using libfiu. libjio must have been built with libfiu
 # enabled (using something like make FI=1) for them to work.
@@ -8,11 +8,11 @@ from tf import *
 try:
 	import fiu
 except ImportError:
-	print
-	print "Error: unable to load fiu module. Corruption tests need"
-	print "libfiu support. Please install libfiu and recompile libjio"
-	print "with FI=1. You can still run the other tests."
-	print
+	print()
+	print("Error: unable to load fiu module. Corruption tests need")
+	print("libfiu support. Please install libfiu and recompile libjio")
+	print("with FI=1. You can still run the other tests.")
+	print()
 	raise
 
 
@@ -25,16 +25,15 @@ def test_c01():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
-	tc = open(transpath(n, 1)).read()
+	assert content(n) == b''
+	tc = content(transpath(n, 1))
 	# flip just one bit in the transaction data
-	pos = DHS + DOHS + len(c) / 2
-	tc = tc[:pos] + \
-		chr((ord(tc[pos]) & 0xFE) | (~ ord(tc[pos]) & 0x1) & 0xFF) + \
-		tc[pos + 1:]
-	open(transpath(n, 1), 'w').write(tc)
+	pos = DHS + DOHS + len(c) // 2
+	tc = tc[:pos] + bytes([tc[pos] ^ 0x1]) + tc[pos + 1:]
+	with open(transpath(n, 1), 'wb') as f:
+		f.write(tc)
 	fsck_verify(n, corrupt = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c02():
@@ -46,11 +45,12 @@ def test_c02():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 	tp = transpath(n, 1)
-	open(tp, 'r+').truncate(len(content(tp)) - 2)
+	with open(tp, 'r+') as f:
+		f.truncate(len(content(tp)) - 2)
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c03():
@@ -62,13 +62,13 @@ def test_c03():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 
 	tf = TransFile(transpath(n, 1))
 	tf.ops[0].tlen = 99
 	tf.save()
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c04():
@@ -80,13 +80,13 @@ def test_c04():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 
 	tf = TransFile(transpath(n, 1))
 	tf.ops[0].tlen = 10
 	tf.save()
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c05():
@@ -98,11 +98,12 @@ def test_c05():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 	tp = transpath(n, 1)
-	open(tp, 'r+').truncate(2)
+	with open(tp, 'r+') as f:
+		f.truncate(2)
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c06():
@@ -114,7 +115,7 @@ def test_c06():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 
 	# there is no need to recalculate the checsum because it is verified
 	# after the version check
@@ -122,7 +123,7 @@ def test_c06():
 	tf.ver = 8
 	tf.save()
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c07():
@@ -134,7 +135,7 @@ def test_c07():
 		jf.write(c)
 
 	n = run_with_tmp(f1)
-	assert content(n) == ''
+	assert content(n) == b''
 
 	# there is no need to recalculate the checsum because it is verified
 	# after the numops check
@@ -142,7 +143,7 @@ def test_c07():
 	tf.numops = 55
 	tf.save()
 	fsck_verify(n, broken = 1)
-	assert content(n) == ''
+	assert content(n) == b''
 	cleanup(n)
 
 def test_c08():
@@ -158,7 +159,7 @@ def test_c08():
 
 	run_forked(f1, f, jf)
 
-	assert content(n) == ''
+	assert content(n) == b''
 	open(jiodir(n) + '/broken', 'w+')
 
 	def f2(f, jf):

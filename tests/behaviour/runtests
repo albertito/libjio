@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import resource
@@ -6,8 +6,8 @@ import tf
 
 possible_tests = ('normal', 'corruption', 'fi')
 if len(sys.argv) < 2 or sys.argv[1] not in possible_tests + ('all',):
-	print 'Usage: runtests', '|'.join(possible_tests + ('all',)),
-	print '[test_name]'
+	print('Usage: runtests', '|'.join(possible_tests + ('all',)),
+		'[test_name]')
 	sys.exit(1)
 
 if sys.argv[1] == 'all':
@@ -25,6 +25,6 @@ resource.setrlimit(resource.RLIMIT_FSIZE, (100 * M, 100 * M))
 resource.setrlimit(resource.RLIMIT_AS, (500 * M, 500 * M))
 
 for mn in mnames:
-	print '--', mn
+	print('--', mn)
 	tf.autorun(__import__(mn), specific_test)
 

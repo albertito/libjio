@@ -28,12 +28,19 @@ def tmppath():
 	print a warning, or os.tmpfile() if it allowed us to get its name.
 	Since we just need a stupid name, we got our own function. Truly a
 	shame. Yes, it's not safe; I know and I don't care."""
+	global _tmppath_count
+	_tmppath_count += 1
 	tmpdir = os.environ.get('TMPDIR', '/tmp')
 	now = time.time()
 	now_s = str(int(now))
 	now_f = str((now - int(now)) * 10000)
 	now_str = "%s.%s" % (now_s[-5:], now_f[:now_f.find('.')])
-	return tmpdir + '/jiotest.%s.%s' % (now_str, os.getpid())
+	# The counter avoids collisions between calls made very close
+	# together, which are below the resolution of the timestamp.
+	return tmpdir + '/jiotest.%s.%s.%d' % (now_str, os.getpid(),
+			_tmppath_count)
+
+_tmppath_count = 0
 
 
 def run_forked(f, *args, **kwargs):
@@ -48,7 +55,7 @@ def run_forked(f, *args, **kwargs):
 		# parent
 		id, status = os.waitpid(pid, 0)
 		if not os.WIFEXITED(status):
-			raise RuntimeError, (id, status)
+			raise RuntimeError(id, status)
 
 def forked(f):
 	"Decorator that makes the function run in a different process."
@@ -59,8 +66,8 @@ def forked(f):
 
 def gencontent(size = 9377):
 	"Generates random content."
-	s = ''
-	a = "%.20f" % random.random()
+	s = b''
+	a = ("%.20f" % random.random()).encode('ascii')
 	while len(s) < size:
 		s += a
 	s = s[:size]
@@ -68,8 +75,8 @@ def gencontent(size = 9377):
 
 def content(path):
 	"Returns the content of the given path."
-	f = open(path)
-	return f.read()
+	with open(path, 'rb') as f:
+		return f.read()
 
 
 def biopen(path, mode = 'w+', jflags = 0):
@@ -87,7 +94,7 @@ def biopen(path, mode = 'w+', jflags = 0):
 	else:
 		raise RuntimeError
 
-	return open(path, mode), libjio.open(path, flags, 0400, jflags)
+	return open(path, mode), libjio.open(path, flags, 0o400, jflags)
 
 def bitmp(mode = 'w+', jflags = 0):
 	"Opens a temporary file with biopen()."
@@ -134,10 +141,10 @@ def fsck_verify(n, **kwargs):
 
 	for k in expected:
 		if k not in res:
-			raise AssertionError, k + ' not in res'
+			raise AssertionError(k + ' not in res')
 		if res[k] != expected[k]:
-			raise AssertionError, k + ' does not match: ' + \
-					str(res)
+			raise AssertionError(k + ' does not match: ' +
+					str(res))
 
 def cleanup(path):
 	"""Unlinks the path and its temporary libjio directory. The libjio
@@ -173,7 +180,7 @@ class TransFile (object):
 			self.load()
 
 	def load(self):
-		fd = open(self.path)
+		fd = open(self.path, 'rb')
 
 		# header
 		hdrfmt = "!HHI"
@@ -202,13 +209,14 @@ class TransFile (object):
 		# the lack of integrity checking in this function is
 		# intentional, so we can write broken transactions and see how
 		# jfsck() copes with them
-		fd = open(self.path, 'w')
+		fd = open(self.path, 'wb')
 		fd.write(struct.pack("!HHI", self.ver, self.flags, self.id))
 		for o in self.ops:
 			fd.write(struct.pack("!IQ", o.tlen, o.offset,))
 			fd.write(o.payload)
 		fd.write(struct.pack("!IQ", 0, 0))
 		fd.write(struct.pack("!II", self.numops, self.checksum))
+		fd.close()
 
 	def __repr__(self):
 		return '<TransFile %s: id:%d f:%s n:%d ops:%s>' % \
@@ -224,7 +232,7 @@ def gen_ret_seq(seq):
 	last = [0]
 	def newf(*args, **kwargs):
 		try:
-			r = it.next()
+			r = next(it)
 			last[0] = r
 			return r
 		except StopIteration:
@@ -249,7 +257,7 @@ def autorun(module, specific_test = None):
 			desc = ''
 			if obj.__doc__:
 				desc = obj.__doc__
-			print "%-10s %-60.60s" % (name, desc)
+			print("%-10s %-60.60s" % (name, desc))
 			obj()
 
 

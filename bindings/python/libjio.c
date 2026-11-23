@@ -1,6 +1,6 @@
 
 /*
- * Python (2 and 3) bindings for libjio
+ * Python 3 bindings for libjio
  * Alberto Bertogli (albertito@blitiri.com.ar)
  */
 
@@ -73,25 +73,6 @@ static void jf_dealloc(jfile_object *fp)
 }
 
 
-/* In order to support older Python versions, we use this function to convert
- * from ssize_t to a Python long. */
-PyObject *Our_PyLong_FromSsize_t(ssize_t v)
-{
-	/* Use PyLong_FromSsize_t() if available (Python 3 and >= 2.6),
-	 * otherwise just fall back to the function that fits the size. */
-#if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
-	return PyLong_FromSsize_t(v);
-#else
-	switch (sizeof(ssize_t)) {
-		case sizeof(long long):
-			return PyLong_FromLongLong(v);
-		default:
-			return PyLong_FromLong(v);
-	}
-#endif
-}
-
-
 /* fileno */
 PyDoc_STRVAR(jf_fileno__doc,
 "fileno()\n\
@@ -139,11 +120,7 @@ static PyObject *jf_read(jfile_object *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
-#ifdef PYTHON3
 		r = PyBytes_FromStringAndSize((char *) buf, rv);
-#elif PYTHON2
-		r = PyString_FromStringAndSize((char *) buf, rv);
-#endif
 	}
 
 	free(buf);
@@ -189,11 +166,7 @@ static PyObject *jf_pread(jfile_object *fp, PyObject *args)
 	if (rv < 0) {
 		r = PyErr_SetFromErrno(PyExc_IOError);
 	} else {
-#ifdef PYTHON3
 		r = PyBytes_FromStringAndSize((char *) buf, rv);
-#elif PYTHON2
-		r = PyString_FromStringAndSize((char *) buf, rv);
-#endif
 	}
 
 	free(buf);
@@ -207,13 +180,9 @@ PyDoc_STRVAR(jf_readv__doc,
 Reads the data from the file into the different buffers; returns the\n\
 number of bytes written.\n\
 The buffers must be objects that support slice assignment, like bytearray\n\
-(but *not* str).\n\
-Only available in Python >= 2.6.\n\
+(but *not* bytes).\n\
 It's a wrapper to jreadv().\n");
 
-/* readv requires the new Py_buffer interface, which is only available in
- * Python >= 2.6 */
-#if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
 static PyObject *jf_readv(jfile_object *fp, PyObject *args)
 {
 	ssize_t rv;
@@ -273,7 +242,7 @@ static PyObject *jf_readv(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 
 error:
 	/* We might get here with pos between 0 and len, so we must release
@@ -289,16 +258,6 @@ error:
 	return NULL;
 }
 
-#else
-
-static PyObject *jf_readv(jfile_object *fp, PyObject *args)
-{
-	PyErr_SetString(PyExc_NotImplementedError,
-			"only supported in Python >= 2.6");
-	return NULL;
-}
-
-#endif /* python version >= 2.6 */
 
 /* write */
 PyDoc_STRVAR(jf_write__doc,
@@ -324,7 +283,7 @@ static PyObject *jf_write(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 }
 
 /* pwrite */
@@ -357,7 +316,7 @@ static PyObject *jf_pwrite(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 }
 
 /* writev */
@@ -411,7 +370,7 @@ static PyObject *jf_writev(jfile_object *fp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 }
 
 /* truncate */
@@ -587,11 +546,7 @@ static PyObject *jf_new_trans(jfile_object *fp, PyObject *args)
 	if (!PyArg_ParseTuple(args, "|I:new_trans", &flags))
 		return NULL;
 
-#ifdef PYTHON3
 	tp = (jtrans_object *) jtrans_type.tp_alloc(&jtrans_type, 0);
-#elif PYTHON2
-	tp = PyObject_New(jtrans_object, &jtrans_type);
-#endif
 	if (tp == NULL)
 		return NULL;
 
@@ -634,33 +589,14 @@ static PyMethodDef jfile_methods[] = {
 	{ NULL }
 };
 
-#ifdef PYTHON3
 static PyTypeObject jfile_type = {
-	PyObject_HEAD_INIT(NULL)
+	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = "libjio.jfile",
-	.tp_itemsize = sizeof(jfile_object),
+	.tp_basicsize = sizeof(jfile_object),
 	.tp_dealloc = (destructor) jf_dealloc,
 	.tp_methods = jfile_methods,
 };
 
-#elif PYTHON2
-static PyObject *jf_getattr(jfile_object *fp, char *name)
-{
-	return Py_FindMethod(jfile_methods, (PyObject *)fp, name);
-}
-
-static PyTypeObject jfile_type = {
-	PyObject_HEAD_INIT(NULL)
-	0,
-	"libjio.jfile",
-	sizeof(jfile_object),
-	0,
-	(destructor)jf_dealloc,
-	0,
-	(getattrfunc)jf_getattr,
-};
-
-#endif
 
 
 /*
@@ -725,12 +661,8 @@ transaction.\n\
 It's a wrapper to jtrans_add_r().\n\
 \n\
 The buffer must be objects that support slice assignment, like bytearray\n\
-(but *not* str).\n\
-Only available in Python >= 2.6.\n");
+(but *not* bytes).\n");
 
-/* add_r requires the new Py_buffer interface, which is only available in
- * Python >= 2.6 */
-#if PY_MAJOR_VERSION >= 3 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 6)
 static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
 {
 	int rv;
@@ -785,16 +717,6 @@ static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
 	return PyLong_FromLong(rv);
 }
 
-#else
-
-static PyObject *jt_add_r(jtrans_object *tp, PyObject *args)
-{
-	PyErr_SetString(PyExc_NotImplementedError,
-			"only supported in Python >= 2.6");
-	return NULL;
-}
-
-#endif /* python version >= 2.6 */
 
 
 /* commit */
@@ -818,7 +740,7 @@ static PyObject *jt_commit(jtrans_object *tp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 }
 
 /* rollback */
@@ -842,7 +764,7 @@ static PyObject *jt_rollback(jtrans_object *tp, PyObject *args)
 	if (rv < 0)
 		return PyErr_SetFromErrno(PyExc_IOError);
 
-	return Our_PyLong_FromSsize_t(rv);
+	return PyLong_FromSsize_t(rv);
 }
 
 /* method table */
@@ -854,33 +776,14 @@ static PyMethodDef jtrans_methods[] = {
 	{ NULL }
 };
 
-#ifdef PYTHON3
 static PyTypeObject jtrans_type = {
-	PyObject_HEAD_INIT(NULL)
+	PyVarObject_HEAD_INIT(NULL, 0)
 	.tp_name = "libjio.jtrans",
-	.tp_itemsize = sizeof(jtrans_object),
+	.tp_basicsize = sizeof(jtrans_object),
 	.tp_dealloc = (destructor) jt_dealloc,
 	.tp_methods = jtrans_methods,
 };
 
-#elif PYTHON2
-static PyObject *jt_getattr(jtrans_object *tp, char *name)
-{
-	return Py_FindMethod(jtrans_methods, (PyObject *)tp, name);
-}
-
-static PyTypeObject jtrans_type = {
-	PyObject_HEAD_INIT(NULL)
-	0,
-	"libjio.jtrans",
-	sizeof(jtrans_object),
-	0,
-	(destructor)jt_dealloc,
-	0,
-	(getattrfunc)jt_getattr,
-};
-
-#endif
 
 
 /*
@@ -912,11 +815,7 @@ static PyObject *jf_open(PyObject *self, PyObject *args)
 				&jflags))
 		return NULL;
 
-#ifdef PYTHON3
 	fp = (jfile_object *) jfile_type.tp_alloc(&jfile_type, 0);
-#elif PYTHON2
-	fp = PyObject_New(jfile_object, &jfile_type);
-#endif
 
 	if (fp == NULL)
 		return NULL;
@@ -1049,7 +948,6 @@ static void populate_module(PyObject *m)
 }
 
 
-#ifdef PYTHON3
 static PyModuleDef libjio_module = {
 	PyModuleDef_HEAD_INIT,
 	.m_name = "libjio",
@@ -1073,19 +971,5 @@ PyMODINIT_FUNC PyInit_libjio(void)
 	return m;
 }
 
-#elif PYTHON2
-PyMODINIT_FUNC initlibjio(void)
-{
-	PyObject* m;
-
-	jfile_type.ob_type = &PyType_Type;
-	jtrans_type.ob_type = &PyType_Type;
-
-	m = Py_InitModule3("libjio", module_methods, module_doc);
-
-	populate_module(m);
-}
-
-#endif
 
 

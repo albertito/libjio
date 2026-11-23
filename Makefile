@@ -16,12 +16,6 @@ ifdef DEBUG
 	PY_DEBUG=--debug
 endif
 
-python2: libjio
-	cd bindings/python && python setup.py build $(PY_DEBUG)
-
-python2_install: python2
-	cd bindings/python && python setup.py install
-
 python3: libjio
 	cd bindings/python && python3 setup.py build $(PY_DEBUG)
 
@@ -35,10 +29,10 @@ preload:
 preload_install: preload
 	$(MAKE) -C bindings/preload/ install
 
-tests: all python2 python3
+tests: all python3
 	tests/util/quick-test-run normal
 
-tests-fi: all python2 python3
+tests-fi: all python3
 	@if [ "$(FI)" != "1" ]; then \
 		echo "Error: $@ has to be run using:  make FI=1 $@"; \
 		exit 1; \
@@ -52,7 +46,7 @@ clean:
 
 
 .PHONY: default all libjio install \
-	python2 python2_install python3 python3_install \
+	python3 python3_install \
 	preload preload_install \
 	tests tests-fi clean
 

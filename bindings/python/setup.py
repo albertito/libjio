@@ -1,16 +1,12 @@
 
-import sys
-from distutils.core import setup, Extension
-
-if sys.version_info[0] == 2:
-	ver_define = ('PYTHON2', '1')
-elif sys.version_info[0] == 3:
-	ver_define = ('PYTHON3', '1')
+try:
+	from setuptools import setup, Extension
+except ImportError:
+	from distutils.core import setup, Extension
 
 libjio = Extension("libjio",
 		libraries = ['jio'],
 		sources = ['libjio.c'],
-		define_macros = [ver_define],
 
 		# these two allow us to build without having libjio installed,
 		# assuming we're in the libjio source tree
@@ -31,7 +27,6 @@ setup(
 		"Operating System :: POSIX",
 		"Programming Language :: C",
 		"Programming Language :: Python",
-		"Programming Language :: Python :: 2",
 		"Programming Language :: Python :: 3",
 		"Topic :: Software Development",
 		"Topic :: Software Development :: Libraries",

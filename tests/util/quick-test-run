@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This is a convenience script for running some of the other tests without
 # manual intervention, as a means of a fast and easy correctness test.
@@ -17,12 +17,12 @@ import random
 os.chdir(os.path.dirname(sys.argv[0]))
 
 if len(sys.argv) != 2 or sys.argv[1] not in ("normal", "fiu"):
-	sys.stderr.write("Usage: %s [normal|fiu]" %
+	sys.stderr.write("Usage: %s [normal|fiu]\n" %
 				os.path.basename(sys.argv[0]))
 	sys.exit(1)
 
 def run_behaviour_tests(test_type):
-	ret = subprocess.call(["./wrap-python", "2", "../behaviour/runtests",
+	ret = subprocess.call(["./wrap-python", "../behaviour/runtests",
 				test_type])
 	if ret != 0:
 		sys.exit(ret)
@@ -36,7 +36,7 @@ def run_stress_tests(nops = 0, nprocs = 0, fi = False, fsize = 20):
 			os.getpid(),
 			random.randint(0, 1000000000))
 
-	args = ["./wrap-python", "3", "../stress/jiostress",
+	args = ["./wrap-python", "../stress/jiostress",
 			tmp_path, str(fsize)]
 	if nops:
 		args += ["-n", str(nops)]
@@ -50,23 +50,23 @@ def run_stress_tests(nops = 0, nprocs = 0, fi = False, fsize = 20):
 		sys.exit(ret)
 
 if sys.argv[1] == "normal":
-	print "behaviour tests (normal)"
+	print("behaviour tests (normal)")
 	run_behaviour_tests("normal")
-	print
-	print "stress tests (normal)"
+	print()
+	print("stress tests (normal)")
 	run_stress_tests(nops = 50, nprocs = 3)
 else:
-	print "behaviour tests (all)"
+	print("behaviour tests (all)")
 	run_behaviour_tests("all")
-	print
-	print "stress tests (normal)"
+	print()
+	print("stress tests (normal)")
 	run_stress_tests(nops = 50, nprocs = 3)
-	print
-	print "stress tests (fiu)"
+	print()
+	print("stress tests (fiu)")
 	run_stress_tests(nops = 400, fi = True)
 
-print
-print
-print "Tests completed successfuly"
-print
+print()
+print()
+print("Tests completed successfuly")
+print()
 
